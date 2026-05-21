@@ -5,10 +5,10 @@ import { StatusBadge } from "../../../components/StatusBadge";
 import { Search, Copy, CheckCircle, Eye } from "lucide-react";
 import { MOCK_ASSIGNED_VOUCHERS } from "../../../constants/mockData";
 
-export const AssignedVouchersTable = ({ 
-  assignedVouchers = MOCK_ASSIGNED_VOUCHERS, 
-  formatCurrency, 
-  copyToClipboard 
+export const AssignedVouchersTable = ({
+  assignedVouchers = MOCK_ASSIGNED_VOUCHERS,
+  formatCurrency,
+  copyToClipboard,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [copiedId, setCopiedId] = useState(null);
@@ -19,10 +19,11 @@ export const AssignedVouchersTable = ({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const filteredVouchers = assignedVouchers.filter(voucher =>
-    voucher.voucherCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    voucher.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    voucher.assignedBy?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredVouchers = assignedVouchers.filter(
+    (voucher) =>
+      voucher.voucherCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      voucher.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      voucher.assignedBy?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   if (assignedVouchers.length === 0) {
@@ -32,9 +33,12 @@ export const AssignedVouchersTable = ({
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
             <Eye size={32} className="text-gray-400" />
           </div>
-          <h3 className="text-lg font-semibold text-gray-900">No Vouchers Assigned</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            No Vouchers Assigned
+          </h3>
           <p className="text-sm text-gray-500 max-w-md">
-            You haven't received any vouchers yet. Your manager will assign vouchers to you for customer verification.
+            You haven't received any vouchers yet. Your manager will assign
+            vouchers to you for customer verification.
           </p>
         </div>
       </Card>
@@ -52,7 +56,10 @@ export const AssignedVouchersTable = ({
     <div className="space-y-4">
       {/* Search Bar */}
       <div className="relative max-w-md">
-        <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <Search
+          size={18}
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+        />
         <input
           type="text"
           placeholder="Search by voucher code, product, or assigned by..."
@@ -67,19 +74,19 @@ export const AssignedVouchersTable = ({
         <div className="bg-green-50 rounded-lg p-3 border border-green-200">
           <p className="text-xs text-green-600 font-medium">Active</p>
           <p className="text-xl font-bold text-green-700">
-            {assignedVouchers.filter(v => v.status === "Active").length}
+            {assignedVouchers.filter((v) => v.status === "Active").length}
           </p>
         </div>
         <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
           <p className="text-xs text-blue-600 font-medium">Used</p>
           <p className="text-xl font-bold text-blue-700">
-            {assignedVouchers.filter(v => v.status === "Used").length}
+            {assignedVouchers.filter((v) => v.status === "Used").length}
           </p>
         </div>
         <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
           <p className="text-xs text-yellow-600 font-medium">Expired</p>
           <p className="text-xl font-bold text-yellow-700">
-            {assignedVouchers.filter(v => v.status === "Expired").length}
+            {assignedVouchers.filter((v) => v.status === "Expired").length}
           </p>
         </div>
         <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
@@ -124,7 +131,10 @@ export const AssignedVouchersTable = ({
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredVouchers.map((voucher) => (
-                <tr key={voucher.id} className="hover:bg-gray-50 transition-colors">
+                <tr
+                  key={voucher.id}
+                  className="hover:bg-gray-50 transition-colors"
+                >
                   <td className="px-4 py-3">
                     <code className="text-xs font-mono font-bold bg-gray-100 px-2 py-1 rounded">
                       {voucher.voucherCode}
@@ -146,15 +156,15 @@ export const AssignedVouchersTable = ({
                     {voucher.expiryDate}
                   </td>
                   <td className="px-4 py-3">
-                    <StatusBadge 
-                      status={getStatusVariant(voucher.status)}
-                    >
+                    <StatusBadge status={getStatusVariant(voucher.status)}>
                       {voucher.status}
                     </StatusBadge>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <button
-                      onClick={() => handleCopy(voucher.voucherCode, voucher.id)}
+                      onClick={() =>
+                        handleCopy(voucher.voucherCode, voucher.id)
+                      }
                       disabled={voucher.status !== "Active"}
                       className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg transition-colors ${
                         voucher.status === "Active"
@@ -183,7 +193,8 @@ export const AssignedVouchersTable = ({
       </Card>
 
       <div className="text-xs text-gray-500 text-center">
-        Showing {filteredVouchers.length} of {assignedVouchers.length} assigned vouchers
+        Showing {filteredVouchers.length} of {assignedVouchers.length} assigned
+        vouchers
       </div>
     </div>
   );
