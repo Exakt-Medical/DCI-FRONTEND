@@ -3,6 +3,8 @@ import { LoginPage } from "./authentication/LoginPage";
 import { RegistrationWizard } from "./authentication/RegistrationWizard";
 import { AdminLayout } from "./components/layout/AdminLayout";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
+import { ManagerDashboard } from "./features/dashboard/ManagerDashboard";
+import { CompanyPage } from "./features/company/CompanyPage";
 import { CompanyBranchPage } from "./features/CompanyBranch/CompanyBranchPage";
 import { VerificationPage } from "./features/verification/VerificationPage";
 import Vouchers from "./features/voucher/Vouchers";
@@ -91,8 +93,13 @@ function App() {
     );
 
   const renderPage = () => {
-    // Dashboard - All roles can access
-    if (page === "dashboard") return <DashboardPage />;
+    // Dashboard - Different views based on role
+    if (page === "dashboard") {
+      if (role === "manager") {
+        return <ManagerDashboard />;
+      }
+      return <DashboardPage />;
+    }
 
     // Accounts - Admin, Manager can access (not Agent, not Viewer)
     if (page === "accounts") {
@@ -115,7 +122,7 @@ function App() {
       return <AccountPage />;
     }
 
-    // Company/Branch - Admin, Manager can access (not Agent, not Viewer)
+    // Company - Admin, Manager, Viewer can access (not Agent)
     if (page === "company") {
       if (role === "agent")
         return (
@@ -125,18 +132,10 @@ function App() {
             description="You don't have permission to access this page. Please contact your administrator."
           />
         );
-      if (role === "viewer")
-        return (
-          <PlaceholderPage
-            title="Access Denied"
-            icon="🔒"
-            description="Viewers cannot manage companies."
-          />
-        );
-      return <CompanyBranchPage />;
+      return <CompanyPage />;
     }
 
-    // Branches - Shows the same CompanyBranchPage (since branches are part of company management)
+    // Branches - Admin, Manager, Viewer can access (not Agent)
     if (page === "branches") {
       if (role === "agent")
         return (
@@ -146,15 +145,6 @@ function App() {
             description="You don't have permission to manage branches."
           />
         );
-      if (role === "viewer")
-        return (
-          <PlaceholderPage
-            title="Access Denied"
-            icon="🔒"
-            description="Viewers cannot manage branches."
-          />
-        );
-      // Show the CompanyBranchPage which includes branch information
       return <CompanyBranchPage />;
     }
 

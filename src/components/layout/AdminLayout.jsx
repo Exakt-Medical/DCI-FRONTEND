@@ -26,6 +26,7 @@ export const AdminLayout = ({
       items: [
         { id: "accounts", label: "Accounts", disabled: false },
         { id: "company", label: "Company", disabled: false },
+        { id: "branches", label: "Branches", disabled: false },
       ],
     },
     {
@@ -57,6 +58,7 @@ export const AdminLayout = ({
       items: [
         { id: "accounts", label: "Accounts", disabled: false },
         { id: "company", label: "Company", disabled: false },
+        { id: "branches", label: "Branches", disabled: false },
       ],
     },
     {
@@ -217,7 +219,7 @@ export const AdminLayout = ({
       {/* Sidebar */}
       <aside
         className={cn(
-          "flex-shrink-0 flex flex-col border-r border-gray-200 transition-all duration-300",
+          "flex-shrink-0 flex flex-col border-r border-gray-200 transition-all duration-300 sticky top-0 h-screen",
           sidebarOpen ? "w-64" : "w-20",
           "bg-white",
         )}

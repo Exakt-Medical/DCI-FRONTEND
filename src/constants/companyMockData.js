@@ -12,7 +12,6 @@ export const MOCK_COMPANIES = [
     branch: "Main Branch",
     address: "123 Ayala Ave, Makati City",
     contact: "02-8123-4567",
-    email: "info@premier.com",
   },
   {
     id: 2,
@@ -25,7 +24,6 @@ export const MOCK_COMPANIES = [
     branch: "Cebu Branch",
     address: "45 Colon St, Cebu City",
     contact: "032-8123-4567",
-    email: "info@fortune.com",
   },
   {
     id: 3,
@@ -38,7 +36,6 @@ export const MOCK_COMPANIES = [
     branch: "Davao Branch",
     address: "78 JP Laurel Ave, Davao City",
     contact: "082-8123-4567",
-    email: "info@malayan.com",
   },
   {
     id: 4,
@@ -51,7 +48,6 @@ export const MOCK_COMPANIES = [
     branch: "BGC Branch",
     address: "11th Ave, BGC, Taguig",
     contact: "02-8456-7890",
-    email: "info@countrybankers.com",
   },
   {
     id: 5,
@@ -64,7 +60,6 @@ export const MOCK_COMPANIES = [
     branch: "QC Branch",
     address: "12 Quezon Ave, QC",
     contact: "02-8789-0123",
-    email: "info@standard.com",
   },
   {
     id: 6,
@@ -77,7 +72,6 @@ export const MOCK_COMPANIES = [
     branch: "Ortigas Branch",
     address: "ADB Ave, Mandaluyong",
     contact: "02-8901-2345",
-    email: "info@charterpingan.com",
   },
   {
     id: 7,
@@ -90,7 +84,6 @@ export const MOCK_COMPANIES = [
     branch: "Makati Branch",
     address: "6750 Ayala Ave, Makati",
     contact: "02-8812-3456",
-    email: "info@bpims.com",
   },
   {
     id: 8,
@@ -103,7 +96,6 @@ export const MOCK_COMPANIES = [
     branch: "BGC Branch",
     address: "Bonifacio Global City",
     contact: "02-8123-4567",
-    email: "info@axa.com.ph",
   },
   {
     id: 9,
@@ -116,7 +108,6 @@ export const MOCK_COMPANIES = [
     branch: "Ortigas Branch",
     address: "Ortigas Center, Pasig",
     contact: "02-8123-4567",
-    email: "info@prulifeuk.com",
   },
   {
     id: 10,
@@ -129,6 +120,5 @@ export const MOCK_COMPANIES = [
     branch: "BGC Branch",
     address: "BGC, Taguig",
     contact: "02-8123-4567",
-    email: "info@fwd.com.ph",
   },
 ];
