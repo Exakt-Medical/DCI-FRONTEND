@@ -1,3 +1,160 @@
+// src/constants/mockData.js
+
+export const MOCK_ASSIGNED_VOUCHERS = [
+  {
+    id: 1,
+    voucherCode: "VCH-ABC123XYZ",
+    productName: "Basic CTPL",
+    premium: 560.00,
+    assignedBy: "Juan Dela Cruz",
+    assignedDate: "May 15, 2026",
+    expiryDate: "May 15, 2027",
+    status: "Active"
+  },
+  {
+    id: 2,
+    voucherCode: "VCH-DEF456UVW",
+    productName: "Premium CTPL",
+    premium: 850.00,
+    assignedBy: "Maria Santos",
+    assignedDate: "May 10, 2026",
+    expiryDate: "May 10, 2027",
+    status: "Active"
+  },
+  {
+    id: 3,
+    voucherCode: "VCH-GHI789RST",
+    productName: "Motorcycle CTPL",
+    premium: 350.00,
+    assignedBy: "Pedro Reyes",
+    assignedDate: "May 5, 2026",
+    expiryDate: "Nov 5, 2026",
+    status: "Active"
+  },
+  {
+    id: 4,
+    voucherCode: "VCH-JKL012MNO",
+    productName: "Commercial Vehicle CTPL",
+    premium: 1200.00,
+    assignedBy: "Juan Dela Cruz",
+    assignedDate: "Apr 28, 2026",
+    expiryDate: "Apr 28, 2027",
+    status: "Used"
+  },
+  {
+    id: 5,
+    voucherCode: "VCH-PQR345STU",
+    productName: "Heavy Equipment CTPL",
+    premium: 1800.00,
+    assignedBy: "Maria Santos",
+    assignedDate: "Apr 20, 2026",
+    expiryDate: "Apr 20, 2027",
+    status: "Expired"
+  }
+];
+
+export const MOCK_PRODUCTS = [
+  {
+    id: 1,
+    productName: "Basic CTPL",
+    coverage: "Third Party Liability",
+    price: 560.00,
+    description: "Basic coverage for third party liability as required by LTO",
+    validityDays: 365,
+    insuranceCode: "PRIVATE CARS (INCLUDING JEEPS AND AUVS)",
+    isActive: true
+  },
+  {
+    id: 2,
+    productName: "Premium CTPL",
+    coverage: "Third Party Liability + Personal Accident",
+    price: 850.00,
+    description: "Enhanced coverage with personal accident insurance for driver",
+    validityDays: 365,
+    insuranceCode: "PRIVATE CARS (INCLUDING JEEPS AND AUVS)",
+    isActive: true
+  },
+  {
+    id: 3,
+    productName: "Motorcycle CTPL",
+    coverage: "Third Party Liability for Motorcycles",
+    price: 350.00,
+    description: "Affordable CTPL coverage for motorcycles",
+    validityDays: 365,
+    insuranceCode: "MOTORCYCLES",
+    isActive: true
+  },
+  {
+    id: 4,
+    productName: "Commercial Vehicle CTPL",
+    coverage: "Third Party Liability for Commercial Vehicles",
+    price: 1200.00,
+    description: "Comprehensive CTPL for commercial vehicles and fleets",
+    validityDays: 365,
+    insuranceCode: "COMMERCIAL VEHICLES",
+    isActive: true
+  },
+  {
+    id: 5,
+    productName: "Heavy Equipment CTPL",
+    coverage: "Third Party Liability for Heavy Equipment",
+    price: 1800.00,
+    description: "Specialized coverage for heavy equipment and machinery",
+    validityDays: 365,
+    insuranceCode: "HEAVY EQUIPMENT",
+    isActive: true
+  },
+  {
+    id: 6,
+    productName: "Public Utility CTPL",
+    coverage: "Third Party Liability for PUVs",
+    price: 1450.00,
+    description: "CTPL coverage for public utility vehicles, taxis, and jeepneys",
+    validityDays: 365,
+    insuranceCode: "TAXI/PUBLIC UTILITY VEHICLES",
+    isActive: true
+  }
+];
+
+export const MOCK_PURCHASE_HISTORY = [
+  {
+    id: "POL-20241201-001",
+    policyNumber: "CTPL-2024-123456",
+    voucherCode: "VCH-ABC123XYZ",
+    productName: "Basic CTPL",
+    premium: 560.00,
+    purchaseDate: "Dec 1, 2024",
+    expirationDate: "Dec 1, 2025",
+    status: "Active",
+    redeemedOn: null,
+    insuranceCode: "PRIVATE CARS (INCLUDING JEEPS AND AUVS)"
+  },
+  {
+    id: "POL-20241125-002",
+    policyNumber: "CTPL-2024-789012",
+    voucherCode: "VCH-DEF456UVW",
+    productName: "Premium CTPL",
+    premium: 850.00,
+    purchaseDate: "Nov 25, 2024",
+    expirationDate: "Nov 25, 2025",
+    status: "Redeemed",
+    redeemedOn: "Nov 26, 2024",
+    insuranceCode: "PRIVATE CARS (INCLUDING JEEPS AND AUVS)"
+  },
+  {
+    id: "POL-20241015-003",
+    policyNumber: "CTPL-2024-345678",
+    voucherCode: "VCH-GHI789RST",
+    productName: "Motorcycle CTPL",
+    premium: 350.00,
+    purchaseDate: "Oct 15, 2024",
+    expirationDate: "Apr 15, 2025",
+    status: "Expired",
+    redeemedOn: null,
+    insuranceCode: "MOTORCYCLES"
+  }
+];
+
 export const MOCK_COMPANIES = [
   { id: 1, code: "PIC-001", name: "Premier Insurance Corp", provider: "LTO", status: "Active", dateCreated: "2026-01-15", branch: "Main", address: "123 Ayala Ave, Makati City", logo: null },
   { id: 2, code: "FGI-002", name: "Fortune General Insurance", provider: "LTO", status: "Pending", dateCreated: "2026-02-20", branch: "Cebu Branch", address: "45 Colon St, Cebu City", logo: null },
@@ -52,4 +209,16 @@ export const MOCK_INSURANCE = {
   sumInsured: "₱ 100,000.00",
   premium: "₱ 650.00",
   agentName: "Maria Santos",
+};
+
+// Optional: Export all as a single object for convenience
+export const MOCK_DATA = {
+  assignedVouchers: MOCK_ASSIGNED_VOUCHERS,
+  products: MOCK_PRODUCTS,
+  purchaseHistory: MOCK_PURCHASE_HISTORY,
+  companies: MOCK_COMPANIES,
+  transactions: MOCK_TRANSACTIONS,
+  vehicle: MOCK_VEHICLE,
+  owner: MOCK_OWNER,
+  insurance: MOCK_INSURANCE,
 };
