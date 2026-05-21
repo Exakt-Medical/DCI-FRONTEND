@@ -3,47 +3,142 @@ import { cn } from "../../utils/cn";
 import { StatusBadge } from "../../components/StatusBadge";
 import { LogOut, User, Key, ChevronDown } from "lucide-react";
 
-export const AdminLayout = ({ children, currentPage, onNavigate, role, onLogout, onMyProfile, onChangePassword }) => {
+export const AdminLayout = ({
+  children,
+  currentPage,
+  onNavigate,
+  role,
+  onLogout,
+  onMyProfile,
+  onChangePassword,
+}) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
 
   // Admin Navigation - Full system control
   const adminNav = [
-    { section: "Home", items: [{ id: "dashboard", label: "Dashboard", disabled: false }] },
-    { section: "Administrative", items: [{ id: "accounts", label: "Accounts", disabled: false }, { id: "company", label: "Company", disabled: false }] },
-    { section: "Manage", items: [{ id: "vehicles", label: "Vehicle Database", disabled: false }, { id: "mvtype", label: "MV Type", disabled: false }, { id: "activitylogs", label: "Activity Logs", disabled: false }] },
-    { section: "CTPL Insurance", items: [{ id: "verification", label: "Verification", disabled: false }, { id: "transactions", label: "Transactions", disabled: false }, { id: "vouchers", label: "Tickets/Vouchers", disabled: false }] },
+    {
+      section: "Home",
+      items: [{ id: "dashboard", label: "Dashboard", disabled: false }],
+    },
+    {
+      section: "Administrative",
+      items: [
+        { id: "accounts", label: "Accounts", disabled: false },
+        { id: "company", label: "Company", disabled: false },
+      ],
+    },
+    {
+      section: "Manage",
+      items: [
+        { id: "vehicles", label: "Vehicle Database", disabled: false },
+        { id: "mvtype", label: "MV Type", disabled: false },
+        { id: "activitylogs", label: "Activity Logs", disabled: false },
+      ],
+    },
+    {
+      section: "CTPL Insurance",
+      items: [
+        { id: "verification", label: "Verification", disabled: false },
+        { id: "transactions", label: "Transactions", disabled: false },
+        { id: "vouchers", label: "Tickets/Vouchers", disabled: false },
+      ],
+    },
   ];
 
   // Viewer Admin Navigation - Read-only access (can only view, no actions)
   const viewerAdminNav = [
-    { section: "Home", items: [{ id: "dashboard", label: "Dashboard", disabled: false }] },
-    { section: "Administrative", items: [{ id: "accounts", label: "Accounts", disabled: false }, { id: "company", label: "Company", disabled: false }] },
-    { section: "Manage", items: [{ id: "vehicles", label: "Vehicle Database", disabled: false }, { id: "mvtype", label: "MV Type", disabled: false }, { id: "activitylogs", label: "Activity Logs", disabled: false }] },
-    { section: "CTPL Insurance", items: [{ id: "verification", label: "Verification", disabled: false }, { id: "transactions", label: "Transactions", disabled: false }, { id: "vouchers", label: "Tickets/Vouchers", disabled: false }] },
+    {
+      section: "Home",
+      items: [{ id: "dashboard", label: "Dashboard", disabled: false }],
+    },
+    {
+      section: "Administrative",
+      items: [
+        { id: "accounts", label: "Accounts", disabled: false },
+        { id: "company", label: "Company", disabled: false },
+      ],
+    },
+    {
+      section: "Manage",
+      items: [
+        { id: "vehicles", label: "Vehicle Database", disabled: false },
+        { id: "mvtype", label: "MV Type", disabled: false },
+        { id: "activitylogs", label: "Activity Logs", disabled: false },
+      ],
+    },
+    {
+      section: "CTPL Insurance",
+      items: [
+        { id: "verification", label: "Verification", disabled: false },
+        { id: "transactions", label: "Transactions", disabled: false },
+        { id: "vouchers", label: "Tickets/Vouchers", disabled: false },
+      ],
+    },
   ];
 
   // Agent Navigation - Can ONLY view assigned vouchers (no buy, no transfer)
   const agentNav = [
-    { section: "Home", items: [{ id: "dashboard", label: "Dashboard", disabled: false }] },
-    { section: "CTPL Insurance", items: [{ id: "verification", label: "Verification", disabled: false }] },
-    { section: "Vouchers", items: [{ id: "vouchers", label: "My Vouchers", disabled: false }] },
+    {
+      section: "Home",
+      items: [{ id: "dashboard", label: "Dashboard", disabled: false }],
+    },
+    {
+      section: "CTPL Insurance",
+      items: [{ id: "verification", label: "Verification", disabled: false }],
+    },
+    {
+      section: "Vouchers",
+      items: [{ id: "vouchers", label: "My Vouchers", disabled: false }],
+    },
   ];
 
   // Manager Navigation - Can buy vouchers and transfer to agents
   const managerNav = [
-    { section: "Home", items: [{ id: "dashboard", label: "Dashboard", disabled: false }] },
-    { section: "Administrative", items: [{ id: "accounts", label: "Accounts", disabled: false }, { id: "company", label: "Company", disabled: false }, { id: "branches", label: "Branches", disabled: false }] },
-    { section: "Voucher Management", items: [{ id: "vouchers", label: "Buy Vouchers", disabled: false }, { id: "transfer-vouchers", label: "Transfer Vouchers", disabled: false }] },
-    { section: "CTPL Insurance", items: [{ id: "verification", label: "Verification", disabled: false }, { id: "transactions", label: "Transactions", disabled: false }] },
-    { section: "Reports", items: [{ id: "activitylogs", label: "Activity Logs", disabled: false }, { id: "ledger", label: "Ledger", disabled: false }] },
+    {
+      section: "Home",
+      items: [{ id: "dashboard", label: "Dashboard", disabled: false }],
+    },
+    {
+      section: "Administrative",
+      items: [
+        { id: "accounts", label: "Accounts", disabled: false },
+        { id: "company", label: "Company", disabled: false },
+        { id: "branches", label: "Branches", disabled: false },
+      ],
+    },
+    {
+      section: "Voucher Management",
+      items: [
+        { id: "vouchers", label: "Buy Vouchers", disabled: false },
+        {
+          id: "transfer-vouchers",
+          label: "Transfer Vouchers",
+          disabled: false,
+        },
+      ],
+    },
+    {
+      section: "CTPL Insurance",
+      items: [
+        { id: "verification", label: "Verification", disabled: false },
+        { id: "transactions", label: "Transactions", disabled: false },
+      ],
+    },
+    {
+      section: "Reports",
+      items: [
+        { id: "activitylogs", label: "Activity Logs", disabled: false },
+        { id: "ledger", label: "Ledger", disabled: false },
+      ],
+    },
   ];
 
   let nav = adminNav;
   let userLabel = "Admin User";
   let userInitial = "A";
   let isReadOnly = false;
-  
+
   if (role === "admin") {
     nav = adminNav;
     userLabel = "Admin User";
@@ -120,7 +215,13 @@ export const AdminLayout = ({ children, currentPage, onNavigate, role, onLogout,
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
-      <aside className={cn("flex-shrink-0 flex flex-col border-r border-gray-200 transition-all duration-300", sidebarOpen ? "w-64" : "w-20", "bg-white")}>
+      <aside
+        className={cn(
+          "flex-shrink-0 flex flex-col border-r border-gray-200 transition-all duration-300",
+          sidebarOpen ? "w-64" : "w-20",
+          "bg-white",
+        )}
+      >
         {/* Logo */}
         <div className="flex items-center gap-3 px-4 py-5 border-b border-gray-200">
           <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-sapphire-700 rounded-lg flex-shrink-0 flex items-center justify-center text-sm text-white font-bold">
@@ -128,12 +229,16 @@ export const AdminLayout = ({ children, currentPage, onNavigate, role, onLogout,
           </div>
           {sidebarOpen && (
             <div className="overflow-hidden">
-              <p className="text-gray-900 text-xs font-black truncate leading-tight">VVIP</p>
-              <p className="text-gray-500 text-[10px] truncate">Verification Portal</p>
+              <p className="text-gray-900 text-xs font-black truncate leading-tight">
+                VVIP
+              </p>
+              <p className="text-gray-500 text-[10px] truncate">
+                Verification Portal
+              </p>
             </div>
           )}
         </div>
-        
+
         {/* Navigation */}
         <nav className="flex-1 py-6 overflow-y-auto">
           {nav.map((group) => (
@@ -143,32 +248,36 @@ export const AdminLayout = ({ children, currentPage, onNavigate, role, onLogout,
                   {group.section}
                 </p>
               )}
-              {group.items.map(item => (
+              {group.items.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => handleNavigation(item)}
                   disabled={item.disabled}
                   className={cn(
                     "w-full flex items-center text-sm transition-all",
-                    sidebarOpen ? "px-6 py-2.5 justify-start gap-3" : "px-2 py-3 justify-center flex-col gap-1",
-                    !item.disabled && currentPage === item.id 
-                      ? "bg-primary-50 text-primary-600 border-r-2 border-primary-500" 
+                    sidebarOpen
+                      ? "px-6 py-2.5 justify-start gap-3"
+                      : "px-2 py-3 justify-center flex-col gap-1",
+                    !item.disabled && currentPage === item.id
+                      ? "bg-primary-50 text-primary-600 border-r-2 border-primary-500"
                       : "text-gray-600",
-                    item.disabled 
-                      ? "opacity-50 cursor-not-allowed" 
-                      : "hover:text-gray-900 hover:bg-gray-50 cursor-pointer"
+                    item.disabled
+                      ? "opacity-50 cursor-not-allowed"
+                      : "hover:text-gray-900 hover:bg-gray-50 cursor-pointer",
                   )}
                 >
                   {sidebarOpen ? (
                     <span className="font-medium truncate">{item.label}</span>
                   ) : (
                     <>
-                      <div className={cn(
-                        "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all",
-                        !item.disabled && currentPage === item.id 
-                          ? "bg-primary-500 text-white" 
-                          : "bg-gray-100 text-gray-600"
-                      )}>
+                      <div
+                        className={cn(
+                          "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-all",
+                          !item.disabled && currentPage === item.id
+                            ? "bg-primary-500 text-white"
+                            : "bg-gray-100 text-gray-600",
+                        )}
+                      >
                         {getInitial(item.label)}
                       </div>
                       <span className="text-[10px] mt-1">{item.label}</span>
@@ -178,7 +287,7 @@ export const AdminLayout = ({ children, currentPage, onNavigate, role, onLogout,
               ))}
             </div>
           ))}
-          
+
           {/* Read-only indicator for viewer */}
           {isReadOnly && sidebarOpen && role === "viewer" && (
             <div className="mt-4 px-6">
@@ -188,32 +297,37 @@ export const AdminLayout = ({ children, currentPage, onNavigate, role, onLogout,
             </div>
           )}
         </nav>
-        
+
         {/* Collapse Button */}
-        <button 
-          onClick={() => setSidebarOpen(!sidebarOpen)} 
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
           className={cn(
             "mt-auto mx-3 mb-3 rounded-lg transition-all duration-200",
             "text-gray-500 hover:text-gray-700 hover:bg-gray-100",
             "border border-gray-200",
-            sidebarOpen ? "px-3 py-2" : "py-2"
+            sidebarOpen ? "px-3 py-2" : "py-2",
           )}
         >
           <div className="flex items-center justify-center gap-2">
-            <svg 
-              className={cn("w-4 h-4 transition-transform duration-200", !sidebarOpen && "rotate-180")}
-              fill="none" 
-              stroke="currentColor" 
+            <svg
+              className={cn(
+                "w-4 h-4 transition-transform duration-200",
+                !sidebarOpen && "rotate-180",
+              )}
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M15 19l-7-7 7-7" 
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
               />
             </svg>
-            {sidebarOpen && <span className="text-xs font-medium">Collapse</span>}
+            {sidebarOpen && (
+              <span className="text-xs font-medium">Collapse</span>
+            )}
           </div>
         </button>
       </aside>
@@ -224,47 +338,54 @@ export const AdminLayout = ({ children, currentPage, onNavigate, role, onLogout,
         <header className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white sticky top-0 z-20">
           <div>
             <h2 className="text-base font-bold text-gray-900 capitalize">
-              {currentPage === "transfer-vouchers" ? "Transfer Vouchers" : 
-               currentPage.replace(/([a-z])([A-Z])/g, '$1 $2')}
+              {currentPage === "transfer-vouchers"
+                ? "Transfer Vouchers"
+                : currentPage.replace(/([a-z])([A-Z])/g, "$1 $2")}
             </h2>
-            <p className="text-xs text-gray-500 mt-0.5">Vehicle Verification Insurance Program</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Vehicle Verification Insurance Program
+            </p>
           </div>
-          
+
           <div className="flex items-center gap-4">
-            {/* Notification Bell */}
-            <div className="relative">
-              <button className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-gray-900 transition-colors text-lg">
-                🔔
-              </button>
-              <span className="absolute top-1 right-1 w-2 h-2 bg-carnelian-500 rounded-full" />
-            </div>
-            
             {/* User Dropdown Menu */}
             <div className="relative">
               <button
                 onClick={toggleUserDropdown}
                 className="flex items-center gap-3 bg-gray-100 rounded-full px-3 py-1.5 hover:bg-gray-200 transition-colors"
               >
-                <div className={cn(
-                  "w-6 h-6 rounded-full flex items-center justify-center text-xs text-white font-bold",
-                  role === "admin" ? "bg-purple-600" : 
-                  role === "viewer" ? "bg-gray-600" : 
-                  role === "manager" ? "bg-blue-600" : 
-                  "bg-green-600"
-                )}>
+                <div
+                  className={cn(
+                    "w-6 h-6 rounded-full flex items-center justify-center text-xs text-white font-bold",
+                    role === "admin"
+                      ? "bg-purple-600"
+                      : role === "viewer"
+                        ? "bg-gray-600"
+                        : role === "manager"
+                          ? "bg-blue-600"
+                          : "bg-green-600",
+                  )}
+                >
                   {userInitial}
                 </div>
                 <div className="hidden sm:block text-left">
-                  <span className="text-xs font-medium text-gray-900 block">{userLabel}</span>
-                  <span className={cn("text-[10px] font-medium px-2 py-0.5 rounded-full inline-block", getRoleBadgeColor())}>
+                  <span className="text-xs font-medium text-gray-900 block">
+                    {userLabel}
+                  </span>
+                  <span
+                    className={cn(
+                      "text-[10px] font-medium px-2 py-0.5 rounded-full inline-block",
+                      getRoleBadgeColor(),
+                    )}
+                  >
                     {getRoleDisplayName()}
                   </span>
                 </div>
-                <ChevronDown 
-                  size={14} 
+                <ChevronDown
+                  size={14}
                   className={cn(
                     "text-gray-500 transition-transform duration-200",
-                    userDropdownOpen && "rotate-180"
+                    userDropdownOpen && "rotate-180",
                   )}
                 />
               </button>
@@ -272,8 +393,8 @@ export const AdminLayout = ({ children, currentPage, onNavigate, role, onLogout,
               {/* Dropdown Menu */}
               {userDropdownOpen && (
                 <>
-                  <div 
-                    className="fixed inset-0 z-10" 
+                  <div
+                    className="fixed inset-0 z-10"
                     onClick={() => setUserDropdownOpen(false)}
                   />
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
@@ -305,11 +426,9 @@ export const AdminLayout = ({ children, currentPage, onNavigate, role, onLogout,
             </div>
           </div>
         </header>
-        
+
         {/* Page Content */}
-        <main className="flex-1 p-6 overflow-y-auto">
-          {children}
-        </main>
+        <main className="flex-1 p-6 overflow-y-auto">{children}</main>
       </div>
     </div>
   );

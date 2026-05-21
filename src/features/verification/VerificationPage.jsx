@@ -9,6 +9,7 @@ import { OwnerInfoCard } from "./components/OwnerInfoCard";
 import { VoucherRedemption } from "./components/VoucherRedemption";
 import { InsuranceFormSection } from "./components/InsuranceFormSection";
 import { FinalReviewModal } from "./components/FinalReviewModal";
+import { MOCK_ASSIGNED_VOUCHERS } from "../../constants/mockData";
 
 const fetchFromLTO = async (searchField, searchValue) => {
   await new Promise((r) => setTimeout(r, 1500));
@@ -50,6 +51,11 @@ const getPurchaseHistory = () => {
     return JSON.parse(stored);
   }
   return [];
+};
+
+// Helper to save to localStorage
+const savePurchaseHistory = (history) => {
+  localStorage.setItem("ctpl_purchase_history", JSON.stringify(history));
 };
 
 // Insurance fee mapping
@@ -137,6 +143,7 @@ export const VerificationPage = ({ onCertificate }) => {
   const [validatedVoucher, setValidatedVoucher] = useState(null);
   const [voucherError, setVoucherError] = useState(null);
   const [isValidatingVoucher, setIsValidatingVoucher] = useState(false);
+  const [isRedeeming, setIsRedeeming] = useState(false); // ADDED
   const [vehicleData, setVehicleData] = useState(initialVehicleData);
   const [ownerData, setOwnerData] = useState(initialOwnerData);
   const [insuranceData, setInsuranceData] = useState(initialInsuranceData);
@@ -199,26 +206,32 @@ export const VerificationPage = ({ onCertificate }) => {
 
       if (voucher) {
         setValidatedVoucher(voucher);
+
         // Auto-populate insurance data from voucher
         const fees =
           insuranceFeeMap[voucher.insuranceCode] ||
           insuranceFeeMap["PRIVATE CARS (INCLUDING JEEPS AND AUVS)"];
+
+        const totalAmount = (
+          parseFloat(fees.prescribedPremiumFee) +
+          parseFloat(fees.dst) +
+          parseFloat(fees.vat) +
+          parseFloat(fees.lgt) +
+          parseFloat(fees.validationFee)
+        ).toFixed(2);
+
         setInsuranceData({
-          selectedCode: voucher.insuranceCode,
+          selectedCode:
+            voucher.insuranceCode || "PRIVATE CARS (INCLUDING JEEPS AND AUVS)",
           policyNumber: voucher.policyNumber,
-          premiumType: voucher.insuranceCode,
+          premiumType:
+            voucher.insuranceCode || "PRIVATE CARS (INCLUDING JEEPS AND AUVS)",
           prescribedPremiumFee: fees.prescribedPremiumFee,
           dst: fees.dst,
           vat: fees.vat,
           lgt: fees.lgt,
           validationFee: fees.validationFee,
-          totalAmount: (
-            parseFloat(fees.prescribedPremiumFee) +
-            parseFloat(fees.dst) +
-            parseFloat(fees.vat) +
-            parseFloat(fees.lgt) +
-            parseFloat(fees.validationFee)
-          ).toFixed(2),
+          totalAmount: totalAmount,
         });
         setVoucherError(null);
       } else {
@@ -229,6 +242,83 @@ export const VerificationPage = ({ onCertificate }) => {
       }
       setIsValidatingVoucher(false);
     }, 800);
+  };
+
+  const handleRedeemVoucher = async (voucher) => {
+    setIsRedeeming(true);
+
+    // Simulate API call for redemption
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    const redeemedDate = new Date().toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    // Get the insurance code from the voucher
+    const insuranceCode =
+      voucher.insuranceCode || "PRIVATE CARS (INCLUDING JEEPS AND AUVS)";
+
+    // Get the fees for this insurance code
+    const fees =
+      insuranceFeeMap[insuranceCode] ||
+      insuranceFeeMap["PRIVATE CARS (INCLUDING JEEPS AND AUVS)"];
+
+    // Calculate total amount
+    const totalAmount = (
+      parseFloat(fees.prescribedPremiumFee) +
+      parseFloat(fees.dst) +
+      parseFloat(fees.vat) +
+      parseFloat(fees.lgt) +
+      parseFloat(fees.validationFee)
+    ).toFixed(2);
+
+    // UPDATE INSURANCE DATA with the voucher information
+    setInsuranceData({
+      selectedCode: insuranceCode,
+      policyNumber:
+        voucher.policyNumber || `POL-${voucher.voucherCode.slice(-8)}`,
+      premiumType: insuranceCode,
+      prescribedPremiumFee: fees.prescribedPremiumFee,
+      dst: fees.dst,
+      vat: fees.vat,
+      lgt: fees.lgt,
+      validationFee: fees.validationFee,
+      totalAmount: totalAmount,
+    });
+
+    // Mark voucher as redeemed in localStorage
+    const purchaseHistory = getPurchaseHistory();
+    const updatedHistory = purchaseHistory.map((v) =>
+      v.voucherCode === voucher.voucherCode
+        ? {
+            ...v,
+            status: "Redeemed",
+            redeemedOn: redeemedDate,
+            redeemedVehicle: {
+              plateNumber: vehicleData.plate_number,
+              mvFileNo: vehicleData.mv_file_number,
+              owner: `${ownerData.firstName} ${ownerData.lastName}`,
+            },
+          }
+        : v,
+    );
+    savePurchaseHistory(updatedHistory);
+
+    // Update the validated voucher status
+    setValidatedVoucher({
+      ...voucher,
+      status: "Redeemed",
+      redeemedOn: redeemedDate,
+    });
+
+    setIsRedeeming(false);
+    alert(
+      `Voucher ${voucher.voucherCode} has been successfully redeemed for vehicle ${vehicleData.plate_number}!`,
+    );
   };
 
   const handleVerify = async ({ mvFileNo, plateNo, engineNo, chassisNo }) => {
@@ -314,8 +404,13 @@ export const VerificationPage = ({ onCertificate }) => {
     setInsuranceData(initialInsuranceData);
   };
 
+  // UPDATED: Require voucher to be redeemed
   const isFormComplete = () => {
-    return isRecordFound && validatedVoucher !== null;
+    return (
+      isRecordFound &&
+      validatedVoucher !== null &&
+      validatedVoucher.status === "Redeemed"
+    );
   };
 
   const handleSubmitForReview = () => {
@@ -323,28 +418,6 @@ export const VerificationPage = ({ onCertificate }) => {
   };
 
   const handleGenerateCertificate = (authNo) => {
-    // Mark voucher as redeemed in localStorage
-    if (validatedVoucher) {
-      const purchaseHistory = getPurchaseHistory();
-      const updatedHistory = purchaseHistory.map((v) =>
-        v.voucherCode === validatedVoucher.voucherCode
-          ? {
-              ...v,
-              status: "Redeemed",
-              redeemedOn: new Date().toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              }),
-            }
-          : v,
-      );
-      localStorage.setItem(
-        "ctpl_purchase_history",
-        JSON.stringify(updatedHistory),
-      );
-    }
-
     setShowFinalReview(false);
     generateCertificatePDF({
       vehicle: vehicleData,
@@ -422,6 +495,8 @@ export const VerificationPage = ({ onCertificate }) => {
                 onInsuranceCodeChange={handleInsuranceCodeChange}
                 onPolicyNumberChange={updatePolicyNumber}
                 disabled={validatedVoucher !== null}
+                isRedeemed={validatedVoucher?.status === "Redeemed"}
+                redeemedDate={validatedVoucher?.redeemedOn}
               />
             )}
           </div>
@@ -436,9 +511,16 @@ export const VerificationPage = ({ onCertificate }) => {
         >
           <RefreshCw size={16} /> Reset Form
         </Button>
-        <Button onClick={handleSubmitForReview} disabled={!isFormComplete()}>
-          Submit for Final Review
-        </Button>
+        <div className="flex flex-col items-end">
+          <Button onClick={handleSubmitForReview} disabled={!isFormComplete()}>
+            Submit for Final Review
+          </Button>
+          {validatedVoucher && validatedVoucher.status !== "Redeemed" && (
+            <p className="text-xs text-orange-500 mt-1">
+              ⚠️ Please redeem the voucher first before submitting
+            </p>
+          )}
+        </div>
       </div>
 
       {showFinalReview && (
