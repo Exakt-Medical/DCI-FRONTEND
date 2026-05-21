@@ -1,21 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Card } from "../components/Card";
-import { Button } from "../components/Button";
 import { Spinner } from "../components/Spinner";
-import { User, Lock, Eye, EyeOff, AlertCircle, LogIn, Shield } from "lucide-react";
+import { User, Lock, Eye, EyeOff, AlertCircle, LogIn } from "lucide-react";
 
 export const LoginPage = () => {
   const navigate = useNavigate();
-  const { login, verifyMfa, loading } = useAuth();
+  const { login, loading } = useAuth();
   const [form, setForm] = useState({ username: "", password: "" });
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-  const [mfaStep, setMfaStep] = useState(false);
-  const [mfaUsername, setMfaUsername] = useState("");
-  const [mfaCode, setMfaCode] = useState("");
 
   useEffect(() => {
     const savedUsername = localStorage.getItem("rememberedUsername");
@@ -34,12 +29,7 @@ export const LoginPage = () => {
     }
     setError("");
     try {
-      const result = await login(form.username, form.password);
-      if (result.mfaRequired) {
-        setMfaUsername(result.username);
-        setMfaStep(true);
-        return;
-      }
+      const role = await login(form.username, form.password);
       if (rememberMe) {
         localStorage.setItem("rememberedUsername", form.username);
         localStorage.setItem("rememberedPassword", form.password);
@@ -49,80 +39,11 @@ export const LoginPage = () => {
         localStorage.removeItem("rememberedPassword");
         localStorage.setItem("rememberMe", "false");
       }
-      navigate(result.role === "ADMIN" ? "/dashboard" : "/verification");
+      navigate(role === "ADMIN" ? "/dashboard" : "/verification");
     } catch (err) {
       setError(err.message || "Invalid credentials");
     }
   };
-
-  const handleMfaSubmit = async () => {
-    if (!mfaCode || mfaCode.length !== 6) {
-      setError("Please enter the 6-digit verification code");
-      return;
-    }
-    setError("");
-    try {
-      const role = await verifyMfa(mfaUsername, mfaCode);
-      navigate(role === "ADMIN" ? "/dashboard" : "/verification");
-    } catch (err) {
-      setError(err.message || "Invalid verification code");
-    }
-  };
-
-  if (mfaStep) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4 relative overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary-500/5 rounded-full blur-3xl" />
-          <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-sapphire-500/5 rounded-full blur-3xl" />
-        </div>
-        <div className="w-full max-w-md relative z-10">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-primary-500 to-sapphire-700 rounded-2xl mb-4 shadow-lg shadow-primary-500/30">
-              <Shield className="w-10 h-10 text-white" />
-            </div>
-            <h1 className="text-2xl font-black text-gray-900 tracking-tight">Two-Factor Authentication</h1>
-            <p className="text-gray-500 text-sm mt-1 font-medium">Enter the code sent to your email</p>
-          </div>
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
-            {error && (
-              <div className="bg-carnelian-50 border border-carnelian-200 rounded-xl p-3 mb-4 text-carnelian-600 text-sm flex items-center gap-2">
-                <AlertCircle size={16} />
-                {error}
-              </div>
-            )}
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Verification Code</label>
-                <input
-                  type="text"
-                  value={mfaCode}
-                  onChange={e => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                  placeholder="000000"
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-center text-2xl font-mono tracking-widest text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-                  maxLength={6}
-                  onKeyDown={(e) => e.key === "Enter" && handleMfaSubmit()}
-                />
-              </div>
-            </div>
-            <button
-              onClick={handleMfaSubmit}
-              disabled={loading}
-              className="w-full bg-primary-500 hover:bg-primary-600 text-white font-bold py-3 px-4 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed mt-6"
-            >
-              {loading ? <><Spinner size="sm" /> Verifying...</> : <>Verify & Login</>}
-            </button>
-            <button
-              onClick={() => { setMfaStep(false); setMfaCode(""); setError(""); }}
-              className="w-full text-sm text-gray-500 hover:text-primary-600 mt-3 transition-colors"
-            >
-              Back to Login
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4 relative overflow-hidden">

@@ -21,32 +21,6 @@ export function AuthProvider({ children }) {
       const response = await authService.login(username, password);
       const data = response.data;
 
-      if (data.mfaRequired) {
-        return { mfaRequired: true, username: data.username };
-      }
-
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("role", data.role);
-      localStorage.setItem("username", data.username);
-      setToken(data.token);
-      setRole(data.role);
-      setUser({ token: data.token, role: data.role });
-      return { mfaRequired: false, role: data.role };
-    } catch (error) {
-      throw new Error(
-        error.response?.data?.message || error.response?.data?.error || "Login failed"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const verifyMfa = async (username, code) => {
-    setLoading(true);
-    try {
-      const response = await authService.verifyMfa(username, code);
-      const data = response.data;
-
       localStorage.setItem("token", data.token);
       localStorage.setItem("role", data.role);
       localStorage.setItem("username", data.username);
@@ -56,7 +30,7 @@ export function AuthProvider({ children }) {
       return data.role;
     } catch (error) {
       throw new Error(
-        error.response?.data?.message || error.response?.data?.error || "Invalid code"
+        error.response?.data?.message || error.response?.data?.error || "Login failed"
       );
     } finally {
       setLoading(false);
@@ -74,7 +48,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, role, loading, login, verifyMfa, logout, isAuthenticated: !!token }}
+      value={{ user, token, role, loading, login, logout, isAuthenticated: !!token }}
     >
       {children}
     </AuthContext.Provider>
