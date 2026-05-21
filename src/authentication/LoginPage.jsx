@@ -191,9 +191,6 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
               />
               Remember me
             </label>
-            <button className="text-xs text-primary-600 hover:text-primary-700 transition-colors">
-              Forgot password?
-            </button>
           </div>
 
           <button

@@ -1,43 +1,45 @@
-// features/company/CompanyPage.jsx
 import { useState } from "react";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
-import { StatusBadge } from "../../components/StatusBadge";
 import {
   Search,
   Filter,
-  Copy,
-  CheckCircle,
   Building2,
   ChevronLeft,
   ChevronRight,
-  Eye,
-  Edit,
+  Plus,
 } from "lucide-react";
 import { MOCK_COMPANIES } from "../../constants/companyMockData";
+import { CompanyStatCard } from "./components/CompanyStatCard";
+import { CompanyTableRow } from "./components/CompanyTableRow";
+import { CompanyFormModal } from "./components/CompanyFormModal";
+import { CompanyViewModal } from "./components/CompanyViewModal";
+import { CompanyDeleteModal } from "./components/CompanyDeleteModal";
 
 export const CompanyPage = () => {
+  const [companies, setCompanies] = useState(MOCK_COMPANIES);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [copiedId, setCopiedId] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
   const itemsPerPage = 10;
 
   // Calculate totals
-  const totalCompanies = MOCK_COMPANIES.length;
-  const totalActive = MOCK_COMPANIES.filter(
-    (c) => c.status === "Active",
-  ).length;
-  const totalInactive = MOCK_COMPANIES.filter(
-    (c) => c.status === "Inactive",
-  ).length;
-  const totalDeactivated = MOCK_COMPANIES.filter(
+  const totalCompanies = companies.length;
+  const totalActive = companies.filter((c) => c.status === "Active").length;
+  const totalInactive = companies.filter((c) => c.status === "Inactive").length;
+  const totalDeactivated = companies.filter(
     (c) => c.status === "Deactivated",
   ).length;
 
   // Filter companies based on search and filters
-  const filteredCompanies = MOCK_COMPANIES.filter((company) => {
+  const filteredCompanies = companies.filter((company) => {
     const matchesSearch =
       searchTerm === "" ||
       company.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -64,54 +66,113 @@ export const CompanyPage = () => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const StatCard = ({ title, value, icon: Icon, color }) => (
-    <Card className="p-5 hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">
-            {title}
-          </p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
-        </div>
-        <div
-          className={`w-10 h-10 rounded-full bg-${color}-100 flex items-center justify-center`}
-        >
-          <Icon size={20} className={`text-${color}-600`} />
-        </div>
-      </div>
-    </Card>
-  );
+  const handleAddCompany = () => {
+    setSelectedCompany(null);
+    setIsEditing(false);
+    setIsFormModalOpen(true);
+  };
+
+  const handleEditCompany = (company) => {
+    setSelectedCompany(company);
+    setIsEditing(true);
+    setIsFormModalOpen(true);
+  };
+
+  const handleViewCompany = (company) => {
+    setSelectedCompany(company);
+    setIsViewModalOpen(true);
+  };
+
+  const handleDeleteCompany = (company) => {
+    setSelectedCompany(company);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = () => {
+    setCompanies(companies.filter((c) => c.id !== selectedCompany.id));
+    setIsDeleteModalOpen(false);
+    setSelectedCompany(null);
+  };
+
+  const saveCompany = (companyData) => {
+    // Generate a unique 3-digit code
+    const generateCode = () => {
+      const existingCodes = companies.map((c) => parseInt(c.code));
+      let newCode = 1;
+      while (existingCodes.includes(newCode)) {
+        newCode++;
+      }
+      return newCode.toString().padStart(3, "0");
+    };
+
+    if (isEditing && selectedCompany) {
+      // Update existing company
+      setCompanies(
+        companies.map((c) =>
+          c.id === selectedCompany.id
+            ? {
+                ...c,
+                ...companyData,
+                dateCreated: c.dateCreated,
+                id: c.id,
+              }
+            : c,
+        ),
+      );
+    } else {
+      // Create new company
+      const newCompany = {
+        id: Math.max(...companies.map((c) => c.id), 0) + 1,
+        ...companyData,
+        code: companyData.code || generateCode(),
+        dateCreated: new Date().toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
+      };
+      setCompanies([newCompany, ...companies]);
+    }
+    setIsFormModalOpen(false);
+    setSelectedCompany(null);
+  };
 
   return (
     <div className="max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">
-          Company Management
-        </h1>
-        <p className="text-sm text-gray-500">Manage insurance companies</p>
+      {/* Header */}
+      <div className="mb-6 flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">
+            Company Management
+          </h1>
+          <p className="text-sm text-gray-500">Manage insurance companies</p>
+        </div>
+        <Button onClick={handleAddCompany} className="flex items-center gap-2">
+          <Plus size={16} /> Add Company
+        </Button>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <StatCard
+        <CompanyStatCard
           title="Total Companies"
           value={totalCompanies}
           icon={Building2}
           color="gray"
         />
-        <StatCard
+        <CompanyStatCard
           title="Active"
           value={totalActive}
           icon={Building2}
           color="green"
         />
-        <StatCard
+        <CompanyStatCard
           title="Inactive"
           value={totalInactive}
           icon={Building2}
           color="yellow"
         />
-        <StatCard
+        <CompanyStatCard
           title="Deactivated"
           value={totalDeactivated}
           icon={Building2}
@@ -205,68 +266,15 @@ export const CompanyPage = () => {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {paginatedCompanies.map((company) => (
-                <tr
+                <CompanyTableRow
                   key={company.id}
-                  className="hover:bg-gray-50 transition-colors"
-                >
-                  <td className="px-4 py-3">
-                    <span className="font-mono font-bold text-primary-600 text-sm">
-                      {company.code}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {company.name}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-sm text-gray-700">
-                      {company.provider}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-sm font-semibold text-gray-900">
-                      {company.vouchers.toLocaleString()}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={company.status} />
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">
-                    {company.dateCreated}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() =>
-                          copyToClipboard(company.code, company.id)
-                        }
-                        className="p-1 text-gray-400 hover:text-primary-600 transition-colors"
-                        title="Copy Code"
-                      >
-                        {copiedId === company.id ? (
-                          <CheckCircle size={14} />
-                        ) : (
-                          <Copy size={14} />
-                        )}
-                      </button>
-                      <button
-                        className="p-1 text-gray-400 hover:text-primary-600 transition-colors"
-                        title="View Details"
-                      >
-                        <Eye size={14} />
-                      </button>
-                      <button
-                        className="p-1 text-gray-400 hover:text-primary-600 transition-colors"
-                        title="Edit"
-                      >
-                        <Edit size={14} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                  company={company}
+                  copiedId={copiedId}
+                  onCopy={copyToClipboard}
+                  onView={handleViewCompany}
+                  onEdit={handleEditCompany}
+                  onDelete={handleDeleteCompany}
+                />
               ))}
             </tbody>
           </table>
@@ -288,27 +296,29 @@ export const CompanyPage = () => {
               >
                 <ChevronLeft size={18} />
               </button>
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum;
-                if (totalPages <= 5) pageNum = i + 1;
-                else if (currentPage <= 3) pageNum = i + 1;
-                else if (currentPage >= totalPages - 2)
-                  pageNum = totalPages - 4 + i;
-                else pageNum = currentPage - 2 + i;
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={`w-7 h-7 text-xs rounded-lg transition-colors ${
-                      currentPage === pageNum
-                        ? "bg-primary-500 text-white"
-                        : "text-gray-600 hover:bg-gray-100"
-                    }`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
+              <div className="flex gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) pageNum = i + 1;
+                  else if (currentPage <= 3) pageNum = i + 1;
+                  else if (currentPage >= totalPages - 2)
+                    pageNum = totalPages - 4 + i;
+                  else pageNum = currentPage - 2 + i;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`w-7 h-7 text-xs rounded-lg transition-colors ${
+                        currentPage === pageNum
+                          ? "bg-primary-500 text-white"
+                          : "text-gray-600 hover:bg-gray-100"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
               <button
                 onClick={() =>
                   setCurrentPage((prev) => Math.min(totalPages, prev + 1))
@@ -322,6 +332,28 @@ export const CompanyPage = () => {
           </div>
         )}
       </Card>
+
+      {/* Modals */}
+      <CompanyFormModal
+        isOpen={isFormModalOpen}
+        onClose={() => setIsFormModalOpen(false)}
+        onSave={saveCompany}
+        company={selectedCompany}
+        isEditing={isEditing}
+      />
+
+      <CompanyViewModal
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        company={selectedCompany}
+      />
+
+      <CompanyDeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        companyName={selectedCompany?.name}
+      />
     </div>
   );
 };

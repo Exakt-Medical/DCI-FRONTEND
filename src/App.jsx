@@ -11,6 +11,7 @@ import Vouchers from "./features/voucher/Vouchers";
 import TransferVoucherPage from "./features/TransferVoucher/TransferVoucherPage";
 import PaymentPage from "./features/payment/PaymentPage";
 import { AccountPage } from "./features/accounts/AccountPage";
+import { TransactionLogsPage } from "./features/TransactionLogs/TransactionLogsPage";
 import { PlaceholderPage } from "./features/placeholder/PlaceholderPage";
 
 function App() {
@@ -335,13 +336,7 @@ function App() {
             description="You don't have permission to view transactions."
           />
         );
-      return (
-        <PlaceholderPage
-          title="Transactions"
-          icon="💳"
-          description="View and manage all CTPL insurance transaction records."
-        />
-      );
+      return <TransactionLogsPage />;
     }
 
     // Ledger - Only Manager can access

@@ -2,14 +2,12 @@ import { useState } from "react";
 import { generateCertificatePDF } from "../../utils/generateCertificatePDF";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
-import { RefreshCw, Shield, AlertCircle } from "lucide-react";
+import { Input } from "../../components/Input";
+import { RefreshCw, Shield, AlertCircle, Ticket } from "lucide-react";
 import { VehicleSearchSection } from "./components/VehicleSearchSection";
 import { VehicleInfoCard } from "./components/VehicleInfoCard";
 import { OwnerInfoCard } from "./components/OwnerInfoCard";
-import { VoucherRedemption } from "./components/VoucherRedemption";
-import { InsuranceFormSection } from "./components/InsuranceFormSection";
 import { FinalReviewModal } from "./components/FinalReviewModal";
-import { MOCK_ASSIGNED_VOUCHERS } from "../../constants/mockData";
 
 const fetchFromLTO = async (searchField, searchValue) => {
   await new Promise((r) => setTimeout(r, 1500));
@@ -44,59 +42,6 @@ const fetchFromLTO = async (searchField, searchValue) => {
   return mockData;
 };
 
-// Helper to load from localStorage
-const getPurchaseHistory = () => {
-  const stored = localStorage.getItem("ctpl_purchase_history");
-  if (stored) {
-    return JSON.parse(stored);
-  }
-  return [];
-};
-
-// Helper to save to localStorage
-const savePurchaseHistory = (history) => {
-  localStorage.setItem("ctpl_purchase_history", JSON.stringify(history));
-};
-
-// Insurance fee mapping
-const insuranceFeeMap = {
-  "PRIVATE CARS (INCLUDING JEEPS AND AUVS)": {
-    prescribedPremiumFee: "449.40",
-    dst: "56.18",
-    vat: "53.93",
-    lgt: "0.90",
-    validationFee: "80.40",
-  },
-  MOTORCYCLES: {
-    prescribedPremiumFee: "287.00",
-    dst: "35.88",
-    vat: "34.44",
-    lgt: "0.57",
-    validationFee: "80.40",
-  },
-  "COMMERCIAL VEHICLES": {
-    prescribedPremiumFee: "825.00",
-    dst: "103.13",
-    vat: "99.00",
-    lgt: "1.65",
-    validationFee: "80.40",
-  },
-  "HEAVY EQUIPMENT": {
-    prescribedPremiumFee: "1250.00",
-    dst: "156.25",
-    vat: "150.00",
-    lgt: "2.50",
-    validationFee: "80.40",
-  },
-  "TAXI/PUBLIC UTILITY VEHICLES": {
-    prescribedPremiumFee: "975.00",
-    dst: "121.88",
-    vat: "117.00",
-    lgt: "1.95",
-    validationFee: "80.40",
-  },
-};
-
 // Initial state objects
 const initialVehicleData = {
   mv_file_number: "",
@@ -124,202 +69,15 @@ const initialOwnerData = {
   tin: "",
 };
 
-const initialInsuranceData = {
-  selectedCode: "",
-  policyNumber: "",
-  premiumType: "",
-  prescribedPremiumFee: "",
-  dst: "",
-  vat: "",
-  lgt: "",
-  validationFee: "",
-  totalAmount: "",
-};
-
 export const VerificationPage = ({ onCertificate }) => {
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState(null);
   const [isRecordFound, setIsRecordFound] = useState(false);
-  const [validatedVoucher, setValidatedVoucher] = useState(null);
-  const [voucherError, setVoucherError] = useState(null);
-  const [isValidatingVoucher, setIsValidatingVoucher] = useState(false);
-  const [isRedeeming, setIsRedeeming] = useState(false); // ADDED
+  const [voucherCode, setVoucherCode] = useState("");
+  const [policyNumber, setPolicyNumber] = useState("");
   const [vehicleData, setVehicleData] = useState(initialVehicleData);
   const [ownerData, setOwnerData] = useState(initialOwnerData);
-  const [insuranceData, setInsuranceData] = useState(initialInsuranceData);
   const [showFinalReview, setShowFinalReview] = useState(false);
-
-  // Auto-calculate total amount when any fee changes
-  const calculateTotal = (data) => {
-    const prescribed = parseFloat(data.prescribedPremiumFee) || 0;
-    const dstVal = parseFloat(data.dst) || 0;
-    const vatVal = parseFloat(data.vat) || 0;
-    const lgtVal = parseFloat(data.lgt) || 0;
-    const validation = parseFloat(data.validationFee) || 0;
-    return (prescribed + dstVal + vatVal + lgtVal + validation).toFixed(2);
-  };
-
-  const handleInsuranceCodeChange = (code) => {
-    const fees = insuranceFeeMap[code] || {
-      prescribedPremiumFee: "",
-      dst: "",
-      vat: "",
-      lgt: "",
-      validationFee: "",
-    };
-
-    const newData = {
-      ...insuranceData,
-      selectedCode: code,
-      premiumType: code,
-      prescribedPremiumFee: fees.prescribedPremiumFee,
-      dst: fees.dst,
-      vat: fees.vat,
-      lgt: fees.lgt,
-      validationFee: fees.validationFee,
-    };
-    const total = calculateTotal(newData);
-    setInsuranceData({ ...newData, totalAmount: total });
-  };
-
-  const updatePolicyNumber = (value) => {
-    setInsuranceData({ ...insuranceData, policyNumber: value });
-  };
-
-  const validateVoucher = (voucherCode) => {
-    if (!voucherCode.trim()) {
-      setVoucherError("Please enter a voucher code");
-      return;
-    }
-
-    setIsValidatingVoucher(true);
-    setVoucherError(null);
-
-    setTimeout(() => {
-      const purchaseHistory = getPurchaseHistory();
-      const voucher = purchaseHistory.find(
-        (v) =>
-          v.voucherCode === voucherCode.toUpperCase() &&
-          v.status === "Active" &&
-          new Date(v.expirationDate) > new Date(),
-      );
-
-      if (voucher) {
-        setValidatedVoucher(voucher);
-
-        // Auto-populate insurance data from voucher
-        const fees =
-          insuranceFeeMap[voucher.insuranceCode] ||
-          insuranceFeeMap["PRIVATE CARS (INCLUDING JEEPS AND AUVS)"];
-
-        const totalAmount = (
-          parseFloat(fees.prescribedPremiumFee) +
-          parseFloat(fees.dst) +
-          parseFloat(fees.vat) +
-          parseFloat(fees.lgt) +
-          parseFloat(fees.validationFee)
-        ).toFixed(2);
-
-        setInsuranceData({
-          selectedCode:
-            voucher.insuranceCode || "PRIVATE CARS (INCLUDING JEEPS AND AUVS)",
-          policyNumber: voucher.policyNumber,
-          premiumType:
-            voucher.insuranceCode || "PRIVATE CARS (INCLUDING JEEPS AND AUVS)",
-          prescribedPremiumFee: fees.prescribedPremiumFee,
-          dst: fees.dst,
-          vat: fees.vat,
-          lgt: fees.lgt,
-          validationFee: fees.validationFee,
-          totalAmount: totalAmount,
-        });
-        setVoucherError(null);
-      } else {
-        setValidatedVoucher(null);
-        setVoucherError(
-          "Invalid or expired voucher code. Please check and try again.",
-        );
-      }
-      setIsValidatingVoucher(false);
-    }, 800);
-  };
-
-  const handleRedeemVoucher = async (voucher) => {
-    setIsRedeeming(true);
-
-    // Simulate API call for redemption
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    const redeemedDate = new Date().toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
-    // Get the insurance code from the voucher
-    const insuranceCode =
-      voucher.insuranceCode || "PRIVATE CARS (INCLUDING JEEPS AND AUVS)";
-
-    // Get the fees for this insurance code
-    const fees =
-      insuranceFeeMap[insuranceCode] ||
-      insuranceFeeMap["PRIVATE CARS (INCLUDING JEEPS AND AUVS)"];
-
-    // Calculate total amount
-    const totalAmount = (
-      parseFloat(fees.prescribedPremiumFee) +
-      parseFloat(fees.dst) +
-      parseFloat(fees.vat) +
-      parseFloat(fees.lgt) +
-      parseFloat(fees.validationFee)
-    ).toFixed(2);
-
-    // UPDATE INSURANCE DATA with the voucher information
-    setInsuranceData({
-      selectedCode: insuranceCode,
-      policyNumber:
-        voucher.policyNumber || `POL-${voucher.voucherCode.slice(-8)}`,
-      premiumType: insuranceCode,
-      prescribedPremiumFee: fees.prescribedPremiumFee,
-      dst: fees.dst,
-      vat: fees.vat,
-      lgt: fees.lgt,
-      validationFee: fees.validationFee,
-      totalAmount: totalAmount,
-    });
-
-    // Mark voucher as redeemed in localStorage
-    const purchaseHistory = getPurchaseHistory();
-    const updatedHistory = purchaseHistory.map((v) =>
-      v.voucherCode === voucher.voucherCode
-        ? {
-            ...v,
-            status: "Redeemed",
-            redeemedOn: redeemedDate,
-            redeemedVehicle: {
-              plateNumber: vehicleData.plate_number,
-              mvFileNo: vehicleData.mv_file_number,
-              owner: `${ownerData.firstName} ${ownerData.lastName}`,
-            },
-          }
-        : v,
-    );
-    savePurchaseHistory(updatedHistory);
-
-    // Update the validated voucher status
-    setValidatedVoucher({
-      ...voucher,
-      status: "Redeemed",
-      redeemedOn: redeemedDate,
-    });
-
-    setIsRedeeming(false);
-    alert(
-      `Voucher ${voucher.voucherCode} has been successfully redeemed for vehicle ${vehicleData.plate_number}!`,
-    );
-  };
 
   const handleVerify = async ({ mvFileNo, plateNo, engineNo, chassisNo }) => {
     let searchField = null;
@@ -384,7 +142,8 @@ export const VerificationPage = ({ onCertificate }) => {
         );
         setVehicleData(initialVehicleData);
         setOwnerData(initialOwnerData);
-        setInsuranceData(initialInsuranceData);
+        setVoucherCode("");
+        setPolicyNumber("");
       }
     } catch (error) {
       setFetchError("Error fetching data from LTO. Please try again.");
@@ -397,19 +156,15 @@ export const VerificationPage = ({ onCertificate }) => {
   const handleResetForm = () => {
     setFetchError(null);
     setIsRecordFound(false);
-    setValidatedVoucher(null);
-    setVoucherError(null);
+    setVoucherCode("");
+    setPolicyNumber("");
     setVehicleData(initialVehicleData);
     setOwnerData(initialOwnerData);
-    setInsuranceData(initialInsuranceData);
   };
 
-  // UPDATED: Require voucher to be redeemed
   const isFormComplete = () => {
     return (
-      isRecordFound &&
-      validatedVoucher !== null &&
-      validatedVoucher.status === "Redeemed"
+      isRecordFound && voucherCode.trim() !== "" && policyNumber.trim() !== ""
     );
   };
 
@@ -418,6 +173,11 @@ export const VerificationPage = ({ onCertificate }) => {
   };
 
   const handleGenerateCertificate = (authNo) => {
+    const insuranceData = {
+      policyNumber: policyNumber,
+      voucherCode: voucherCode,
+    };
+
     setShowFinalReview(false);
     generateCertificatePDF({
       vehicle: vehicleData,
@@ -439,9 +199,6 @@ export const VerificationPage = ({ onCertificate }) => {
         <h1 className="text-2xl font-bold text-gray-900 mb-1">
           LTO Vehicle Verification
         </h1>
-        <p className="text-sm text-gray-500">
-          Search LTO database using any vehicle identifier
-        </p>
       </div>
 
       <VehicleSearchSection
@@ -476,29 +233,34 @@ export const VerificationPage = ({ onCertificate }) => {
           </div>
         ) : (
           <div className="space-y-4">
-            <VoucherRedemption
-              onValidate={validateVoucher}
-              onRedeem={handleRedeemVoucher}
-              validatedVoucher={validatedVoucher}
-              voucherError={voucherError}
-              isValidating={isValidatingVoucher}
-              isRedeeming={isRedeeming}
-              onReset={() => {
-                setValidatedVoucher(null);
-                setInsuranceData(initialInsuranceData);
-              }}
-            />
+            {/* Voucher Code Input */}
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Voucher Code <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <Ticket
+                  size={16}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                />
+                <input
+                  type="text"
+                  value={voucherCode}
+                  onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+                  placeholder="Enter voucher code"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono uppercase"
+                />
+              </div>
+            </div>
 
-            {validatedVoucher && (
-              <InsuranceFormSection
-                insuranceData={insuranceData}
-                onInsuranceCodeChange={handleInsuranceCodeChange}
-                onPolicyNumberChange={updatePolicyNumber}
-                disabled={validatedVoucher !== null}
-                isRedeemed={validatedVoucher?.status === "Redeemed"}
-                redeemedDate={validatedVoucher?.redeemedOn}
-              />
-            )}
+            {/* Policy Number Input */}
+            <Input
+              label="Policy Number"
+              value={policyNumber}
+              onChange={(e) => setPolicyNumber(e.target.value)}
+              placeholder="Enter Policy Number"
+              required
+            />
           </div>
         )}
       </Card>
@@ -513,11 +275,16 @@ export const VerificationPage = ({ onCertificate }) => {
         </Button>
         <div className="flex flex-col items-end">
           <Button onClick={handleSubmitForReview} disabled={!isFormComplete()}>
-            Submit for Final Review
+            Submit
           </Button>
-          {validatedVoucher && validatedVoucher.status !== "Redeemed" && (
+          {isRecordFound && !voucherCode && (
             <p className="text-xs text-orange-500 mt-1">
-              ⚠️ Please redeem the voucher first before submitting
+              ⚠️ Please enter the voucher code
+            </p>
+          )}
+          {isRecordFound && voucherCode && !policyNumber && (
+            <p className="text-xs text-orange-500 mt-1">
+              ⚠️ Please enter the policy number
             </p>
           )}
         </div>
@@ -527,8 +294,10 @@ export const VerificationPage = ({ onCertificate }) => {
         <FinalReviewModal
           vehicleData={vehicleData}
           ownerData={ownerData}
-          insuranceData={insuranceData}
-          validatedVoucher={validatedVoucher}
+          insuranceData={{
+            policyNumber: policyNumber,
+            voucherCode: voucherCode,
+          }}
           onConfirm={handleGenerateCertificate}
           onClose={() => setShowFinalReview(false)}
         />

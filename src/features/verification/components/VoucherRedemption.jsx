@@ -4,15 +4,15 @@ import { Spinner } from "../../../components/Spinner";
 import { Ticket, CheckCircle, Copy, AlertCircle, Shield } from "lucide-react";
 import { MOCK_ASSIGNED_VOUCHERS } from "../../../constants/mockData";
 
-export const VoucherRedemption = ({ 
-  onValidate, 
-  validatedVoucher, 
-  voucherError, 
+export const VoucherRedemption = ({
+  onValidate,
+  validatedVoucher,
+  voucherError,
   isValidating,
   onReset,
   onRedeem,
   isRedeeming = false,
-  assignedVouchers = MOCK_ASSIGNED_VOUCHERS
+  assignedVouchers = MOCK_ASSIGNED_VOUCHERS,
 }) => {
   const [voucherCode, setVoucherCode] = useState("");
   const [copied, setCopied] = useState(false);
@@ -33,7 +33,7 @@ export const VoucherRedemption = ({
 
     // Find voucher in assigned vouchers
     const foundVoucher = assignedVouchers.find(
-      v => v.voucherCode.toLowerCase() === voucherCode.trim().toLowerCase()
+      (v) => v.voucherCode.toLowerCase() === voucherCode.trim().toLowerCase(),
     );
 
     if (!foundVoucher) {
@@ -44,9 +44,12 @@ export const VoucherRedemption = ({
     }
 
     if (foundVoucher.status !== "Active") {
-      setLocalError(`This voucher is ${foundVoucher.status.toLowerCase()}. Cannot be redeemed.`);
+      setLocalError(
+        `This voucher is ${foundVoucher.status.toLowerCase()}. Cannot be redeemed.`,
+      );
       setLocalValidatedVoucher(null);
-      if (onValidate) onValidate(null, `Voucher is ${foundVoucher.status.toLowerCase()}`);
+      if (onValidate)
+        onValidate(null, `Voucher is ${foundVoucher.status.toLowerCase()}`);
       return;
     }
 
@@ -71,9 +74,10 @@ export const VoucherRedemption = ({
       expirationDate: foundVoucher.expiryDate,
       assignedBy: foundVoucher.assignedBy,
       assignedDate: foundVoucher.assignedDate,
-      insuranceCode: foundVoucher.insuranceCode || "PRIVATE CARS (INCLUDING JEEPS AND AUVS)"
+      insuranceCode:
+        foundVoucher.insuranceCode || "PRIVATE CARS (INCLUDING JEEPS AND AUVS)",
     };
-    
+
     setLocalValidatedVoucher(validatedData);
     if (onValidate) onValidate(validatedData, null);
   };
@@ -103,7 +107,7 @@ export const VoucherRedemption = ({
         <Ticket size={16} className="text-blue-600" />
         <h4 className="text-sm font-bold text-blue-900">Redeem Voucher</h4>
       </div>
-      
+
       {!displayVoucher ? (
         <>
           <div className="flex gap-2">
@@ -114,8 +118,8 @@ export const VoucherRedemption = ({
               placeholder="Enter your voucher code (e.g., VCH-ABC123XYZ)"
               className="flex-1 bg-white border border-blue-300 rounded-lg px-4 py-2 text-sm font-mono text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 uppercase"
             />
-            <Button 
-              onClick={handleValidate} 
+            <Button
+              onClick={handleValidate}
               disabled={isValidating || !voucherCode.trim()}
               size="sm"
             >
@@ -136,56 +140,23 @@ export const VoucherRedemption = ({
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <CheckCircle size={16} className="text-green-600" />
-              <span className="text-sm font-medium text-green-700">Voucher Validated!</span>
-            </div>
-            <Button variant="secondary" size="sm" onClick={handleReset}>
-              Change Voucher
-            </Button>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div>
-              <p className="text-xs text-green-600">Policy Number</p>
-              <p className="text-sm font-mono font-bold text-gray-900">{displayVoucher.policyNumber}</p>
-            </div>
-            <div>
-              <p className="text-xs text-green-600">Voucher Code</p>
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-mono text-gray-700">{displayVoucher.voucherCode}</p>
-                <button 
-                  onClick={() => copyToClipboard(displayVoucher.voucherCode)} 
-                  className="text-gray-400 hover:text-primary-600"
-                >
-                  <Copy size={12} />
-                </button>
-              </div>
-            </div>
-            <div>
-              <p className="text-xs text-green-600">Plan</p>
-              <p className="text-sm text-gray-900">{displayVoucher.productName}</p>
-            </div>
-            <div>
-              <p className="text-xs text-green-600">Valid Until</p>
-              <p className="text-sm text-gray-900">{displayVoucher.expirationDate}</p>
-            </div>
-            <div>
-              <p className="text-xs text-green-600">Premium Amount</p>
-              <p className="text-sm font-semibold text-gray-900">
-                {new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(displayVoucher.premium)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-green-600">Assigned By</p>
-              <p className="text-sm text-gray-900">{displayVoucher.assignedBy}</p>
+              <span className="text-sm font-medium text-green-700">
+                Voucher Validated!
+              </span>
             </div>
           </div>
           <div className="mt-3 pt-2 border-t border-green-200">
-            <Button 
+            <Button
               onClick={handleRedeem}
               disabled={isRedeemingNow}
               className="w-full"
               size="sm"
             >
-              {isRedeemingNow ? <Spinner size="sm" /> : "Redeem Voucher for this Vehicle"}
+              {isRedeemingNow ? (
+                <Spinner size="sm" />
+              ) : (
+                "Redeem Voucher for this Vehicle"
+              )}
             </Button>
           </div>
         </div>

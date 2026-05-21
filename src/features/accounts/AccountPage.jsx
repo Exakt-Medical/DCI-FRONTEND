@@ -1,40 +1,44 @@
-// features/accounts/AccountPage.jsx
 import { useState } from "react";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
-import { StatusBadge } from "../../components/StatusBadge";
 import {
   Search,
   Filter,
-  Copy,
-  CheckCircle,
   Users,
   ChevronLeft,
   ChevronRight,
-  Eye,
-  Edit,
+  Plus,
 } from "lucide-react";
 import { MOCK_USERS } from "../../constants/mockData";
+import { StatCard } from "./components/StatCard";
+import { UserTableRow } from "./components/UserTableRow";
+import { UserFormModal } from "./components/UserFormModal";
+import { ViewUserModal } from "./components/ViewUserModal";
+import { DeleteConfirmModal } from "./components/DeleteConfirmModal";
 
 export const AccountPage = () => {
+  const [users, setUsers] = useState(MOCK_USERS);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedRole, setSelectedRole] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [copiedId, setCopiedId] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
   const itemsPerPage = 10;
 
   // Calculate totals
-  const totalUsers = MOCK_USERS.length;
-  const totalManagers = MOCK_USERS.filter((u) => u.role === "Manager").length;
-  const totalAgents = MOCK_USERS.filter((u) => u.role === "Agent").length;
-  const totalSubAgents = MOCK_USERS.filter(
-    (u) => u.role === "Sub Agent",
-  ).length;
+  const totalUsers = users.length;
+  const totalManagers = users.filter((u) => u.role === "Manager").length;
+  const totalAgents = users.filter((u) => u.role === "Agent").length;
+  const totalSubAgents = users.filter((u) => u.role === "Sub Agent").length;
 
   // Filter users based on search and filters
-  const filteredUsers = MOCK_USERS.filter((user) => {
+  const filteredUsers = users.filter((user) => {
     const matchesSearch =
       searchTerm === "" ||
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -62,34 +66,81 @@ export const AccountPage = () => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const StatCard = ({ title, value, icon: Icon, color }) => (
-    <Card className="p-5 hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">
-            {title}
-          </p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
-        </div>
-        <div
-          className={`w-10 h-10 rounded-full bg-${color}-100 flex items-center justify-center`}
-        >
-          <Icon size={20} className={`text-${color}-600`} />
-        </div>
-      </div>
-    </Card>
-  );
+  const handleAddUser = () => {
+    setSelectedUser(null);
+    setIsEditing(false);
+    setIsFormModalOpen(true);
+  };
+
+  const handleEditUser = (user) => {
+    setSelectedUser(user);
+    setIsEditing(true);
+    setIsFormModalOpen(true);
+  };
+
+  const handleViewUser = (user) => {
+    setSelectedUser(user);
+    setIsViewModalOpen(true);
+  };
+
+  const handleDeleteUser = (user) => {
+    setSelectedUser(user);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = () => {
+    setUsers(users.filter((u) => u.id !== selectedUser.id));
+    setIsDeleteModalOpen(false);
+    setSelectedUser(null);
+  };
+
+  const saveUser = (userData) => {
+    if (isEditing && selectedUser) {
+      // Update existing user
+      setUsers(
+        users.map((u) =>
+          u.id === selectedUser.id
+            ? {
+                ...u,
+                ...userData,
+                dateCreated: u.dateCreated,
+                id: u.id,
+              }
+            : u,
+        ),
+      );
+    } else {
+      // Create new user
+      const newUser = {
+        id: Math.max(...users.map((u) => u.id), 0) + 1,
+        ...userData,
+        dateCreated: new Date().toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
+      };
+      setUsers([newUser, ...users]);
+    }
+    setIsFormModalOpen(false);
+    setSelectedUser(null);
+  };
 
   return (
     <div className="max-w-7xl mx-auto">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">
-          Account Management
-        </h1>
-        <p className="text-sm text-gray-500">
-          Manage user accounts, roles, and permissions
-        </p>
+      <div className="mb-6 flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">
+            Account Management
+          </h1>
+          <p className="text-sm text-gray-500">
+            Manage user accounts, roles, and permissions
+          </p>
+        </div>
+        <Button onClick={handleAddUser} className="flex items-center gap-2">
+          <Plus size={16} /> Add User
+        </Button>
       </div>
 
       {/* Stats Cards */}
@@ -220,61 +271,15 @@ export const AccountPage = () => {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {paginatedUsers.map((user) => (
-                <tr
+                <UserTableRow
                   key={user.id}
-                  className="hover:bg-gray-50 transition-colors"
-                >
-                  <td className="px-4 py-3">
-                    <div>
-                      <p className="font-medium text-gray-900">{user.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {user.company} - {user.branch}
-                      </p>
-                      <p className="text-xs text-gray-400">{user.email}</p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-sm text-gray-700">{user.role}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-sm font-semibold text-gray-900">
-                      {user.vouchers}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <StatusBadge status={user.status} />
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">
-                    {user.dateCreated}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => copyToClipboard(user.email, user.id)}
-                        className="p-1 text-gray-400 hover:text-primary-600 transition-colors"
-                        title="Copy Email"
-                      >
-                        {copiedId === user.id ? (
-                          <CheckCircle size={14} />
-                        ) : (
-                          <Copy size={14} />
-                        )}
-                      </button>
-                      <button
-                        className="p-1 text-gray-400 hover:text-primary-600 transition-colors"
-                        title="View Details"
-                      >
-                        <Eye size={14} />
-                      </button>
-                      <button
-                        className="p-1 text-gray-400 hover:text-primary-600 transition-colors"
-                        title="Edit"
-                      >
-                        <Edit size={14} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                  user={user}
+                  copiedId={copiedId}
+                  onCopy={copyToClipboard}
+                  onView={handleViewUser}
+                  onEdit={handleEditUser}
+                  onDelete={handleDeleteUser}
+                />
               ))}
             </tbody>
           </table>
@@ -336,6 +341,28 @@ export const AccountPage = () => {
           </div>
         )}
       </Card>
+
+      {/* Modals */}
+      <UserFormModal
+        isOpen={isFormModalOpen}
+        onClose={() => setIsFormModalOpen(false)}
+        onSave={saveUser}
+        user={selectedUser}
+        isEditing={isEditing}
+      />
+
+      <ViewUserModal
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        user={selectedUser}
+      />
+
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        userName={selectedUser?.name}
+      />
     </div>
   );
 };
