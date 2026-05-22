@@ -4,6 +4,9 @@ import { PurchaseHistoryTable } from "./components/PurchaseHistoryTable";
 import { AssignedVouchersTable } from "./components/AssignedVouchersTable";
 import { PurchaseModal } from "./components/PurchaseModal";
 import { SuccessModal } from "./components/SuccessModal";
+import { PaymentModal } from "./components/PaymentModal";
+import { ThankYouPage } from "./components/ThankYouPage";
+import { Portal } from "../../components/Portal";
 import { voucherService } from "../../services/voucherService";
 import {
   MOCK_ASSIGNED_VOUCHERS,
@@ -19,6 +22,8 @@ export default function Vouchers({
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showThankYou, setShowThankYou] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [purchasedPolicy, setPurchasedPolicy] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -26,16 +31,30 @@ export default function Vouchers({
   const [assignedVouchers, setAssignedVouchers] = useState([]);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState(
-    viewOnly ? "assigned" : "vouchers",
+    // viewOnly ? "assigned" : "vouchers", // COMMENTED OUT - removed role restriction
+    "vouchers", // EVERYONE sees vouchers tab first
   );
+  const [selectedQuantity, setSelectedQuantity] = useState(1);
+  const [paymentReference, setPaymentReference] = useState("");
+  const [generatedVouchers, setGeneratedVouchers] = useState([]);
+
+  // Primary color constant
+  const primaryColor = "#1a3a6b";
 
   useEffect(() => {
-    if (viewOnly) {
-      loadAssignedVouchers();
-    } else {
-      loadProducts();
-      loadPurchaseHistory();
-    }
+    // if (viewOnly) {
+    //   loadAssignedVouchers(); // COMMENTED OUT - removed role restriction
+    // } else {
+    //   loadProducts();
+    //   loadPurchaseHistory();
+    // }
+
+    // EVERYONE can load products and purchase history
+    loadProducts();
+    loadPurchaseHistory();
+
+    // Also load assigned vouchers for everyone
+    loadAssignedVouchers();
   }, [viewOnly]);
 
   const loadProducts = async () => {
@@ -81,19 +100,48 @@ export default function Vouchers({
 
   const handlePurchase = (product) => {
     setSelectedProduct(product);
+    setSelectedQuantity(1);
     setShowPurchaseModal(true);
   };
 
-  const handleProceedToPayment = (formData) => {
+  const handleProceedToPayment = (quantity) => {
     setShowPurchaseModal(false);
-    if (onNavigate) {
-      onNavigate("/payment", {
-        state: {
-          selectedProduct: selectedProduct,
-          formData: formData,
-        },
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentComplete = (paymentMethod, referenceNumber) => {
+    setPaymentReference(referenceNumber);
+    setShowPaymentModal(false);
+    setShowThankYou(true);
+
+    // Static voucher code
+    const staticVoucherCode = "CTPL-VIP-2024-001";
+
+    const vouchers = [];
+    for (let i = 0; i < selectedQuantity; i++) {
+      vouchers.push({
+        id: `VOUCHER-${Date.now()}-${i}`,
+        code: staticVoucherCode, // Use static code for all vouchers
+        product: selectedProduct,
+        purchaseDate: new Date(),
+        status: "pending_verification",
       });
     }
+    setGeneratedVouchers(vouchers);
+
+    setTimeout(() => {
+      setShowThankYou(false);
+      if (onNavigate) {
+        onNavigate("/verification", {
+          state: {
+            voucherCodes: [staticVoucherCode], // Pass static code
+            product: selectedProduct,
+            quantity: selectedQuantity,
+            paymentReference: referenceNumber,
+          },
+        });
+      }
+    }, 5000);
   };
 
   const copyToClipboard = (text) => {
@@ -109,27 +157,25 @@ export default function Vouchers({
     }).format(amount);
   };
 
-  // Agent View - Assigned Vouchers
-  if (viewOnly) {
-    return (
-      <div className="space-y-6">
-        <div className="border-b border-gray-200 pb-4">
-          <h1 className="text-xl font-semibold text-gray-900">My Vouchers</h1>
-        </div>
+  // COMMENTED OUT - Agent View restriction removed
+  // if (viewOnly) {
+  //   return (
+  //     <div className="space-y-6">
+  //       <div className="border-b border-gray-200 pb-4">
+  //         <h1 className="text-xl font-semibold text-gray-900">My Vouchers</h1>
+  //       </div>
+  //       <AssignedVouchersTable
+  //         assignedVouchers={assignedVouchers}
+  //         formatCurrency={formatCurrency}
+  //         copyToClipboard={copyToClipboard}
+  //       />
+  //     </div>
+  //   );
+  // }
 
-        <AssignedVouchersTable
-          assignedVouchers={assignedVouchers}
-          formatCurrency={formatCurrency}
-          copyToClipboard={copyToClipboard}
-        />
-      </div>
-    );
-  }
-
-  // Manager/Admin View
+  // EVERYONE sees the full voucher purchasing interface
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="border-b border-gray-200 pb-4">
         <h1 className="text-xl font-semibold text-gray-900">CTPL Insurance</h1>
         <p className="text-sm text-gray-500 mt-1">
@@ -138,27 +184,28 @@ export default function Vouchers({
         </p>
       </div>
 
-      {/* Tabs */}
       <div className="border-b border-gray-200">
         <div className="flex gap-8">
           <button
             onClick={() => setActiveTab("vouchers")}
             className={`pb-3 text-sm font-medium transition-colors relative ${
               activeTab === "vouchers"
-                ? "text-[#1a3a6b]"
+                ? `text-[${primaryColor}]`
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >
             Available Plans
             {activeTab === "vouchers" && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1a3a6b] rounded-full"></div>
+              <div
+                className={`absolute bottom-0 left-0 right-0 h-0.5 bg-[${primaryColor}] rounded-full`}
+              ></div>
             )}
           </button>
           <button
             onClick={() => setActiveTab("history")}
             className={`pb-3 text-sm font-medium transition-colors relative ${
               activeTab === "history"
-                ? "text-[#1a3a6b]"
+                ? `text-[${primaryColor}]`
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >
@@ -167,13 +214,33 @@ export default function Vouchers({
               {purchaseHistory.length}
             </span>
             {activeTab === "history" && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1a3a6b] rounded-full"></div>
+              <div
+                className={`absolute bottom-0 left-0 right-0 h-0.5 bg-[${primaryColor}] rounded-full`}
+              ></div>
+            )}
+          </button>
+          {/* Added "My Vouchers" tab for everyone */}
+          <button
+            onClick={() => setActiveTab("assigned")}
+            className={`pb-3 text-sm font-medium transition-colors relative ${
+              activeTab === "assigned"
+                ? `text-[${primaryColor}]`
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            My Vouchers
+            <span className="ml-2 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+              {assignedVouchers.length}
+            </span>
+            {activeTab === "assigned" && (
+              <div
+                className={`absolute bottom-0 left-0 right-0 h-0.5 bg-[${primaryColor}] rounded-full`}
+              ></div>
             )}
           </button>
         </div>
       </div>
 
-      {/* Content */}
       {activeTab === "vouchers" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {products.map((product) => (
@@ -182,9 +249,16 @@ export default function Vouchers({
               product={product}
               formatCurrency={formatCurrency}
               onPurchase={handlePurchase}
+              primaryColor={primaryColor}
             />
           ))}
         </div>
+      ) : activeTab === "assigned" ? (
+        <AssignedVouchersTable
+          assignedVouchers={assignedVouchers}
+          formatCurrency={formatCurrency}
+          copyToClipboard={copyToClipboard}
+        />
       ) : (
         <PurchaseHistoryTable
           purchaseHistory={purchaseHistory}
@@ -193,15 +267,43 @@ export default function Vouchers({
         />
       )}
 
-      {/* Modals */}
       {showPurchaseModal && selectedProduct && (
-        <PurchaseModal
-          selectedProduct={selectedProduct}
-          formatCurrency={formatCurrency}
-          isProcessing={isProcessing}
-          onConfirm={handleProceedToPayment}
-          onClose={() => setShowPurchaseModal(false)}
-        />
+        <Portal>
+          <PurchaseModal
+            selectedProduct={selectedProduct}
+            formatCurrency={formatCurrency}
+            isProcessing={isProcessing}
+            onConfirm={handleProceedToPayment}
+            onClose={() => setShowPurchaseModal(false)}
+            selectedQuantity={selectedQuantity}
+            onQuantityChange={setSelectedQuantity}
+            primaryColor={primaryColor}
+          />
+        </Portal>
+      )}
+
+      {showPaymentModal && selectedProduct && (
+        <Portal>
+          <PaymentModal
+            selectedProduct={selectedProduct}
+            quantity={selectedQuantity}
+            formatCurrency={formatCurrency}
+            onClose={() => setShowPaymentModal(false)}
+            onPaymentComplete={handlePaymentComplete}
+            primaryColor={primaryColor}
+          />
+        </Portal>
+      )}
+
+      {showThankYou && (
+        <Portal>
+          <ThankYouPage
+            selectedProduct={selectedProduct}
+            quantity={selectedQuantity}
+            formatCurrency={formatCurrency}
+            primaryColor={primaryColor}
+          />
+        </Portal>
       )}
 
       {showSuccessModal && purchasedPolicy && (
@@ -213,7 +315,9 @@ export default function Vouchers({
             setShowSuccessModal(false);
             setPurchasedPolicy(null);
             setActiveTab("history");
+            setPurchaseHistory([purchasedPolicy, ...purchaseHistory]);
           }}
+          primaryColor={primaryColor}
         />
       )}
     </div>
