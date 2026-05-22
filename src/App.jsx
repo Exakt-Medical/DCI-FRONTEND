@@ -15,6 +15,7 @@ import { TransactionLogsPage } from "./features/TransactionLogs/TransactionLogsP
 import { ActivityLogsPage } from "./features/ActivityLogs/ActivityLogsPage";
 import { PlaceholderPage } from "./features/placeholder/PlaceholderPage";
 import { ProfilePage } from "./features/profile/ProfilePage";
+import { TransactionLedger } from "./features/TransactionLedger/TransactionLedger";
 
 function App() {
   // Load initial state from localStorage
@@ -78,8 +79,6 @@ function App() {
     localStorage.removeItem("authRole");
     localStorage.removeItem("authView");
     localStorage.removeItem("userProfile");
-    // Keep remember me credentials if you want
-    // But clear session
   };
 
   const handleNavigate = (p) => {
@@ -165,6 +164,20 @@ function App() {
         return <ManagerDashboard />;
       }
       return <DashboardPage />;
+    }
+
+    // Transaction Ledger - Access based on role
+    if (page === "ledger") {
+      if (role === "admin" || role === "manager") {
+        return <TransactionLedger />;
+      }
+      return (
+        <PlaceholderPage
+          title="Access Denied"
+          icon="🔒"
+          description="You don't have permission to access the transaction ledger."
+        />
+      );
     }
 
     // Accounts - Admin, Manager can access (not Agent, not Viewer)
@@ -392,33 +405,6 @@ function App() {
           />
         );
       return <TransactionLogsPage />;
-    }
-
-    // Ledger - Only Manager can access
-    if (page === "ledger") {
-      if (role === "admin")
-        return (
-          <PlaceholderPage
-            title="Ledger"
-            icon="📒"
-            description="Financial ledger for voucher transactions and agent allocations."
-          />
-        );
-      if (role === "manager")
-        return (
-          <PlaceholderPage
-            title="Ledger"
-            icon="📒"
-            description="Financial ledger for voucher transactions and agent allocations."
-          />
-        );
-      return (
-        <PlaceholderPage
-          title="Access Denied"
-          icon="🔒"
-          description="You don't have permission to access the ledger."
-        />
-      );
     }
 
     return <DashboardPage />;

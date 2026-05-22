@@ -49,27 +49,64 @@ export const ManagerDashboard = () => {
     startIndex + itemsPerPage,
   );
 
-  const StatCard = ({ title, value, icon: Icon, color, trend }) => (
-    <Card className="p-5 hover:shadow-md transition-shadow">
-      <div className="flex items-center justify-between">
+  const StatCard = ({ title, value, icon: Icon, trend }) => (
+    <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-100 shadow-lg p-5 hover:shadow-xl transition-all group">
+      <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
             {title}
           </p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
+          <p className="text-3xl font-black text-gray-900 mt-2 tracking-tight">
+            {value.toLocaleString()}
+          </p>
           {trend && (
-            <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+            <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
               <TrendingUp size={12} /> +{trend} from last week
             </p>
           )}
         </div>
-        <div
-          className={`w-10 h-10 rounded-full bg-${color}-100 flex items-center justify-center`}
-        >
-          <Icon size={20} className={`text-${color}-600`} />
+        <div className="w-8 h-8 rounded-full bg-primary-500/10 flex items-center justify-center group-hover:bg-primary-500/20 transition-colors">
+          <Icon size={14} className="text-primary-600" />
         </div>
       </div>
-    </Card>
+      <div className="mt-4 pt-3 border-t border-gray-100">
+        <div className="flex items-center gap-2">
+          <div className="h-1 w-8 bg-primary-500 rounded-full group-hover:w-12 transition-all duration-300" />
+          <div className="h-1 w-4 bg-primary-300 rounded-full" />
+          <div className="h-1 w-2 bg-primary-200 rounded-full" />
+        </div>
+      </div>
+    </div>
+  );
+
+  const AgentStatCard = ({ title, value, icon: Icon, subtitle }) => (
+    <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-100 shadow-lg p-5 hover:shadow-xl transition-all group">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            {title}
+          </p>
+          <p className="text-3xl font-black text-gray-900 mt-2 tracking-tight">
+            {value.toLocaleString()}
+          </p>
+          {subtitle && (
+            <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+              {subtitle}
+            </p>
+          )}
+        </div>
+        <div className="w-8 h-8 rounded-full bg-primary-500/10 flex items-center justify-center group-hover:bg-primary-500/20 transition-colors">
+          <Icon size={14} className="text-primary-600" />
+        </div>
+      </div>
+      <div className="mt-4 pt-3 border-t border-gray-100">
+        <div className="flex items-center gap-2">
+          <div className="h-1 w-8 bg-primary-500 rounded-full group-hover:w-12 transition-all duration-300" />
+          <div className="h-1 w-4 bg-primary-300 rounded-full" />
+          <div className="h-1 w-2 bg-primary-200 rounded-full" />
+        </div>
+      </div>
+    </div>
   );
 
   return (
@@ -90,68 +127,39 @@ export const ManagerDashboard = () => {
           title="Last Week Authenticated"
           value={stats.lastWeekAuthenticated}
           icon={CheckCircle}
-          color="blue"
           trend="12"
         />
         <StatCard
           title="Today's Authenticated"
           value={stats.todayAuthenticated}
           icon={CheckCircle}
-          color="green"
         />
         <StatCard
           title="Today's Purchased Vouchers"
           value={stats.todayPurchasedVouchers}
           icon={ShoppingCart}
-          color="purple"
         />
         <StatCard
           title="Available Vouchers"
           value={stats.availableVouchers}
           icon={Ticket}
-          color="orange"
         />
       </div>
 
       {/* Agent Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-        <Card className="p-5 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">
-                Total Agents
-              </p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">
-                {stats.agentsCount}
-              </p>
-              <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
-                <Users size={12} /> Active under your management
-              </p>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-              <Users size={20} className="text-blue-600" />
-            </div>
-          </div>
-        </Card>
-
-        <Card className="p-5 hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wider">
-                Sub Agents
-              </p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">
-                {stats.subAgentsCount}
-              </p>
-              <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
-                <UserCheck size={12} /> Assigned to agents
-              </p>
-            </div>
-            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-              <UserCheck size={20} className="text-purple-600" />
-            </div>
-          </div>
-        </Card>
+        <AgentStatCard
+          title="Total Agents"
+          value={stats.agentsCount}
+          icon={Users}
+          subtitle="Active under your management"
+        />
+        <AgentStatCard
+          title="Sub Agents"
+          value={stats.subAgentsCount}
+          icon={UserCheck}
+          subtitle="Assigned to agents"
+        />
       </div>
 
       {/* Recent Transactions Table */}
