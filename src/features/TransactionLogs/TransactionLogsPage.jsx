@@ -11,7 +11,7 @@ export const TransactionLogsPage = () => {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedOrigin, setSelectedOrigin] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 5;
 
   // Calculate stats
   const totalAuthenticated = MOCK_TRANSACTIONS.filter(

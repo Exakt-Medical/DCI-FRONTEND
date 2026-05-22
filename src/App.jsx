@@ -12,6 +12,7 @@ import TransferVoucherPage from "./features/TransferVoucher/TransferVoucherPage"
 import PaymentPage from "./features/payment/PaymentPage";
 import { AccountPage } from "./features/accounts/AccountPage";
 import { TransactionLogsPage } from "./features/TransactionLogs/TransactionLogsPage";
+import { ActivityLogsPage } from "./features/ActivityLogs/ActivityLogsPage";
 import { PlaceholderPage } from "./features/placeholder/PlaceholderPage";
 
 function App() {
@@ -307,7 +308,7 @@ function App() {
       );
     }
 
-    // Activity Logs - Admin, Viewer, and Manager can access
+    // Activity Logs - Admin, Viewer, and Manager can access (not Agent)
     if (page === "activitylogs") {
       if (role === "agent")
         return (
@@ -317,16 +318,10 @@ function App() {
             description="You don't have permission to view activity logs."
           />
         );
-      return (
-        <PlaceholderPage
-          title="Activity Logs"
-          icon="📝"
-          description="Full audit trail of all system activities, verifications, and transactions."
-        />
-      );
+      return <ActivityLogsPage />;
     }
 
-    // Transactions - Admin, Viewer, and Manager can access
+    // Transactions - Admin, Viewer, and Manager can access (not Agent)
     if (page === "transactions") {
       if (role === "agent")
         return (

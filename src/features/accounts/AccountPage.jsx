@@ -1,20 +1,15 @@
 import { useState } from "react";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
-import {
-  Search,
-  Filter,
-  Users,
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-} from "lucide-react";
+import { Search, Filter, Users, Plus } from "lucide-react";
 import { MOCK_USERS } from "../../constants/mockData";
 import { StatCard } from "./components/StatCard";
 import { UserTableRow } from "./components/UserTableRow";
 import { UserFormModal } from "./components/UserFormModal";
 import { ViewUserModal } from "./components/ViewUserModal";
 import { DeleteConfirmModal } from "./components/DeleteConfirmModal";
+import { AccountPagination } from "./components/AccountPagination";
+import { Dropdown } from "../../components/Dropdown";
 
 export const AccountPage = () => {
   const [users, setUsers] = useState(MOCK_USERS);
@@ -29,7 +24,7 @@ export const AccountPage = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const itemsPerPage = 10;
+  const itemsPerPage = 5;
 
   // Calculate totals
   const totalUsers = users.length;
@@ -96,7 +91,6 @@ export const AccountPage = () => {
 
   const saveUser = (userData) => {
     if (isEditing && selectedUser) {
-      // Update existing user
       setUsers(
         users.map((u) =>
           u.id === selectedUser.id
@@ -110,7 +104,6 @@ export const AccountPage = () => {
         ),
       );
     } else {
-      // Create new user
       const newUser = {
         id: Math.max(...users.map((u) => u.id), 0) + 1,
         ...userData,
@@ -125,6 +118,20 @@ export const AccountPage = () => {
     setIsFormModalOpen(false);
     setSelectedUser(null);
   };
+
+  // Dropdown options
+  const roleOptions = [
+    { value: "all", label: "All Roles" },
+    { value: "Manager", label: "Manager" },
+    { value: "Agent", label: "Agent" },
+    { value: "Sub Agent", label: "Sub Agent" },
+  ];
+
+  const statusOptions = [
+    { value: "all", label: "All Status" },
+    { value: "Active", label: "Active" },
+    { value: "Inactive", label: "Inactive" },
+  ];
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -186,7 +193,10 @@ export const AccountPage = () => {
               type="text"
               placeholder="Search by name, company, or email..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
               className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
           </div>
@@ -203,39 +213,37 @@ export const AccountPage = () => {
           </Button>
         </div>
 
-        {/* Filter Dropdown */}
+        {/* Filter Dropdown - Using reusable Dropdown component */}
         {showFilters && (
           <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-gray-200">
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-gray-700">Role:</span>
-              <select
+              <Dropdown
+                options={roleOptions}
                 value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value)}
-                className="text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="all">All Roles</option>
-                <option value="Manager">Manager</option>
-                <option value="Agent">Agent</option>
-                <option value="Sub Agent">Sub Agent</option>
-              </select>
+                onChange={(value) => {
+                  setSelectedRole(value);
+                  setCurrentPage(1);
+                }}
+              />
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-gray-700">Status:</span>
-              <select
+              <Dropdown
+                options={statusOptions}
                 value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="all">All Status</option>
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
+                onChange={(value) => {
+                  setSelectedStatus(value);
+                  setCurrentPage(1);
+                }}
+              />
             </div>
             {(selectedRole !== "all" || selectedStatus !== "all") && (
               <button
                 onClick={() => {
                   setSelectedRole("all");
                   setSelectedStatus("all");
+                  setCurrentPage(1);
                 }}
                 className="text-xs text-primary-600 hover:text-primary-700"
               >
@@ -273,75 +281,42 @@ export const AccountPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {paginatedUsers.map((user) => (
-                <UserTableRow
-                  key={user.id}
-                  user={user}
-                  copiedId={copiedId}
-                  onCopy={copyToClipboard}
-                  onView={handleViewUser}
-                  onEdit={handleEditUser}
-                  onDelete={handleDeleteUser}
-                />
-              ))}
+              {paginatedUsers.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={6}
+                    className="px-4 py-8 text-center text-gray-500"
+                  >
+                    No users found
+                  </td>
+                </tr>
+              ) : (
+                paginatedUsers.map((user) => (
+                  <UserTableRow
+                    key={user.id}
+                    user={user}
+                    copiedId={copiedId}
+                    onCopy={copyToClipboard}
+                    onView={handleViewUser}
+                    onEdit={handleEditUser}
+                    onDelete={handleDeleteUser}
+                  />
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
-            <p className="text-xs text-gray-500">
-              Showing {startIndex + 1} to{" "}
-              {Math.min(startIndex + itemsPerPage, filteredUsers.length)} of{" "}
-              {filteredUsers.length} users
-            </p>
-            <div className="flex gap-1">
-              <button
-                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-                className="p-1 text-gray-500 hover:text-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <div className="flex gap-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNum;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = currentPage - 2 + i;
-                  }
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`w-7 h-7 text-xs rounded-lg transition-colors ${
-                        currentPage === pageNum
-                          ? "bg-primary-500 text-white"
-                          : "text-gray-600 hover:bg-gray-100"
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-              </div>
-              <button
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-                }
-                disabled={currentPage === totalPages}
-                className="p-1 text-gray-500 hover:text-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <ChevronRight size={18} />
-              </button>
-            </div>
-          </div>
+        {filteredUsers.length > itemsPerPage && (
+          <AccountPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filteredUsers.length}
+            currentItems={paginatedUsers.length}
+            startIndex={startIndex}
+          />
         )}
       </Card>
 

@@ -150,7 +150,7 @@ export const AdminLayout = ({
         disabled: true, // Disabled - under development
       },
       {
-        id: "activitylogs",
+        id: "Activity Logs",
         label: "Activity Logs",
         icon: Activity,
         section: "MANAGE",
