@@ -33,7 +33,11 @@ export const ProductCard = ({ product, formatCurrency, onPurchase }) => {
         </div>
       </div>
 
-      <Button onClick={() => onPurchase(product)} className="w-full" size="md">
+      <Button
+        onClick={() => onPurchase(product)}
+        className="w-full bg-primary-600 hover:bg-primary-700 text-white"
+        size="md"
+      >
         <ShoppingCart size={14} className="mr-1" />
         Purchase
       </Button>

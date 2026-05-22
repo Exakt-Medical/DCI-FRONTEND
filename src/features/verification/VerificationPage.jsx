@@ -1,6 +1,3 @@
-// FinalReviewModal.jsx - This component is no longer needed, but kept for reference
-// You can delete this file since we're removing the modal entirely
-
 // Updated VerificationPage.jsx
 import { useState } from "react";
 import { generateCertificatePDF } from "../../utils/generateCertificatePDF";
