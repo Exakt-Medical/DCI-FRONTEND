@@ -288,6 +288,7 @@ export const VerificationPage = ({ onCertificate }) => {
         plateNumber: vehicleData.plate_number,
         engineNumber: vehicleData.engine_number,
         chassisNumber: vehicleData.chassis_number,
+        premiumType: insuranceData.premiumType,
       });
 
       const { certificateNo, verificationStatus, failureReason } = res.data;
@@ -317,24 +318,21 @@ export const VerificationPage = ({ onCertificate }) => {
       }
 
       setShowFinalReview(false);
+
+      // Generate PDF in browser using jsPDF (auto-downloads)
+      await generateCertificatePDF({
+        vehicle: vehicleData,
+        owner: ownerData,
+        insurance: insuranceData,
+        authNo: certificateNo, // use real certNo from backend as the auth code
+      });
+
       onCertificate({
         vehicle: vehicleData,
         owner: ownerData,
         insurance: insuranceData,
-        certNo: certificateNo,
+        authNo: certificateNo,
       });
-
-      // Download PDF
-      const pdfRes =
-        await verificationService.downloadCertificate(certificateNo);
-      const url = URL.createObjectURL(
-        new Blob([pdfRes.data], { type: "application/pdf" }),
-      );
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${certificateNo}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
 
       await success(
         "Certificate Issued!",

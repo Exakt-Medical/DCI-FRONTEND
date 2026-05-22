@@ -16,9 +16,4 @@ export const verificationService = {
       engineNumber: data.engineNumber,
       chassisNumber: data.chassisNumber,
     }),
-
-  downloadCertificate: (certNo) =>
-    api.get(`/v1/vvip/certificates/${certNo}/download`, {
-      responseType: "blob",
-    }),
 };
