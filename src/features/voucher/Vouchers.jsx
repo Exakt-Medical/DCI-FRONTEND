@@ -115,16 +115,6 @@ export default function Vouchers({
       <div className="space-y-6">
         <div className="border-b border-gray-200 pb-4">
           <h1 className="text-xl font-semibold text-gray-900">My Vouchers</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Vouchers assigned to you by your manager
-          </p>
-        </div>
-
-        <div className="bg-[#1a3a6b]/5 border-l-4 border-[#1a3a6b] rounded-r-lg p-4">
-          <p className="text-sm text-[#1a3a6b]">
-            📌 These vouchers have been allocated to you. Use them for customer
-            verification.
-          </p>
         </div>
 
         <AssignedVouchersTable

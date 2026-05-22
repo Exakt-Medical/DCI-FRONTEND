@@ -61,7 +61,6 @@ export const DashboardPage = () => {
       icon: Building2,
       color: "bg-blue-50",
       iconColor: "text-[#1a3a6b]",
-      change: "+12% from last month",
     },
     {
       label: "Active Companies",
@@ -69,7 +68,6 @@ export const DashboardPage = () => {
       icon: CheckCircle,
       color: "bg-emerald-50",
       iconColor: "text-emerald-600",
-      change: "+5% from last month",
     },
     {
       label: "Inactive Companies",
@@ -77,7 +75,6 @@ export const DashboardPage = () => {
       icon: PauseCircle,
       color: "bg-gray-50",
       iconColor: "text-gray-500",
-      change: "-2% from last month",
     },
     {
       label: "Transactions Today",
@@ -85,7 +82,6 @@ export const DashboardPage = () => {
       icon: CreditCard,
       color: "bg-amber-50",
       iconColor: "text-amber-600",
-      change: "+8 from yesterday",
     },
   ];
 

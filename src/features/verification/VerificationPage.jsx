@@ -1,3 +1,7 @@
+// FinalReviewModal.jsx - This component is no longer needed, but kept for reference
+// You can delete this file since we're removing the modal entirely
+
+// Updated VerificationPage.jsx
 import { useState } from "react";
 import { generateCertificatePDF } from "../../utils/generateCertificatePDF";
 import { Card } from "../../components/Card";
@@ -7,7 +11,6 @@ import { RefreshCw, Shield, AlertCircle, Ticket } from "lucide-react";
 import { VehicleSearchSection } from "./components/VehicleSearchSection";
 import { VehicleInfoCard } from "./components/VehicleInfoCard";
 import { OwnerInfoCard } from "./components/OwnerInfoCard";
-import { FinalReviewModal } from "./components/FinalReviewModal";
 
 const fetchFromLTO = async (searchField, searchValue) => {
   await new Promise((r) => setTimeout(r, 1500));
@@ -77,7 +80,7 @@ export const VerificationPage = ({ onCertificate }) => {
   const [policyNumber, setPolicyNumber] = useState("");
   const [vehicleData, setVehicleData] = useState(initialVehicleData);
   const [ownerData, setOwnerData] = useState(initialOwnerData);
-  const [showFinalReview, setShowFinalReview] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const handleVerify = async ({ mvFileNo, plateNo, engineNo, chassisNo }) => {
     let searchField = null;
@@ -168,29 +171,35 @@ export const VerificationPage = ({ onCertificate }) => {
     );
   };
 
-  const handleSubmitForReview = () => {
-    setShowFinalReview(true);
-  };
+  const handleSubmitAndGenerate = async () => {
+    if (!isFormComplete()) return;
 
-  const handleGenerateCertificate = (authNo) => {
+    setIsGenerating(true);
+
+    // Use voucher code as the authentication number
+    const authNo = voucherCode;
+
     const insuranceData = {
       policyNumber: policyNumber,
       voucherCode: voucherCode,
     };
 
-    setShowFinalReview(false);
-    generateCertificatePDF({
+    // Generate the certificate directly
+    await generateCertificatePDF({
       vehicle: vehicleData,
       owner: ownerData,
       insurance: insuranceData,
       authNo,
     });
+
     onCertificate({
       vehicle: vehicleData,
       owner: ownerData,
       insurance: insuranceData,
       authNo,
     });
+
+    setIsGenerating(false);
   };
 
   return (
@@ -274,8 +283,11 @@ export const VerificationPage = ({ onCertificate }) => {
           <RefreshCw size={16} /> Reset Form
         </Button>
         <div className="flex flex-col items-end">
-          <Button onClick={handleSubmitForReview} disabled={!isFormComplete()}>
-            Submit
+          <Button
+            onClick={handleSubmitAndGenerate}
+            disabled={!isFormComplete() || isGenerating}
+          >
+            {isGenerating ? "Generating Certificate..." : "Submit"}
           </Button>
           {isRecordFound && !voucherCode && (
             <p className="text-xs text-orange-500 mt-1">
@@ -289,19 +301,6 @@ export const VerificationPage = ({ onCertificate }) => {
           )}
         </div>
       </div>
-
-      {showFinalReview && (
-        <FinalReviewModal
-          vehicleData={vehicleData}
-          ownerData={ownerData}
-          insuranceData={{
-            policyNumber: policyNumber,
-            voucherCode: voucherCode,
-          }}
-          onConfirm={handleGenerateCertificate}
-          onClose={() => setShowFinalReview(false)}
-        />
-      )}
     </div>
   );
 };

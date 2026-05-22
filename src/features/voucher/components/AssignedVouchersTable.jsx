@@ -28,7 +28,9 @@ export const AssignedVouchersTable = ({
 
   if (assignedVouchers.length === 0) {
     return (
-      <Card className="p-8 text-center">
+      <Card className="p-8 text-center relative overflow-hidden">
+        {/* Navy Blue Accent Line */}
+        <div className="absolute top-0 left-0 w-1 h-full bg-[#1a3a6b]" />
         <div className="flex flex-col items-center gap-3">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
             <Eye size={32} className="text-gray-400" />
@@ -46,15 +48,15 @@ export const AssignedVouchersTable = ({
   }
 
   const getStatusVariant = (status) => {
-    if (status === "Active") return "success";
-    if (status === "Used") return "info";
-    if (status === "Expired") return "warning";
+    if (status === "Active") return "Active";
+    if (status === "Used") return "Used";
+    if (status === "Expired") return "Expired";
     return "default";
   };
 
   return (
     <div className="space-y-4">
-      {/* Search Bar */}
+      {/* Search Bar with Navy Border on Focus */}
       <div className="relative max-w-md">
         <Search
           size={18}
@@ -65,39 +67,38 @@ export const AssignedVouchersTable = ({
           placeholder="Search by voucher code, product, or assigned by..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1a3a6b] focus:border-transparent"
         />
       </div>
-
-      {/* Stats Summary */}
+      {/* Stats Summary with Navy Accents */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-        <div className="bg-green-50 rounded-lg p-3 border border-green-200">
-          <p className="text-xs text-green-600 font-medium">Active</p>
-          <p className="text-xl font-bold text-green-700">
+        <div className="bg-white rounded-lg p-3 border-t-4 border-[#1a3a6b] shadow-sm">
+          <p className="text-xs text-gray-500 font-medium">Active</p>
+          <p className="text-xl font-bold text-gray-900">
             {assignedVouchers.filter((v) => v.status === "Active").length}
           </p>
         </div>
-        <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-          <p className="text-xs text-blue-600 font-medium">Used</p>
-          <p className="text-xl font-bold text-blue-700">
+        <div className="bg-white rounded-lg p-3 border-t-4 border-[#1a3a6b] shadow-sm">
+          <p className="text-xs text-gray-500 font-medium">Used</p>
+          <p className="text-xl font-bold text-gray-900">
             {assignedVouchers.filter((v) => v.status === "Used").length}
           </p>
         </div>
-        <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
-          <p className="text-xs text-yellow-600 font-medium">Expired</p>
-          <p className="text-xl font-bold text-yellow-700">
+        <div className="bg-white rounded-lg p-3 border-t-4 border-[#1a3a6b] shadow-sm">
+          <p className="text-xs text-gray-500 font-medium">Expired</p>
+          <p className="text-xl font-bold text-gray-900">
             {assignedVouchers.filter((v) => v.status === "Expired").length}
           </p>
         </div>
-        <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-          <p className="text-xs text-gray-600 font-medium">Total</p>
-          <p className="text-xl font-bold text-gray-700">
+        <div className="bg-white rounded-lg p-3 border-t-4 border-[#1a3a6b] shadow-sm">
+          <p className="text-xs text-gray-500 font-medium">Total</p>
+          <p className="text-xl font-bold text-gray-900">
             {assignedVouchers.length}
           </p>
         </div>
       </div>
 
-      {/* Vouchers Table */}
+      {/* Vouchers Table - No accent bar */}
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -168,7 +169,7 @@ export const AssignedVouchersTable = ({
                       disabled={voucher.status !== "Active"}
                       className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg transition-colors ${
                         voucher.status === "Active"
-                          ? "text-primary-600 hover:text-primary-700 hover:bg-primary-50 cursor-pointer"
+                          ? "text-[#1a3a6b] hover:text-[#1a3a6b]/80 hover:bg-[#1a3a6b]/10 cursor-pointer"
                           : "text-gray-400 cursor-not-allowed"
                       }`}
                     >
