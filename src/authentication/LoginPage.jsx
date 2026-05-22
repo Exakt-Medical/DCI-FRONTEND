@@ -3,6 +3,7 @@ import { Card } from "../components/Card";
 import { Button } from "../components/Button";
 import { Spinner } from "../components/Spinner";
 import { User, Lock, Eye, EyeOff, AlertCircle, LogIn } from "lucide-react";
+import { authService } from "../services/authService";
 import DciLogo from "../assets/DCI-LOGO.png";
 
 export const LoginPage = ({ onLogin, onRegisterClick }) => {
@@ -33,10 +34,13 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
     }
     setLoading(true);
     setError("");
-    await new Promise((r) => setTimeout(r, 1200));
-    setLoading(false);
+    try {
+      const response = await authService.login(form.username, form.password);
+      const { token, role } = response.data;
+      localStorage.setItem("token", token);
+      localStorage.setItem("role", role);
+      localStorage.setItem("username", form.username);
 
-    if (form.username === "admin" && form.password === "admin123") {
       if (rememberMe) {
         localStorage.setItem("rememberedUsername", form.username);
         localStorage.setItem("rememberedPassword", form.password);
@@ -46,44 +50,14 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
         localStorage.removeItem("rememberedPassword");
         localStorage.setItem("rememberMe", "false");
       }
-      onLogin("admin");
-    } else if (form.username === "manager" && form.password === "manager123") {
-      if (rememberMe) {
-        localStorage.setItem("rememberedUsername", form.username);
-        localStorage.setItem("rememberedPassword", form.password);
-        localStorage.setItem("rememberMe", "true");
-      } else {
-        localStorage.removeItem("rememberedUsername");
-        localStorage.removeItem("rememberedPassword");
-        localStorage.setItem("rememberMe", "false");
-      }
-      onLogin("manager");
-    } else if (form.username === "viewer" && form.password === "viewer123") {
-      if (rememberMe) {
-        localStorage.setItem("rememberedUsername", form.username);
-        localStorage.setItem("rememberedPassword", form.password);
-        localStorage.setItem("rememberMe", "true");
-      } else {
-        localStorage.removeItem("rememberedUsername");
-        localStorage.removeItem("rememberedPassword");
-        localStorage.setItem("rememberMe", "false");
-      }
-      onLogin("viewer");
-    } else if (form.username === "agent" && form.password === "agent123") {
-      if (rememberMe) {
-        localStorage.setItem("rememberedUsername", form.username);
-        localStorage.setItem("rememberedPassword", form.password);
-        localStorage.setItem("rememberMe", "true");
-      } else {
-        localStorage.removeItem("rememberedUsername");
-        localStorage.removeItem("rememberedPassword");
-        localStorage.setItem("rememberMe", "false");
-      }
-      onLogin("agent");
-    } else {
-      setError(
-        "Invalid credentials. Try admin/admin123, manager/manager123, agent/agent123, or viewer/viewer123",
-      );
+
+      onLogin(role.toLowerCase());
+    } catch (err) {
+      const msg =
+        err.response?.data?.error || "Invalid username or password";
+      setError(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -222,13 +196,28 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
                   admin / admin123
                 </div>
                 <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
-                  manager / manager123
+                  manager1 / manager123
                 </div>
                 <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
-                  agent / agent123
+                  manager2 / manager123
                 </div>
                 <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
-                  viewer / viewer123
+                  agent1 / agent123
+                </div>
+                <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
+                  agent2 / agent123
+                </div>
+                <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
+                  subagent1 / subagent123
+                </div>
+                <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
+                  subagent2 / subagent123
+                </div>
+                <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
+                  viewer1 / viewer123
+                </div>
+                <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
+                  viewer2 / viewer123
                 </div>
               </div>
             </div>

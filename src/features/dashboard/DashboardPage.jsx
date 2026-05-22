@@ -32,7 +32,7 @@ export const DashboardPage = () => {
         setStats(statsRes.data);
         setTransactions(txRes.data);
       } catch (err) {
-        console.error("Failed to load dashboard:", err);
+        console.info("Dashboard backend not available yet, using defaults");
       } finally {
         setLoading(false);
       }

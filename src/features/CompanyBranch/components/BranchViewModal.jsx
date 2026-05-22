@@ -1,6 +1,6 @@
 import { Button } from "../../../components/Button";
 import { StatusBadge } from "../../../components/StatusBadge";
-import { X, Building, Phone, MapPin, User, Calendar, Hash } from "lucide-react";
+import { X, Building, Calendar, Hash, MapPin } from "lucide-react";
 
 export const BranchViewModal = ({ isOpen, onClose, branch }) => {
   if (!isOpen || !branch) return null;
@@ -22,13 +22,19 @@ export const BranchViewModal = ({ isOpen, onClose, branch }) => {
           <div className="text-center">
             <div className="w-20 h-20 bg-gradient-to-br from-primary-500 to-primary-700 rounded-full flex items-center justify-center mx-auto mb-3">
               <span className="text-2xl font-bold text-white">
-                {branch.branch.charAt(0)}
+                {branch.branchName?.charAt(0) || "B"}
               </span>
             </div>
-            <h3 className="text-lg font-bold text-gray-900">{branch.branch}</h3>
-            <p className="text-sm text-gray-500">{branch.name}</p>
+            <h3 className="text-lg font-bold text-gray-900">{branch.branchName}</h3>
+            <p className="text-sm text-gray-500">{branch.companyName}</p>
             <div className="mt-2">
-              <StatusBadge status={branch.status} />
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                branch.isactive
+                  ? "bg-green-100 text-green-800"
+                  : "bg-red-100 text-red-800"
+              }`}>
+                {branch.isactive ? "Active" : "Inactive"}
+              </span>
             </div>
           </div>
 
@@ -36,9 +42,9 @@ export const BranchViewModal = ({ isOpen, onClose, branch }) => {
             <div className="flex items-center gap-3">
               <Hash size={16} className="text-gray-400" />
               <div>
-                <p className="text-xs text-gray-500">Company Code</p>
+                <p className="text-xs text-gray-500">Branch ID</p>
                 <p className="text-sm font-mono font-bold text-gray-900">
-                  {branch.code}
+                  {branch.branchId}
                 </p>
               </div>
             </div>
@@ -46,49 +52,33 @@ export const BranchViewModal = ({ isOpen, onClose, branch }) => {
             <div className="flex items-center gap-3">
               <Building size={16} className="text-gray-400" />
               <div>
-                <p className="text-xs text-gray-500">Company Name</p>
-                <p className="text-sm text-gray-900">{branch.name}</p>
+                <p className="text-xs text-gray-500">Company</p>
+                <p className="text-sm text-gray-900">{branch.companyName}</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
               <MapPin size={16} className="text-gray-400" />
               <div>
-                <p className="text-xs text-gray-500">Address</p>
-                <p className="text-sm text-gray-900">{branch.address}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Phone size={16} className="text-gray-400" />
-              <div>
-                <p className="text-xs text-gray-500">Contact</p>
-                <p className="text-sm text-gray-900">{branch.contact}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <User size={16} className="text-gray-400" />
-              <div>
-                <p className="text-xs text-gray-500">Branch Manager</p>
-                <p className="text-sm text-gray-900">{branch.manager}</p>
+                <p className="text-xs text-gray-500">Short Name</p>
+                <p className="text-sm text-gray-900">{branch.branchShortname || "-"}</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
               <Calendar size={16} className="text-gray-400" />
               <div>
-                <p className="text-xs text-gray-500">Date Created</p>
-                <p className="text-sm text-gray-900">{branch.dateCreated}</p>
+                <p className="text-xs text-gray-500">Last Updated</p>
+                <p className="text-sm text-gray-900">
+                  {branch.timestamp ? new Date(branch.timestamp).toLocaleString() : "-"}
+                </p>
               </div>
             </div>
           </div>
 
           <div className="bg-gray-50 rounded-lg p-3 flex justify-between">
-            <span className="text-sm text-gray-600">Total Vouchers</span>
-            <span className="text-sm font-bold text-gray-900">
-              {branch.vouchers.toLocaleString()}
-            </span>
+            <span className="text-sm text-gray-600">Updated By</span>
+            <span className="text-sm font-bold text-gray-900">{branch.userstamp || "-"}</span>
           </div>
         </div>
 

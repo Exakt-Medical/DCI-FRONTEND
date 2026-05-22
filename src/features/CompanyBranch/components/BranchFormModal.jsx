@@ -12,45 +12,42 @@ export const BranchFormModal = ({
   companies,
 }) => {
   const [formData, setFormData] = useState({
-    code: "",
-    name: "",
-    branch: "",
-    address: "",
-    contact: "",
-    manager: "",
-    status: "Active",
-    vouchers: 0,
+    branchId: "",
+    branchName: "",
+    branchShortname: "",
+    companyId: "",
+    companyName: "",
+    isactive: true,
   });
 
   useEffect(() => {
     if (branch && isEditing) {
       setFormData({
-        code: branch.code || "",
-        name: branch.name || "",
-        branch: branch.branch || "",
-        address: branch.address || "",
-        contact: branch.contact || "",
-        manager: branch.manager || "",
-        status: branch.status || "Active",
-        vouchers: branch.vouchers || 0,
+        branchId: branch.branchId || "",
+        branchName: branch.branchName || "",
+        branchShortname: branch.branchShortname || "",
+        companyId: branch.companyId ? String(branch.companyId) : "",
+        companyName: branch.companyName || "",
+        isactive: branch.isactive !== undefined ? branch.isactive : true,
       });
     } else {
       setFormData({
-        code: "",
-        name: "",
-        branch: "",
-        address: "",
-        contact: "",
-        manager: "",
-        status: "Active",
-        vouchers: 0,
+        branchId: "",
+        branchName: "",
+        branchShortname: "",
+        companyId: "",
+        companyName: "",
+        isactive: true,
       });
     }
   }, [branch, isEditing, isOpen]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(formData);
+    onSave({
+      ...formData,
+      companyId: parseInt(formData.companyId),
+    });
   };
 
   if (!isOpen) return null;
@@ -58,9 +55,7 @@ export const BranchFormModal = ({
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-        {/* Header with gradient accent */}
         <div className="sticky top-0 bg-white z-10">
-          {" "}
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary-500 to-primary-700 rounded-t-2xl" />
           <div className="flex items-center justify-between p-5 pb-3">
             <div className="flex items-center gap-2">
@@ -91,7 +86,6 @@ export const BranchFormModal = ({
 
         <form onSubmit={handleSubmit} className="p-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Company Selection - Full Width */}
             <div className="space-y-2 md:col-span-2">
               <label className="block text-sm font-semibold text-gray-700">
                 Select Company <span className="text-red-500">*</span>
@@ -102,15 +96,15 @@ export const BranchFormModal = ({
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
                 />
                 <select
-                  value={formData.code}
+                  value={formData.companyId}
                   onChange={(e) => {
                     const selectedCompany = companies.find(
-                      (c) => c.code === e.target.value,
+                      (c) => String(c.id) === e.target.value,
                     );
                     setFormData({
                       ...formData,
-                      code: e.target.value,
-                      name: selectedCompany?.name || "",
+                      companyId: e.target.value,
+                      companyName: selectedCompany?.companyName || "",
                     });
                   }}
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all appearance-none"
@@ -118,8 +112,8 @@ export const BranchFormModal = ({
                 >
                   <option value="">Select Company</option>
                   {companies.map((company) => (
-                    <option key={company.id} value={company.code}>
-                      {company.code} - {company.name}
+                    <option key={company.id} value={company.id}>
+                      {company.companyId} - {company.companyName}
                     </option>
                   ))}
                 </select>
@@ -139,23 +133,38 @@ export const BranchFormModal = ({
                   </svg>
                 </div>
               </div>
-              {formData.name && (
+              {formData.companyName && (
                 <p className="text-xs text-primary-600">
-                  Selected: <span className="font-medium">{formData.name}</span>
+                  Selected: <span className="font-medium">{formData.companyName}</span>
                 </p>
               )}
             </div>
 
-            {/* Branch Name */}
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Branch ID <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.branchId}
+                onChange={(e) =>
+                  setFormData({ ...formData, branchId: e.target.value })
+                }
+                required
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                placeholder="BR-001"
+              />
+            </div>
+
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-gray-700">
                 Branch Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                value={formData.branch}
+                value={formData.branchName}
                 onChange={(e) =>
-                  setFormData({ ...formData, branch: e.target.value })
+                  setFormData({ ...formData, branchName: e.target.value })
                 }
                 required
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
@@ -163,97 +172,41 @@ export const BranchFormModal = ({
               />
             </div>
 
-            {/* Branch Manager */}
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-gray-700">
-                Branch Manager <span className="text-red-500">*</span>
+                Short Name
               </label>
               <input
                 type="text"
-                value={formData.manager}
+                value={formData.branchShortname}
                 onChange={(e) =>
-                  setFormData({ ...formData, manager: e.target.value })
-                }
-                required
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-                placeholder="Enter branch manager name"
-              />
-            </div>
-
-            {/* Contact Number */}
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                Contact Number <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.contact}
-                onChange={(e) =>
-                  setFormData({ ...formData, contact: e.target.value })
-                }
-                required
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-                placeholder="02-8123-4567"
-              />
-            </div>
-
-            {/* Status */}
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                Status
-              </label>
-              <select
-                value={formData.status}
-                onChange={(e) =>
-                  setFormData({ ...formData, status: e.target.value })
-                }
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-              >
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-                <option value="Deactivated">Deactivated</option>
-              </select>
-            </div>
-
-            {/* Initial Vouchers */}
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                Initial Vouchers
-              </label>
-              <input
-                type="number"
-                value={formData.vouchers}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    vouchers: parseInt(e.target.value) || 0,
-                  })
+                  setFormData({ ...formData, branchShortname: e.target.value })
                 }
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-                placeholder="0"
-                min="0"
+                placeholder="Optional short name"
               />
             </div>
 
-            {/* Address - Full Width */}
-            <div className="space-y-2 md:col-span-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                Address <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                value={formData.address}
-                onChange={(e) =>
-                  setFormData({ ...formData, address: e.target.value })
-                }
-                required
-                rows={3}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all resize-none"
-                placeholder="Enter complete address"
-              />
-            </div>
+            {isEditing && (
+              <div className="space-y-2">
+                <label className="block text-sm font-semibold text-gray-700">Active</label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.isactive}
+                    onChange={(e) =>
+                      setFormData({ ...formData, isactive: e.target.checked })
+                    }
+                    className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  />
+                  <span className="text-sm text-gray-700">
+                    {formData.isactive ? "Active" : "Inactive"}
+                  </span>
+                </label>
+              </div>
+            )}
           </div>
 
-          {/* Form Actions */}
           <div className="flex justify-end gap-3 pt-6 mt-2 border-t border-gray-100">
             <button
               type="button"

@@ -1,23 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "../../components/Card";
-import { Button } from "../../components/Button";
 import {
   Search,
   Building2,
   ChevronLeft,
   ChevronRight,
   Plus,
+  Upload,
 } from "lucide-react";
-import { MOCK_COMPANIES } from "../../constants/companyMockData";
+import { companyService } from "../../services/companyService";
 import { CompanyStatCard } from "./components/CompanyStatCard";
 import { CompanyTableRow } from "./components/CompanyTableRow";
 import { CompanyFormModal } from "./components/CompanyFormModal";
 import { CompanyViewModal } from "./components/CompanyViewModal";
 import { CompanyDeleteModal } from "./components/CompanyDeleteModal";
+import { UploadBulkModal } from "../../components/UploadBulkModal";
 import { Dropdown } from "../../components/Dropdown";
 
 export const CompanyPage = () => {
-  const [companies, setCompanies] = useState(MOCK_COMPANIES);
+  const role = localStorage.getItem("role");
+  const isViewer = role === "VIEWER";
+  const [companies, setCompanies] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -27,31 +32,48 @@ export const CompanyPage = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const itemsPerPage = 5;
 
-  // Calculate totals
-  const totalCompanies = companies.length;
-  const totalActive = companies.filter((c) => c.status === "Active").length;
-  const totalInactive = companies.filter((c) => c.status === "Inactive").length;
-  const totalDeactivated = companies.filter(
-    (c) => c.status === "Deactivated",
-  ).length;
+  const fetchCompanies = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await companyService.getAll();
+      setCompanies(response.data);
+      setError(null);
+    } catch (err) {
+      setError("Failed to load companies");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  // Filter companies based on search and filters
+  useEffect(() => {
+    fetchCompanies();
+  }, [fetchCompanies]);
+
+  const totalCompanies = companies.length;
+  const totalActive = companies.filter((c) => c.isactive).length;
+  const totalInactive = companies.filter((c) => !c.isactive && c.approvalStatus !== "REJECTED").length;
+  const totalDeactivated = companies.filter((c) => c.approvalStatus === "REJECTED").length;
+
   const filteredCompanies = companies.filter((company) => {
     const matchesSearch =
       searchTerm === "" ||
-      company.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      company.provider.toLowerCase().includes(searchTerm.toLowerCase());
+      company.companyId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      company.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (company.companyShortname || "").toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus =
-      selectedStatus === "all" || company.status === selectedStatus;
+      selectedStatus === "all" || company.approvalStatus === selectedStatus || 
+      (selectedStatus === "Active" && company.isactive) ||
+      (selectedStatus === "Inactive" && !company.isactive && company.approvalStatus !== "REJECTED") ||
+      (selectedStatus === "Deactivated" && company.approvalStatus === "REJECTED");
 
     return matchesSearch && matchesStatus;
   });
 
-  // Pagination
   const totalPages = Math.ceil(filteredCompanies.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedCompanies = filteredCompanies.slice(
@@ -87,56 +109,59 @@ export const CompanyPage = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
-    setCompanies(companies.filter((c) => c.id !== selectedCompany.id));
-    setIsDeleteModalOpen(false);
-    setSelectedCompany(null);
+  const confirmDelete = async () => {
+    try {
+      await companyService.delete(selectedCompany.id);
+      setCompanies(companies.filter((c) => c.id !== selectedCompany.id));
+      setIsDeleteModalOpen(false);
+      setSelectedCompany(null);
+    } catch (err) {
+      console.error("Delete failed", err);
+    }
   };
 
-  const saveCompany = (companyData) => {
-    // Generate a unique 3-digit code
-    const generateCode = () => {
-      const existingCodes = companies.map((c) => parseInt(c.code));
-      let newCode = 1;
-      while (existingCodes.includes(newCode)) {
-        newCode++;
-      }
-      return newCode.toString().padStart(3, "0");
-    };
-
-    if (isEditing && selectedCompany) {
-      // Update existing company
+  const handleToggleActive = async (company) => {
+    try {
+      const response = await companyService.update(company.id, {
+        ...company,
+        isactive: !company.isactive,
+      });
       setCompanies(
         companies.map((c) =>
-          c.id === selectedCompany.id
-            ? {
-                ...c,
-                ...companyData,
-                dateCreated: c.dateCreated,
-                id: c.id,
-              }
-            : c,
+          c.id === company.id ? { ...c, ...response.data } : c,
         ),
       );
-    } else {
-      // Create new company
-      const newCompany = {
-        id: Math.max(...companies.map((c) => c.id), 0) + 1,
-        ...companyData,
-        code: companyData.code || generateCode(),
-        dateCreated: new Date().toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }),
-      };
-      setCompanies([newCompany, ...companies]);
+    } catch (err) {
+      console.error("Toggle active failed", err);
     }
-    setIsFormModalOpen(false);
-    setSelectedCompany(null);
   };
 
-  // Dropdown options
+  const saveCompany = async (companyData) => {
+    try {
+      if (isEditing && selectedCompany) {
+        const response = await companyService.update(selectedCompany.id, companyData);
+        setCompanies(
+          companies.map((c) =>
+            c.id === selectedCompany.id ? { ...c, ...response.data } : c,
+          ),
+        );
+      } else {
+        const response = await companyService.create(companyData);
+        setCompanies([response.data, ...companies]);
+      }
+      setIsFormModalOpen(false);
+      setSelectedCompany(null);
+    } catch (err) {
+      console.error("Save failed", err);
+    }
+  };
+
+  const handleBulkUpload = async (records) => {
+    return companyService.bulkCreate(records);
+  };
+
+  const companyTemplateHeaders = ["companyId", "companyName", "companyShortname"];
+
   const statusOptions = [
     { value: "all", label: "All Status" },
     { value: "Active", label: "Active" },
@@ -154,12 +179,22 @@ export const CompanyPage = () => {
           </h1>
           <p className="text-sm text-gray-500">Manage insurance companies</p>
         </div>
-        <button
-          onClick={handleAddCompany}
-          className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors"
-        >
-          <Plus size={16} /> Add Company
-        </button>
+        {!isViewer && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => setIsUploadModalOpen(true)}
+              className="bg-white border border-primary-300 text-primary-600 px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-primary-50 transition-colors"
+            >
+              <Upload size={16} />
+            </button>
+            <button
+              onClick={handleAddCompany}
+              className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors"
+            >
+              <Plus size={16} /> Add Company
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -190,10 +225,9 @@ export const CompanyPage = () => {
         />
       </div>
 
-      {/* Search and Filters - Always Visible */}
+      {/* Search and Filters */}
       <Card className="p-4 mb-5">
         <div className="flex flex-col sm:flex-row gap-3 items-center">
-          {/* Search Bar */}
           <div className="flex-1 relative">
             <Search
               size={18}
@@ -201,7 +235,7 @@ export const CompanyPage = () => {
             />
             <input
               type="text"
-              placeholder="Search by code, name, or provider..."
+              placeholder="Search by ID, name, or short name..."
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -211,7 +245,6 @@ export const CompanyPage = () => {
             />
           </div>
 
-          {/* Filter Row - Same line on desktop */}
           <div className="flex flex-wrap items-center gap-3 flex-shrink-0">
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-gray-700">Status:</span>
@@ -252,16 +285,13 @@ export const CompanyPage = () => {
                   Name
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Provider
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Vouchers
+                  Short Name
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Date Created
+                  Active
                 </th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Actions
@@ -269,12 +299,21 @@ export const CompanyPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {paginatedCompanies.length === 0 ? (
+              {loading ? (
                 <tr>
-                  <td
-                    colSpan={7}
-                    className="px-4 py-8 text-center text-gray-500"
-                  >
+                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                    Loading companies...
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-red-500">
+                    {error}
+                  </td>
+                </tr>
+              ) : paginatedCompanies.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
                     No companies found
                   </td>
                 </tr>
@@ -288,6 +327,8 @@ export const CompanyPage = () => {
                     onView={handleViewCompany}
                     onEdit={handleEditCompany}
                     onDelete={handleDeleteCompany}
+                    onToggleActive={handleToggleActive}
+                    isViewer={isViewer}
                   />
                 ))
               )}
@@ -367,7 +408,15 @@ export const CompanyPage = () => {
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={confirmDelete}
-        companyName={selectedCompany?.name}
+        companyName={selectedCompany?.companyName}
+      />
+
+      <UploadBulkModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onUpload={handleBulkUpload}
+        templateHeaders={companyTemplateHeaders}
+        moduleName="Companies"
       />
     </div>
   );
