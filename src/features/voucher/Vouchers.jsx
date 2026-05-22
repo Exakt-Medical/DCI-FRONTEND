@@ -30,10 +30,7 @@ export default function Vouchers({
   const [purchaseHistory, setPurchaseHistory] = useState([]);
   const [assignedVouchers, setAssignedVouchers] = useState([]);
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState(
-    // viewOnly ? "assigned" : "vouchers", // COMMENTED OUT - removed role restriction
-    "vouchers", // EVERYONE sees vouchers tab first
-  );
+  const [activeTab, setActiveTab] = useState("vouchers");
   const [selectedQuantity, setSelectedQuantity] = useState(1);
   const [paymentReference, setPaymentReference] = useState("");
   const [generatedVouchers, setGeneratedVouchers] = useState([]);
@@ -42,34 +39,26 @@ export default function Vouchers({
   const primaryColor = "#1a3a6b";
 
   useEffect(() => {
-    // if (viewOnly) {
-    //   loadAssignedVouchers(); // COMMENTED OUT - removed role restriction
-    // } else {
-    //   loadProducts();
-    //   loadPurchaseHistory();
-    // }
-
-    // EVERYONE can load products and purchase history
     loadProducts();
     loadPurchaseHistory();
-
-    // Also load assigned vouchers for everyone
     loadAssignedVouchers();
-  }, [viewOnly]);
+  }, []);
 
   const loadProducts = async () => {
     try {
       if (voucherService.getProducts) {
         const res = await voucherService.getProducts();
-        if (res?.data?.length > 0) {
+        // Ensure we're setting an array
+        if (res?.data && Array.isArray(res.data)) {
           setProducts(res.data);
           return;
         }
       }
-      setProducts(MOCK_PRODUCTS);
+      // Fallback to mock data
+      setProducts(Array.isArray(MOCK_PRODUCTS) ? MOCK_PRODUCTS : []);
     } catch (e) {
       console.error("Failed to load products:", e);
-      setProducts(MOCK_PRODUCTS);
+      setProducts(Array.isArray(MOCK_PRODUCTS) ? MOCK_PRODUCTS : []);
     }
   };
 
@@ -77,24 +66,30 @@ export default function Vouchers({
     try {
       if (voucherService.getHistory) {
         const res = await voucherService.getHistory();
-        if (res?.data?.length > 0) {
+        if (res?.data && Array.isArray(res.data)) {
           setPurchaseHistory(res.data);
           return;
         }
       }
-      setPurchaseHistory(MOCK_PURCHASE_HISTORY);
+      setPurchaseHistory(
+        Array.isArray(MOCK_PURCHASE_HISTORY) ? MOCK_PURCHASE_HISTORY : [],
+      );
     } catch (e) {
       console.error("Failed to load history:", e);
-      setPurchaseHistory(MOCK_PURCHASE_HISTORY);
+      setPurchaseHistory(
+        Array.isArray(MOCK_PURCHASE_HISTORY) ? MOCK_PURCHASE_HISTORY : [],
+      );
     }
   };
 
   const loadAssignedVouchers = async () => {
     try {
-      setAssignedVouchers(MOCK_ASSIGNED_VOUCHERS);
+      setAssignedVouchers(
+        Array.isArray(MOCK_ASSIGNED_VOUCHERS) ? MOCK_ASSIGNED_VOUCHERS : [],
+      );
     } catch (e) {
       console.error("Failed to load assigned vouchers:", e);
-      setAssignedVouchers(MOCK_ASSIGNED_VOUCHERS);
+      setAssignedVouchers([]);
     }
   };
 
@@ -114,14 +109,13 @@ export default function Vouchers({
     setShowPaymentModal(false);
     setShowThankYou(true);
 
-    // Static voucher code
     const staticVoucherCode = "CTPL-VIP-2024-001";
 
     const vouchers = [];
     for (let i = 0; i < selectedQuantity; i++) {
       vouchers.push({
         id: `VOUCHER-${Date.now()}-${i}`,
-        code: staticVoucherCode, // Use static code for all vouchers
+        code: staticVoucherCode,
         product: selectedProduct,
         purchaseDate: new Date(),
         status: "pending_verification",
@@ -134,7 +128,7 @@ export default function Vouchers({
       if (onNavigate) {
         onNavigate("/verification", {
           state: {
-            voucherCodes: [staticVoucherCode], // Pass static code
+            voucherCodes: [staticVoucherCode],
             product: selectedProduct,
             quantity: selectedQuantity,
             paymentReference: referenceNumber,
@@ -157,23 +151,15 @@ export default function Vouchers({
     }).format(amount);
   };
 
-  // COMMENTED OUT - Agent View restriction removed
-  // if (viewOnly) {
-  //   return (
-  //     <div className="space-y-6">
-  //       <div className="border-b border-gray-200 pb-4">
-  //         <h1 className="text-xl font-semibold text-gray-900">My Vouchers</h1>
-  //       </div>
-  //       <AssignedVouchersTable
-  //         assignedVouchers={assignedVouchers}
-  //         formatCurrency={formatCurrency}
-  //         copyToClipboard={copyToClipboard}
-  //       />
-  //     </div>
-  //   );
-  // }
+  // Add a safety check before rendering products
+  const safeProducts = Array.isArray(products) ? products : [];
+  const safePurchaseHistory = Array.isArray(purchaseHistory)
+    ? purchaseHistory
+    : [];
+  const safeAssignedVouchers = Array.isArray(assignedVouchers)
+    ? assignedVouchers
+    : [];
 
-  // EVERYONE sees the full voucher purchasing interface
   return (
     <div className="space-y-6">
       <div className="border-b border-gray-200 pb-4">
@@ -190,52 +176,45 @@ export default function Vouchers({
             onClick={() => setActiveTab("vouchers")}
             className={`pb-3 text-sm font-medium transition-colors relative ${
               activeTab === "vouchers"
-                ? `text-[${primaryColor}]`
+                ? "text-primary-600"
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >
             Available Plans
             {activeTab === "vouchers" && (
-              <div
-                className={`absolute bottom-0 left-0 right-0 h-0.5 bg-[${primaryColor}] rounded-full`}
-              ></div>
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500 rounded-full"></div>
             )}
           </button>
           <button
             onClick={() => setActiveTab("history")}
             className={`pb-3 text-sm font-medium transition-colors relative ${
               activeTab === "history"
-                ? `text-[${primaryColor}]`
+                ? "text-primary-600"
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >
             Purchase History
             <span className="ml-2 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-              {purchaseHistory.length}
+              {safePurchaseHistory.length}
             </span>
             {activeTab === "history" && (
-              <div
-                className={`absolute bottom-0 left-0 right-0 h-0.5 bg-[${primaryColor}] rounded-full`}
-              ></div>
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500 rounded-full"></div>
             )}
           </button>
-          {/* Added "My Vouchers" tab for everyone */}
           <button
             onClick={() => setActiveTab("assigned")}
             className={`pb-3 text-sm font-medium transition-colors relative ${
               activeTab === "assigned"
-                ? `text-[${primaryColor}]`
+                ? "text-primary-600"
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >
             My Vouchers
             <span className="ml-2 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-              {assignedVouchers.length}
+              {safeAssignedVouchers.length}
             </span>
             {activeTab === "assigned" && (
-              <div
-                className={`absolute bottom-0 left-0 right-0 h-0.5 bg-[${primaryColor}] rounded-full`}
-              ></div>
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500 rounded-full"></div>
             )}
           </button>
         </div>
@@ -243,7 +222,7 @@ export default function Vouchers({
 
       {activeTab === "vouchers" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {products.map((product) => (
+          {safeProducts.map((product) => (
             <ProductCard
               key={product.id}
               product={product}
@@ -252,16 +231,21 @@ export default function Vouchers({
               primaryColor={primaryColor}
             />
           ))}
+          {safeProducts.length === 0 && (
+            <div className="col-span-full text-center py-8 text-gray-500">
+              No products available at the moment.
+            </div>
+          )}
         </div>
       ) : activeTab === "assigned" ? (
         <AssignedVouchersTable
-          assignedVouchers={assignedVouchers}
+          assignedVouchers={safeAssignedVouchers}
           formatCurrency={formatCurrency}
           copyToClipboard={copyToClipboard}
         />
       ) : (
         <PurchaseHistoryTable
-          purchaseHistory={purchaseHistory}
+          purchaseHistory={safePurchaseHistory}
           formatCurrency={formatCurrency}
           copyToClipboard={copyToClipboard}
         />
@@ -315,7 +299,7 @@ export default function Vouchers({
             setShowSuccessModal(false);
             setPurchasedPolicy(null);
             setActiveTab("history");
-            setPurchaseHistory([purchasedPolicy, ...purchaseHistory]);
+            setPurchaseHistory([purchasedPolicy, ...safePurchaseHistory]);
           }}
           primaryColor={primaryColor}
         />

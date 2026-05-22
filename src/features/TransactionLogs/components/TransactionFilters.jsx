@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Card } from "../../../components/Card";
 import { Button } from "../../../components/Button";
+import { Dropdown } from "../../../components/Dropdown";
 import { Search, Filter } from "lucide-react";
 
 export const TransactionFilters = ({
@@ -14,6 +15,21 @@ export const TransactionFilters = ({
   onClearFilters,
 }) => {
   const [showFilters, setShowFilters] = useState(false);
+
+  // Dropdown options
+  const statusOptions = [
+    { value: "all", label: "All Status" },
+    { value: "Authenticated", label: "Authenticated" },
+    { value: "Verified", label: "Verified" },
+    { value: "Failed", label: "Failed" },
+  ];
+
+  const originOptions = [
+    { value: "all", label: "All Origins" },
+    { value: "web", label: "Web" },
+    { value: "mobile", label: "Mobile" },
+    { value: "api", label: "API" },
+  ];
 
   return (
     <Card className="p-4 mb-5">
@@ -44,32 +60,26 @@ export const TransactionFilters = ({
       </div>
 
       {showFilters && (
-        <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-gray-200">
+        <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-gray-200 items-center">
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium text-gray-700">Status:</span>
-            <select
+            <Dropdown
+              options={statusOptions}
               value={selectedStatus}
-              onChange={(e) => onStatusChange(e.target.value)}
-              className="text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="all">All Status</option>
-              <option value="Authenticated">Authenticated</option>
-              <option value="Verified">Verified</option>
-              <option value="Failed">Failed</option>
-            </select>
+              onChange={onStatusChange}
+              placeholder="Select status"
+              buttonClassName="text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 min-w-[130px]"
+            />
           </div>
           <div className="flex items-center gap-2">
             <span className="text-xs font-medium text-gray-700">Origin:</span>
-            <select
+            <Dropdown
+              options={originOptions}
               value={selectedOrigin}
-              onChange={(e) => onOriginChange(e.target.value)}
-              className="text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="all">All Origins</option>
-              <option value="web">Web</option>
-              <option value="mobile">Mobile</option>
-              <option value="api">API</option>
-            </select>
+              onChange={onOriginChange}
+              placeholder="Select origin"
+              buttonClassName="text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 min-w-[130px]"
+            />
           </div>
           {(selectedStatus !== "all" || selectedOrigin !== "all") && (
             <button

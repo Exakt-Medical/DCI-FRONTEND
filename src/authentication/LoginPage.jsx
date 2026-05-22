@@ -26,6 +26,7 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
     }
   }, []);
 
+  // Update the handleSubmit function to pass user data
   const handleSubmit = async () => {
     if (!form.username || !form.password) {
       setError("Please fill in all fields.");
@@ -36,7 +37,55 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
     await new Promise((r) => setTimeout(r, 1200));
     setLoading(false);
 
-    if (form.username === "admin" && form.password === "admin123") {
+    // Mock user data for different roles
+    const users = {
+      admin: {
+        role: "admin",
+        password: "admin123",
+        userData: {
+          name: "John Admin",
+          email: "admin@vvipctpl.com",
+          phone: "+63 912 345 6789",
+          company: "VVIP CTPL Insurance Corp",
+        },
+      },
+      manager: {
+        role: "manager",
+        password: "manager123",
+        userData: {
+          name: "Sarah Manager",
+          email: "manager@vvipctpl.com",
+          phone: "+63 912 345 6780",
+          company: "VVIP CTPL Insurance Corp",
+        },
+      },
+      agent: {
+        role: "agent",
+        password: "agent123",
+        userData: {
+          name: "Mike Agent",
+          email: "agent@vvipctpl.com",
+          phone: "+63 912 345 6781",
+          company: "VVIP CTPL Insurance Corp",
+        },
+      },
+      viewer: {
+        role: "viewer",
+        password: "viewer123",
+        userData: {
+          name: "Lisa Viewer",
+          email: "viewer@vvipctpl.com",
+          phone: "+63 912 345 6782",
+          company: "VVIP CTPL Insurance Corp",
+        },
+      },
+    };
+
+    const foundUser = Object.values(users).find(
+      (u) => u.role === form.username && u.password === form.password,
+    );
+
+    if (foundUser) {
       if (rememberMe) {
         localStorage.setItem("rememberedUsername", form.username);
         localStorage.setItem("rememberedPassword", form.password);
@@ -46,40 +95,8 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
         localStorage.removeItem("rememberedPassword");
         localStorage.setItem("rememberMe", "false");
       }
-      onLogin("admin");
-    } else if (form.username === "manager" && form.password === "manager123") {
-      if (rememberMe) {
-        localStorage.setItem("rememberedUsername", form.username);
-        localStorage.setItem("rememberedPassword", form.password);
-        localStorage.setItem("rememberMe", "true");
-      } else {
-        localStorage.removeItem("rememberedUsername");
-        localStorage.removeItem("rememberedPassword");
-        localStorage.setItem("rememberMe", "false");
-      }
-      onLogin("manager");
-    } else if (form.username === "viewer" && form.password === "viewer123") {
-      if (rememberMe) {
-        localStorage.setItem("rememberedUsername", form.username);
-        localStorage.setItem("rememberedPassword", form.password);
-        localStorage.setItem("rememberMe", "true");
-      } else {
-        localStorage.removeItem("rememberedUsername");
-        localStorage.removeItem("rememberedPassword");
-        localStorage.setItem("rememberMe", "false");
-      }
-      onLogin("viewer");
-    } else if (form.username === "agent" && form.password === "agent123") {
-      if (rememberMe) {
-        localStorage.setItem("rememberedUsername", form.username);
-        localStorage.setItem("rememberedPassword", form.password);
-        localStorage.setItem("rememberMe", "true");
-      } else {
-        localStorage.removeItem("rememberedUsername");
-        localStorage.removeItem("rememberedPassword");
-        localStorage.setItem("rememberMe", "false");
-      }
-      onLogin("agent");
+      // Pass user data to onLogin
+      onLogin(foundUser.role, foundUser.userData);
     } else {
       setError(
         "Invalid credentials. Try admin/admin123, manager/manager123, agent/agent123, or viewer/viewer123",

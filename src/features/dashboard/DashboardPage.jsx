@@ -22,24 +22,6 @@ export const DashboardPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [statsRes, txRes] = await Promise.all([
-          dashboardService.getStats(),
-          dashboardService.getRecentTransactions(),
-        ]);
-        setStats(statsRes.data);
-        setTransactions(txRes.data);
-      } catch (err) {
-        console.error("Failed to load dashboard:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, []);
-
   // Pagination
   const filteredTransactions = transactions.filter((t) =>
     [t.agent, t.company, t.assuredName, t.authNo].some((v) =>
