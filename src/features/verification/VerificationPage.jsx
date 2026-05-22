@@ -7,8 +7,6 @@ import { VehicleSearchSection } from "./components/VehicleSearchSection";
 import { VehicleInfoCard } from "./components/VehicleInfoCard";
 import { OwnerInfoCard } from "./components/OwnerInfoCard";
 import { VoucherRedemption } from "./components/VoucherRedemption";
-import { InsuranceFormSection } from "./components/InsuranceFormSection";
-import { FinalReviewModal } from "./components/FinalReviewModal";
 import { verificationService } from "../../services/verificationService";
 import { useAlert } from "../../hooks/useAlert";
 

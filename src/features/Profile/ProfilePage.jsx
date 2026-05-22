@@ -67,9 +67,7 @@ export const ProfilePage = ({
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">
-          VVIP CTPL Profile
-        </h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">Profile</h1>
         <p className="text-sm text-gray-500">
           Manage your personal information and account settings
         </p>
