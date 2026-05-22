@@ -2,9 +2,9 @@ import { useState, useRef, useEffect } from "react";
 import { ChevronDown, Check } from "lucide-react";
 
 export const Dropdown = ({
-  options, // Array of { value, label } or just strings
-  value, // Currently selected value
-  onChange, // Function called when selection changes
+  options,
+  value,
+  onChange,
   placeholder = "Select an option",
   className = "",
   buttonClassName = "",

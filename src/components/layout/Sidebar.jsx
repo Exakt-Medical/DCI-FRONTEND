@@ -31,9 +31,12 @@ export function Sidebar({
             <span className="text-xs font-bold text-white">DCI</span>
           </div>
           {isSidebarOpen && (
-            <span className="text-sm font-semibold text-gray-800">
-              VVIP Portal
-            </span>
+            <div className="flex flex-col">
+              <span className="text-sm font-semibold text-gray-800">
+                VVIP Portal
+              </span>
+              <span className="text-xs text-gray-500">Mindanao</span>
+            </div>
           )}
         </div>
         <button

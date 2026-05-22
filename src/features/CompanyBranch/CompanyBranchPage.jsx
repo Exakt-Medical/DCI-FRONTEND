@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
+import { Dropdown } from "../../components/Dropdown"; // Import your Dropdown component
 import {
   Search,
   Filter,
@@ -33,6 +34,14 @@ export const CompanyBranchPage = () => {
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const itemsPerPage = 10;
+
+  // Status options for dropdown
+  const statusOptions = [
+    { value: "all", label: "All Status" },
+    { value: "Active", label: "Active" },
+    { value: "Inactive", label: "Inactive" },
+    { value: "Deactivated", label: "Deactivated" },
+  ];
 
   // Calculate totals
   const totalBranches = branches.length;
@@ -208,19 +217,16 @@ export const CompanyBranchPage = () => {
         </div>
 
         {showFilters && (
-          <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-gray-200">
+          <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-gray-200 items-center">
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-gray-700">Status:</span>
-              <select
+              <Dropdown
+                options={statusOptions}
                 value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="all">All Status</option>
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-                <option value="Deactivated">Deactivated</option>
-              </select>
+                onChange={setSelectedStatus}
+                placeholder="Select status"
+                showCheckmark={true}
+              />
             </div>
             {selectedStatus !== "all" && (
               <button
