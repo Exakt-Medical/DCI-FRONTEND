@@ -65,44 +65,30 @@ export const AdminLayout = ({
       },
       {
         id: "vehicles",
-        label: "Vehicle Database",
+        label: "Vehicles",
         icon: Car,
         section: "MANAGE",
-        disabled: true, // Disabled - under development
+        disabled: false,
       },
       {
         id: "mvtype",
         label: "MV Type",
         icon: FileText,
         section: "MANAGE",
-        disabled: true, // Disabled - under development
+        disabled: false,
       },
       {
         id: "activitylogs",
-        label: "Activity Logs",
+        label: "Logs",
         icon: Activity,
         section: "MANAGE",
         disabled: false,
       },
       {
-        id: "verification",
-        label: "Verification",
-        icon: Shield,
-        section: "INSURANCE",
-        disabled: false,
-      },
-      {
-        id: "transactions",
-        label: "Transactions",
-        icon: CreditCard,
-        section: "INSURANCE",
-        disabled: false,
-      },
-      {
-        id: "vouchers",
-        label: "Vouchers",
-        icon: Ticket,
-        section: "INSURANCE",
+        id: "ledger",
+        label: "Ledger",
+        icon: BookOpen,
+        section: "REPORTS",
         disabled: false,
       },
     ],
@@ -112,13 +98,6 @@ export const AdminLayout = ({
         label: "Dashboard",
         icon: LayoutDashboard,
         section: "MAIN",
-        disabled: false,
-      },
-      {
-        id: "accounts",
-        label: "Accounts",
-        icon: Users,
-        section: "ADMINISTRATION",
         disabled: false,
       },
       {
@@ -136,45 +115,31 @@ export const AdminLayout = ({
         disabled: false,
       },
       {
+        id: "vouchers",
+        label: "Vouchers",
+        icon: Ticket,
+        section: "VOUCHERS",
+        disabled: false,
+      },
+      {
         id: "vehicles",
-        label: "Vehicle Database",
+        label: "Vehicles",
         icon: Car,
         section: "MANAGE",
-        disabled: true, // Disabled - under development
+        disabled: false,
       },
       {
         id: "mvtype",
         label: "MV Type",
         icon: FileText,
         section: "MANAGE",
-        disabled: true, // Disabled - under development
+        disabled: false,
       },
       {
-        id: "Activity Logs",
-        label: "Activity Logs",
+        id: "activitylogs",
+        label: "Logs",
         icon: Activity,
         section: "MANAGE",
-        disabled: false,
-      },
-      {
-        id: "verification",
-        label: "Verification",
-        icon: Shield,
-        section: "INSURANCE",
-        disabled: false,
-      },
-      {
-        id: "transactions",
-        label: "Transactions",
-        icon: CreditCard,
-        section: "INSURANCE",
-        disabled: false,
-      },
-      {
-        id: "vouchers",
-        label: "Vouchers",
-        icon: Ticket,
-        section: "INSURANCE",
         disabled: false,
       },
     ],
@@ -208,6 +173,13 @@ export const AdminLayout = ({
         disabled: false,
       },
       {
+        id: "verification",
+        label: "Verification",
+        icon: Shield,
+        section: "INSURANCE",
+        disabled: false,
+      },
+      {
         id: "vouchers",
         label: "Vouchers",
         icon: Ticket,
@@ -222,17 +194,17 @@ export const AdminLayout = ({
         disabled: false,
       },
       {
-        id: "verification",
-        label: "Verification",
-        icon: Shield,
-        section: "INSURANCE",
+        id: "payment",
+        label: "Payment",
+        icon: CreditCard,
+        section: "VOUCHERS",
         disabled: false,
       },
       {
-        id: "transactions",
-        label: "Transactions",
-        icon: CreditCard,
-        section: "INSURANCE",
+        id: "activitylogs",
+        label: "Logs",
+        icon: Activity,
+        section: "MANAGE",
         disabled: false,
       },
       {
@@ -260,7 +232,30 @@ export const AdminLayout = ({
       },
       {
         id: "vouchers",
-        label: "My Vouchers",
+        label: "Vouchers",
+        icon: Ticket,
+        section: "VOUCHERS",
+        disabled: false,
+      },
+    ],
+    subagent: [
+      {
+        id: "dashboard",
+        label: "Dashboard",
+        icon: LayoutDashboard,
+        section: "MAIN",
+        disabled: false,
+      },
+      {
+        id: "verification",
+        label: "Verification",
+        icon: Shield,
+        section: "INSURANCE",
+        disabled: false,
+      },
+      {
+        id: "vouchers",
+        label: "Vouchers",
         icon: Ticket,
         section: "VOUCHERS",
         disabled: false,
@@ -282,6 +277,7 @@ export const AdminLayout = ({
     viewer: { label: "Viewer", initial: "V", color: "bg-gray-600" },
     manager: { label: "Manager", initial: "M", color: "bg-primary-500" },
     agent: { label: "Agent", initial: "AG", color: "bg-primary-500" },
+    subagent: { label: "Sub-Agent", initial: "SA", color: "bg-primary-500" },
   };
 
   const currentUser = userInfo[role] || userInfo.admin;
@@ -292,6 +288,7 @@ export const AdminLayout = ({
       viewer: "Viewer",
       manager: "Manager",
       agent: "Agent",
+      subagent: "Sub-Agent",
     };
     return names[role] || "User";
   };

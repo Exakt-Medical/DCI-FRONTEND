@@ -25,16 +25,7 @@ function App() {
   const handleLogin = (userRole) => {
     setRole(userRole);
     setView(userRole);
-    // Set default page based on role
-    if (userRole === "agent") {
-      setPage("dashboard");
-    } else if (userRole === "manager") {
-      setPage("dashboard");
-    } else if (userRole === "viewer") {
-      setPage("dashboard");
-    } else {
-      setPage("dashboard");
-    }
+    setPage("dashboard");
   };
 
   const handleLogout = () => {
@@ -103,9 +94,9 @@ function App() {
       return <DashboardPage />;
     }
 
-    // Accounts - Admin, Manager can access (not Agent, not Viewer)
+    // Accounts - Admin, Manager can access (not Agent, Sub-Agent, Viewer)
     if (page === "accounts") {
-      if (role === "agent")
+      if (role === "agent" || role === "subagent" || role === "viewer")
         return (
           <PlaceholderPage
             title="Access Denied"
@@ -113,20 +104,12 @@ function App() {
             description="You don't have permission to manage accounts. Please contact your administrator."
           />
         );
-      if (role === "viewer")
-        return (
-          <PlaceholderPage
-            title="Access Denied"
-            icon="🔒"
-            description="Viewers cannot manage accounts. Please contact your administrator."
-          />
-        );
       return <AccountPage />;
     }
 
-    // Company - Admin, Manager, Viewer can access (not Agent)
+    // Company - Admin, Manager, Viewer can access (not Agent, Sub-Agent)
     if (page === "company") {
-      if (role === "agent")
+      if (role === "agent" || role === "subagent")
         return (
           <PlaceholderPage
             title="Access Denied"
@@ -137,9 +120,9 @@ function App() {
       return <CompanyPage />;
     }
 
-    // Branches - Admin, Manager, Viewer can access (not Agent)
+    // Branches - Admin, Manager, Viewer can access (not Agent, Sub-Agent)
     if (page === "branches") {
-      if (role === "agent")
+      if (role === "agent" || role === "subagent")
         return (
           <PlaceholderPage
             title="Access Denied"
@@ -156,8 +139,7 @@ function App() {
 
     // Vouchers - Different views based on role
     if (page === "vouchers") {
-      // Agent: Can only view assigned vouchers
-      if (role === "agent") {
+      if (role === "agent" || role === "subagent") {
         return (
           <Vouchers
             viewOnly={true}
@@ -166,7 +148,6 @@ function App() {
           />
         );
       }
-      // Admin: Full access with payment
       if (role === "admin") {
         return (
           <Vouchers
@@ -177,7 +158,6 @@ function App() {
           />
         );
       }
-      // Manager: Can buy and view vouchers
       if (role === "manager") {
         return (
           <Vouchers
@@ -188,7 +168,6 @@ function App() {
           />
         );
       }
-      // Viewer: Read-only voucher access
       if (role === "viewer") {
         return (
           <Vouchers
@@ -208,7 +187,7 @@ function App() {
 
     // Transfer Vouchers - Only Manager can access
     if (page === "transfer-vouchers") {
-      if (role === "agent")
+      if (role !== "manager")
         return (
           <PlaceholderPage
             title="Access Denied"
@@ -216,33 +195,17 @@ function App() {
             description="You don't have permission to transfer vouchers. Only managers can transfer vouchers."
           />
         );
-      if (role === "viewer")
-        return (
-          <PlaceholderPage
-            title="Access Denied"
-            icon="🔒"
-            description="Viewers cannot transfer vouchers. This action requires manager privileges."
-          />
-        );
       return <TransferVoucherPage />;
     }
 
-    // Payment - Only Admin and Manager can access
+    // Payment - Manager can access
     if (page === "payment") {
-      if (role === "agent")
+      if (role !== "manager" && role !== "admin")
         return (
           <PlaceholderPage
             title="Access Denied"
             icon="🔒"
-            description="Agents cannot purchase vouchers. Please contact your manager."
-          />
-        );
-      if (role === "viewer")
-        return (
-          <PlaceholderPage
-            title="Access Denied"
-            icon="🔒"
-            description="Viewers cannot purchase vouchers."
+            description="You don't have permission to purchase vouchers."
           />
         );
       return (
@@ -254,17 +217,9 @@ function App() {
       );
     }
 
-    // Vehicles - Only Admin and Viewer can access (Manager cannot)
+    // Vehicles - Admin and Viewer can access
     if (page === "vehicles") {
-      if (role === "manager")
-        return (
-          <PlaceholderPage
-            title="Access Denied"
-            icon="🔒"
-            description="Managers cannot access vehicle database. Please contact admin."
-          />
-        );
-      if (role === "agent")
+      if (role === "manager" || role === "agent" || role === "subagent")
         return (
           <PlaceholderPage
             title="Access Denied"
@@ -281,17 +236,9 @@ function App() {
       );
     }
 
-    // MV Type - Only Admin and Viewer can access
+    // MV Type - Admin and Viewer can access
     if (page === "mvtype") {
-      if (role === "manager")
-        return (
-          <PlaceholderPage
-            title="Access Denied"
-            icon="🔒"
-            description="Managers cannot manage MV types."
-          />
-        );
-      if (role === "agent")
+      if (role === "manager" || role === "agent" || role === "subagent")
         return (
           <PlaceholderPage
             title="Access Denied"
@@ -308,9 +255,9 @@ function App() {
       );
     }
 
-    // Activity Logs - Admin, Viewer, and Manager can access (not Agent)
+    // Activity Logs / Logs - Admin, Viewer, and Manager can access (not Agent, Sub-Agent)
     if (page === "activitylogs") {
-      if (role === "agent")
+      if (role === "agent" || role === "subagent")
         return (
           <PlaceholderPage
             title="Access Denied"
@@ -321,30 +268,9 @@ function App() {
       return <ActivityLogsPage />;
     }
 
-    // Transactions - Admin, Viewer, and Manager can access (not Agent)
-    if (page === "transactions") {
-      if (role === "agent")
-        return (
-          <PlaceholderPage
-            title="Access Denied"
-            icon="🔒"
-            description="You don't have permission to view transactions."
-          />
-        );
-      return <TransactionLogsPage />;
-    }
-
-    // Ledger - Only Manager can access
+    // Ledger - Admin and Manager only
     if (page === "ledger") {
-      if (role === "admin")
-        return (
-          <PlaceholderPage
-            title="Ledger"
-            icon="📒"
-            description="Financial ledger for voucher transactions and agent allocations."
-          />
-        );
-      if (role === "manager")
+      if (role === "admin" || role === "manager")
         return (
           <PlaceholderPage
             title="Ledger"
