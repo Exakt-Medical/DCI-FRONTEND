@@ -9,39 +9,8 @@ import { OwnerInfoCard } from "./components/OwnerInfoCard";
 import { VoucherRedemption } from "./components/VoucherRedemption";
 import { InsuranceFormSection } from "./components/InsuranceFormSection";
 import { FinalReviewModal } from "./components/FinalReviewModal";
-
-const fetchFromLTO = async (searchField, searchValue) => {
-  await new Promise((r) => setTimeout(r, 1500));
-
-  const mockData = {
-    mv_file_number: "MV-2019-00456789",
-    plate_number: "ABC 1234",
-    engine_number: "4K-E123456",
-    chassis_number: "JTDBE33K7Y0123456",
-    make: "Toyota",
-    series: "Vios 1.3 E",
-    color: "Pearl White",
-    year_model: "2019",
-    classification: "Private",
-    body_type: "Sedan",
-    vehicle_category: "Passenger Car",
-    vehicle_type: "Sedan",
-    last_registration_date: "December 31, 2024",
-    owner_firstName: "Juan",
-    owner_lastName: "Dela Cruz",
-    owner_middleName: "Santos",
-    owner_address: "123 Rizal St, San Juan, Metro Manila",
-    owner_contactNo: "09171234567",
-    owner_email: "juan.delacruz@email.com",
-    owner_tin: "123-456-789-000",
-  };
-
-  if (searchValue.toUpperCase().includes("NOTFOUND")) {
-    return null;
-  }
-
-  return mockData;
-};
+import { verificationService } from "../../services/verificationService";
+import { useAlert } from "../../hooks/useAlert";
 
 // Helper to load from localStorage
 const getPurchaseHistory = () => {
@@ -141,6 +110,7 @@ export const VerificationPage = ({ onCertificate }) => {
   const [ownerData, setOwnerData] = useState(initialOwnerData);
   const [insuranceData, setInsuranceData] = useState(initialInsuranceData);
   const [showFinalReview, setShowFinalReview] = useState(false);
+  const { success, error, loading, close } = useAlert();
 
   // Auto-calculate total amount when any fee changes
   const calculateTotal = (data) => {
@@ -232,72 +202,59 @@ export const VerificationPage = ({ onCertificate }) => {
   };
 
   const handleVerify = async ({ mvFileNo, plateNo, engineNo, chassisNo }) => {
-    let searchField = null;
-    let searchValue = null;
-
-    if (mvFileNo.trim()) {
-      searchField = "mv_file_number";
-      searchValue = mvFileNo;
-    } else if (plateNo.trim()) {
-      searchField = "plate_number";
-      searchValue = plateNo;
-    } else if (engineNo.trim()) {
-      searchField = "engine_number";
-      searchValue = engineNo;
-    } else if (chassisNo.trim()) {
-      searchField = "chassis_number";
-      searchValue = chassisNo;
-    } else {
-      setFetchError("Please enter at least one vehicle identifier to search");
-      return;
-    }
-
     setIsFetching(true);
     setFetchError(null);
+    loading("Looking up vehicle...");
 
     try {
-      const data = await fetchFromLTO(searchField, searchValue);
+      const res = await verificationService.lookup({
+        mvFileNo,
+        plateNo,
+        engineNo,
+        chassisNo,
+      });
+      const data = res.data;
+      close();
 
-      if (data) {
-        setVehicleData({
-          mv_file_number: data.mv_file_number || "",
-          plate_number: data.plate_number || "",
-          engine_number: data.engine_number || "",
-          chassis_number: data.chassis_number || "",
-          make: data.make || "",
-          series: data.series || "",
-          color: data.color || "",
-          year_model: data.year_model || "",
-          classification: data.classification || "",
-          body_type: data.body_type || "",
-          vehicle_category: data.vehicle_category || "",
-          vehicle_type: data.vehicle_type || "",
-          last_registration_date: data.last_registration_date || "",
-        });
-
-        setOwnerData({
-          firstName: data.owner_firstName || "",
-          lastName: data.owner_lastName || "",
-          middleName: data.owner_middleName || "",
-          address: data.owner_address || "",
-          contactNo: data.owner_contactNo || "",
-          email: data.owner_email || "",
-          tin: data.owner_tin || "",
-        });
-
-        setIsRecordFound(true);
-        setFetchError(null);
-      } else {
+      if (!data.found) {
+        setFetchError("No records found in VVS database.");
         setIsRecordFound(false);
-        setFetchError(
-          "No records found in LTO database. Vehicle does not exist or is invalid.",
-        );
-        setVehicleData(initialVehicleData);
-        setOwnerData(initialOwnerData);
-        setInsuranceData(initialInsuranceData);
+        return;
       }
-    } catch (error) {
-      setFetchError("Error fetching data from LTO. Please try again.");
+
+      setVehicleData({
+        mv_file_number: data.mvFileNumber || "",
+        plate_number: data.plateNumber || "",
+        engine_number: data.engineNumber || "",
+        chassis_number: data.chassisNumber || "",
+        make: data.make || "",
+        series: data.series || "",
+        color: data.color || "",
+        year_model: data.yearModel || "",
+        body_type: data.bodyType || "",
+      });
+
+      setOwnerData({
+        firstName: data.ownerFullName || "",
+        lastName: "",
+        middleName: "",
+        address: "",
+        contactNo: "",
+        email: "",
+        tin: "",
+      });
+
+      setIsRecordFound(true);
+    } catch (err) {
+      close();
+      console.error(
+        "Lookup error:",
+        err.response?.status,
+        err.response?.data,
+        err.message,
+      );
+
+      setFetchError("Error fetching vehicle data. Please try again.");
       setIsRecordFound(false);
     } finally {
       setIsFetching(false);
@@ -322,42 +279,71 @@ export const VerificationPage = ({ onCertificate }) => {
     setShowFinalReview(true);
   };
 
-  const handleGenerateCertificate = (authNo) => {
-    // Mark voucher as redeemed in localStorage
-    if (validatedVoucher) {
-      const purchaseHistory = getPurchaseHistory();
-      const updatedHistory = purchaseHistory.map((v) =>
-        v.voucherCode === validatedVoucher.voucherCode
-          ? {
-              ...v,
-              status: "Redeemed",
-              redeemedOn: new Date().toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              }),
-            }
-          : v,
-      );
-      localStorage.setItem(
-        "ctpl_purchase_history",
-        JSON.stringify(updatedHistory),
-      );
-    }
+  const handleGenerateCertificate = async () => {
+    loading("Processing verification...");
 
-    setShowFinalReview(false);
-    generateCertificatePDF({
-      vehicle: vehicleData,
-      owner: ownerData,
-      insurance: insuranceData,
-      authNo,
-    });
-    onCertificate({
-      vehicle: vehicleData,
-      owner: ownerData,
-      insurance: insuranceData,
-      authNo,
-    });
+    try {
+      const res = await verificationService.verify({
+        mvFileNumber: vehicleData.mv_file_number,
+        plateNumber: vehicleData.plate_number,
+        engineNumber: vehicleData.engine_number,
+        chassisNumber: vehicleData.chassis_number,
+      });
+
+      const { certificateNo, verificationStatus, failureReason } = res.data;
+      close();
+
+      if (verificationStatus !== "VERIFIED") {
+        await error(
+          "Verification Failed",
+          failureReason || "Vehicle details did not match.",
+        );
+        return;
+      }
+
+      // Mark voucher redeemed
+      if (validatedVoucher) {
+        const purchaseHistory = getPurchaseHistory();
+        const updated = purchaseHistory.map((v) =>
+          v.voucherCode === validatedVoucher.voucherCode
+            ? {
+                ...v,
+                status: "Redeemed",
+                redeemedOn: new Date().toLocaleDateString(),
+              }
+            : v,
+        );
+        localStorage.setItem("ctpl_purchase_history", JSON.stringify(updated));
+      }
+
+      setShowFinalReview(false);
+      onCertificate({
+        vehicle: vehicleData,
+        owner: ownerData,
+        insurance: insuranceData,
+        certNo: certificateNo,
+      });
+
+      // Download PDF
+      const pdfRes =
+        await verificationService.downloadCertificate(certificateNo);
+      const url = URL.createObjectURL(
+        new Blob([pdfRes.data], { type: "application/pdf" }),
+      );
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${certificateNo}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      await success(
+        "Certificate Issued!",
+        `Certificate No: ${certificateNo} has been downloaded.`,
+      );
+    } catch (err) {
+      close();
+      await error("Error", "Verification failed. Please try again.");
+    }
   };
 
   return (
@@ -405,11 +391,9 @@ export const VerificationPage = ({ onCertificate }) => {
           <div className="space-y-4">
             <VoucherRedemption
               onValidate={validateVoucher}
-              onRedeem={handleRedeemVoucher}
               validatedVoucher={validatedVoucher}
               voucherError={voucherError}
               isValidating={isValidatingVoucher}
-              isRedeeming={isRedeeming}
               onReset={() => {
                 setValidatedVoucher(null);
                 setInsuranceData(initialInsuranceData);
