@@ -3,58 +3,64 @@ import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import {
   Search,
+  Filter,
   Building2,
   ChevronLeft,
   ChevronRight,
   Plus,
+  CheckSquare,
+  XSquare,
+  AlertTriangle,
 } from "lucide-react";
+import { MOCK_BRANCHES } from "../../constants/branchMockData";
 import { MOCK_COMPANIES } from "../../constants/companyMockData";
-import { CompanyStatCard } from "./components/CompanyStatCard";
-import { CompanyTableRow } from "./components/CompanyTableRow";
-import { CompanyFormModal } from "./components/CompanyFormModal";
-import { CompanyViewModal } from "./components/CompanyViewModal";
-import { CompanyDeleteModal } from "./components/CompanyDeleteModal";
-import { Dropdown } from "../../components/Dropdown";
+import { BranchStatCard } from "./components/BranchStatCard";
+import { BranchTableRow } from "./components/BranchTableRow";
+import { BranchFormModal } from "./components/BranchFormModal";
+import { BranchViewModal } from "./components/BranchViewModal";
+import { BranchDeleteModal } from "./components/BranchDeleteModal";
 
-export const CompanyPage = () => {
-  const [companies, setCompanies] = useState(MOCK_COMPANIES);
+export const CompanyBranchPage = () => {
+  const [branches, setBranches] = useState(MOCK_BRANCHES);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [copiedId, setCopiedId] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedCompany, setSelectedCompany] = useState(null);
+  const [selectedBranch, setSelectedBranch] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
   // Calculate totals
-  const totalCompanies = companies.length;
-  const totalActive = companies.filter((c) => c.status === "Active").length;
-  const totalInactive = companies.filter((c) => c.status === "Inactive").length;
-  const totalDeactivated = companies.filter(
-    (c) => c.status === "Deactivated",
+  const totalBranches = branches.length;
+  const totalActive = branches.filter((b) => b.status === "Active").length;
+  const totalInactive = branches.filter((b) => b.status === "Inactive").length;
+  const totalDeactivated = branches.filter(
+    (b) => b.status === "Deactivated",
   ).length;
 
-  // Filter companies based on search and filters
-  const filteredCompanies = companies.filter((company) => {
+  // Filter branches based on search and filters
+  const filteredBranches = branches.filter((branch) => {
     const matchesSearch =
       searchTerm === "" ||
-      company.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      company.provider.toLowerCase().includes(searchTerm.toLowerCase());
+      branch.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      branch.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      branch.branch.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      branch.manager.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus =
-      selectedStatus === "all" || company.status === selectedStatus;
+      selectedStatus === "all" || branch.status === selectedStatus;
 
     return matchesSearch && matchesStatus;
   });
 
   // Pagination
-  const totalPages = Math.ceil(filteredCompanies.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredBranches.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedCompanies = filteredCompanies.slice(
+  const paginatedBranches = filteredBranches.slice(
     startIndex,
     startIndex + itemsPerPage,
   );
@@ -65,84 +71,65 @@ export const CompanyPage = () => {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleAddCompany = () => {
-    setSelectedCompany(null);
+  const handleAddBranch = () => {
+    setSelectedBranch(null);
     setIsEditing(false);
     setIsFormModalOpen(true);
   };
 
-  const handleEditCompany = (company) => {
-    setSelectedCompany(company);
+  const handleEditBranch = (branch) => {
+    setSelectedBranch(branch);
     setIsEditing(true);
     setIsFormModalOpen(true);
   };
 
-  const handleViewCompany = (company) => {
-    setSelectedCompany(company);
+  const handleViewBranch = (branch) => {
+    setSelectedBranch(branch);
     setIsViewModalOpen(true);
   };
 
-  const handleDeleteCompany = (company) => {
-    setSelectedCompany(company);
+  const handleDeleteBranch = (branch) => {
+    setSelectedBranch(branch);
     setIsDeleteModalOpen(true);
   };
 
   const confirmDelete = () => {
-    setCompanies(companies.filter((c) => c.id !== selectedCompany.id));
+    setBranches(branches.filter((b) => b.id !== selectedBranch.id));
     setIsDeleteModalOpen(false);
-    setSelectedCompany(null);
+    setSelectedBranch(null);
   };
 
-  const saveCompany = (companyData) => {
-    // Generate a unique 3-digit code
-    const generateCode = () => {
-      const existingCodes = companies.map((c) => parseInt(c.code));
-      let newCode = 1;
-      while (existingCodes.includes(newCode)) {
-        newCode++;
-      }
-      return newCode.toString().padStart(3, "0");
-    };
-
-    if (isEditing && selectedCompany) {
-      // Update existing company
-      setCompanies(
-        companies.map((c) =>
-          c.id === selectedCompany.id
+  const saveBranch = (branchData) => {
+    if (isEditing && selectedBranch) {
+      // Update existing branch
+      setBranches(
+        branches.map((b) =>
+          b.id === selectedBranch.id
             ? {
-                ...c,
-                ...companyData,
-                dateCreated: c.dateCreated,
-                id: c.id,
+                ...b,
+                ...branchData,
+                dateCreated: b.dateCreated,
+                id: b.id,
               }
-            : c,
+            : b,
         ),
       );
     } else {
-      // Create new company
-      const newCompany = {
-        id: Math.max(...companies.map((c) => c.id), 0) + 1,
-        ...companyData,
-        code: companyData.code || generateCode(),
+      // Create new branch
+      const newBranch = {
+        id: Math.max(...branches.map((b) => b.id), 0) + 1,
+        ...branchData,
         dateCreated: new Date().toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
           year: "numeric",
         }),
       };
-      setCompanies([newCompany, ...companies]);
+      setBranches([newBranch, ...branches]);
     }
     setIsFormModalOpen(false);
-    setSelectedCompany(null);
+    setSelectedBranch(null);
   };
-
-  // Dropdown options
-  const statusOptions = [
-    { value: "all", label: "All Status" },
-    { value: "Active", label: "Active" },
-    { value: "Inactive", label: "Inactive" },
-    { value: "Deactivated", label: "Deactivated" },
-  ];
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -150,50 +137,51 @@ export const CompanyPage = () => {
       <div className="mb-6 flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">
-            Company Management
+            Company & Branch Management
           </h1>
-          <p className="text-sm text-gray-500">Manage insurance companies</p>
+          <p className="text-sm text-gray-500">
+            Manage insurance companies and their branches
+          </p>
         </div>
         <button
-          onClick={handleAddCompany}
+          onClick={handleAddBranch}
           className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors"
         >
-          <Plus size={16} /> Add Company
+          <Plus size={16} /> Add Branch
         </button>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <CompanyStatCard
-          title="Total Companies"
-          value={totalCompanies}
+        <BranchStatCard
+          title="Total Branches"
+          value={totalBranches}
           icon={Building2}
           color="gray"
         />
-        <CompanyStatCard
+        <BranchStatCard
           title="Active"
           value={totalActive}
-          icon={Building2}
+          icon={CheckSquare}
           color="green"
         />
-        <CompanyStatCard
+        <BranchStatCard
           title="Inactive"
           value={totalInactive}
-          icon={Building2}
+          icon={XSquare}
           color="yellow"
         />
-        <CompanyStatCard
+        <BranchStatCard
           title="Deactivated"
           value={totalDeactivated}
-          icon={Building2}
+          icon={AlertTriangle}
           color="red"
         />
       </div>
 
-      {/* Search and Filters - Always Visible */}
+      {/* Search and Filters */}
       <Card className="p-4 mb-5">
-        <div className="flex flex-col sm:flex-row gap-3 items-center">
-          {/* Search Bar */}
+        <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1 relative">
             <Search
               size={18}
@@ -201,45 +189,52 @@ export const CompanyPage = () => {
             />
             <input
               type="text"
-              placeholder="Search by code, name, or provider..."
+              placeholder="Search by code, company, branch, or manager..."
               value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
           </div>
+          <Button
+            variant="secondary"
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2"
+          >
+            <Filter size={16} /> Filters
+            {selectedStatus !== "all" && (
+              <span className="ml-1 w-2 h-2 bg-primary-500 rounded-full"></span>
+            )}
+          </Button>
+        </div>
 
-          {/* Filter Row - Same line on desktop */}
-          <div className="flex flex-wrap items-center gap-3 flex-shrink-0">
+        {showFilters && (
+          <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-gray-200">
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-gray-700">Status:</span>
-              <Dropdown
-                options={statusOptions}
+              <select
                 value={selectedStatus}
-                onChange={(value) => {
-                  setSelectedStatus(value);
-                  setCurrentPage(1);
-                }}
-              />
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="all">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+                <option value="Deactivated">Deactivated</option>
+              </select>
             </div>
             {selectedStatus !== "all" && (
               <button
-                onClick={() => {
-                  setSelectedStatus("all");
-                  setCurrentPage(1);
-                }}
-                className="text-xs text-primary-600 hover:text-primary-700 whitespace-nowrap"
+                onClick={() => setSelectedStatus("all")}
+                className="text-xs text-primary-600 hover:text-primary-700"
               >
                 Clear Filters
               </button>
             )}
           </div>
-        </div>
+        )}
       </Card>
 
-      {/* Companies Table */}
+      {/* Branches Table */}
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -249,10 +244,13 @@ export const CompanyPage = () => {
                   Code
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Name
+                  Company
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Provider
+                  Branch / Address
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Manager
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Vouchers
@@ -269,39 +267,28 @@ export const CompanyPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {paginatedCompanies.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={7}
-                    className="px-4 py-8 text-center text-gray-500"
-                  >
-                    No companies found
-                  </td>
-                </tr>
-              ) : (
-                paginatedCompanies.map((company) => (
-                  <CompanyTableRow
-                    key={company.id}
-                    company={company}
-                    copiedId={copiedId}
-                    onCopy={copyToClipboard}
-                    onView={handleViewCompany}
-                    onEdit={handleEditCompany}
-                    onDelete={handleDeleteCompany}
-                  />
-                ))
-              )}
+              {paginatedBranches.map((branch) => (
+                <BranchTableRow
+                  key={branch.id}
+                  branch={branch}
+                  copiedId={copiedId}
+                  onCopy={copyToClipboard}
+                  onView={handleViewBranch}
+                  onEdit={handleEditBranch}
+                  onDelete={handleDeleteBranch}
+                />
+              ))}
             </tbody>
           </table>
         </div>
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
             <p className="text-xs text-gray-500">
               Showing {startIndex + 1} to{" "}
-              {Math.min(startIndex + itemsPerPage, filteredCompanies.length)} of{" "}
-              {filteredCompanies.length} companies
+              {Math.min(startIndex + itemsPerPage, filteredBranches.length)} of{" "}
+              {filteredBranches.length} branches
             </p>
             <div className="flex gap-1">
               <button
@@ -349,25 +336,26 @@ export const CompanyPage = () => {
       </Card>
 
       {/* Modals */}
-      <CompanyFormModal
+      <BranchFormModal
         isOpen={isFormModalOpen}
         onClose={() => setIsFormModalOpen(false)}
-        onSave={saveCompany}
-        company={selectedCompany}
+        onSave={saveBranch}
+        branch={selectedBranch}
         isEditing={isEditing}
+        companies={MOCK_COMPANIES}
       />
 
-      <CompanyViewModal
+      <BranchViewModal
         isOpen={isViewModalOpen}
         onClose={() => setIsViewModalOpen(false)}
-        company={selectedCompany}
+        branch={selectedBranch}
       />
 
-      <CompanyDeleteModal
+      <BranchDeleteModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={confirmDelete}
-        companyName={selectedCompany?.name}
+        branchName={selectedBranch?.branch}
       />
     </div>
   );

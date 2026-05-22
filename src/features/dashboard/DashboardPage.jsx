@@ -1,9 +1,17 @@
 import { useState, useEffect } from "react";
 import { Card } from "../../components/Card";
 import { dashboardService } from "../../services/dashboardService";
-import { 
-  Building2, CheckCircle, PauseCircle, CreditCard, 
-  Search, ChevronLeft, ChevronRight
+import {
+  Building2,
+  CheckCircle,
+  PauseCircle,
+  CreditCard,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  TrendingUp,
+  Users,
+  Calendar,
 } from "lucide-react";
 
 export const DashboardPage = () => {
@@ -11,13 +19,15 @@ export const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
   const [transactions, setTransactions] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [statsRes, txRes] = await Promise.all([
           dashboardService.getStats(),
-          dashboardService.getRecentTransactions()
+          dashboardService.getRecentTransactions(),
         ]);
         setStats(statsRes.data);
         setTransactions(txRes.data);
@@ -30,114 +40,264 @@ export const DashboardPage = () => {
     fetchData();
   }, []);
 
-  const statCards = [
-    { label: "Total Companies", value: stats?.totalCompanies || 0, icon: Building2, color: "from-primary-50 to-primary-100", accent: "text-primary-600", change: "" },
-    { label: "Active Companies", value: stats?.activeCompanies || 0, icon: CheckCircle, color: "from-limerick-50 to-limerick-100", accent: "text-limerick-600", change: "" },
-    { label: "Inactive Companies", value: stats?.inactiveCompanies || 0, icon: PauseCircle, color: "from-gray-50 to-gray-100", accent: "text-gray-600", change: "" },
-    { label: "Transactions Today", value: stats?.transactionsToday || 0, icon: CreditCard, color: "from-carnelian-50 to-carnelian-100", accent: "text-carnelian-600", change: "" },
-  ];
-
-  const filtered = transactions.filter(t =>
-    [t.agent, t.company, t.assuredName, t.authNo].some(v =>
-      String(v || "").toLowerCase().includes(search.toLowerCase())
-    )
+  // Pagination
+  const filteredTransactions = transactions.filter((t) =>
+    [t.agent, t.company, t.assuredName, t.authNo].some((v) =>
+      String(v || "")
+        .toLowerCase()
+        .includes(search.toLowerCase()),
+    ),
+  );
+  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+  const paginatedTransactions = filteredTransactions.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
   );
 
+  const statCards = [
+    {
+      label: "Total Companies",
+      value: stats?.totalCompanies || 0,
+      icon: Building2,
+      color: "bg-blue-50",
+      iconColor: "text-[#1a3a6b]",
+    },
+    {
+      label: "Active Companies",
+      value: stats?.activeCompanies || 0,
+      icon: CheckCircle,
+      color: "bg-emerald-50",
+      iconColor: "text-emerald-600",
+    },
+    {
+      label: "Inactive Companies",
+      value: stats?.inactiveCompanies || 0,
+      icon: PauseCircle,
+      color: "bg-gray-50",
+      iconColor: "text-gray-500",
+    },
+    {
+      label: "Transactions Today",
+      value: stats?.transactionsToday || 0,
+      icon: CreditCard,
+      color: "bg-amber-50",
+      iconColor: "text-amber-600",
+    },
+  ];
+
   return (
-    <div className="bg-gray-50 min-h-screen">
-      <div className="mb-6">
-        <h1 className="text-2xl font-black text-gray-900 mb-1">Dashboard Overview</h1>
-        <p className="text-sm text-gray-600">Welcome back. Here's what's happening today.</p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Welcome back. Here's what's happening today.
+        </p>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {statCards.map((s, i) => (
+
+      {/* Stats Grid - Bento Grid Style with Animated Accent */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {statCards.map((stat, idx) => (
           <div
-            key={i}
-            className={cn("bg-gradient-to-br rounded-2xl p-5 border border-gray-200 shadow-sm hover:shadow-md transition-shadow", s.color)}
+            key={idx}
+            className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-100 shadow-lg p-6 hover:shadow-xl transition-all group"
           >
             {loading ? (
-              <div className="animate-pulse space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-2/3" />
-                <div className="h-8 bg-gray-200 rounded w-1/2" />
-              </div>
+              <>
+                <div className="h-4 bg-gray-200 rounded w-2/3 mb-2 animate-pulse" />
+                <div className="h-8 bg-gray-200 rounded w-1/2 animate-pulse" />
+              </>
             ) : (
               <>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider">{s.label}</p>
-                  <s.icon size={24} className={s.accent} />
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      {stat.label}
+                    </p>
+                    <p className="text-4xl font-black text-gray-900 mt-2 tracking-tight">
+                      {stat.value.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-primary-500/10 flex items-center justify-center group-hover:bg-primary-500/20 transition-colors">
+                    <div className="w-2 h-2 bg-primary-500 rounded-full" />
+                  </div>
                 </div>
-                <p className={cn("text-3xl font-bold", s.accent)}>{s.value}</p>
-                <p className="text-xs text-gray-500 mt-2">{s.change}</p>
+                <div className="mt-4 pt-3 border-t border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <div className="h-1 w-8 bg-primary-500 rounded-full group-hover:w-12 transition-all duration-300" />
+                    <div className="h-1 w-4 bg-primary-300 rounded-full" />
+                    <div className="h-1 w-2 bg-primary-200 rounded-full" />
+                  </div>
+                </div>
               </>
             )}
           </div>
         ))}
       </div>
-      <Card>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+
+      {/* Recent Transactions Table */}
+      <Card className="overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-4 border-b border-gray-200">
           <div>
-            <h3 className="text-sm font-bold text-gray-900">Recent Transactions</h3>
-            <p className="text-xs text-gray-500 mt-0.5">Latest activity from all companies</p>
+            <h3 className="text-base font-semibold text-gray-900">
+              Recent Transactions
+            </h3>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Latest activity from all companies
+            </p>
           </div>
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            />
             <input
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setCurrentPage(1);
+              }}
               placeholder="Search transactions..."
-              className="bg-gray-50 border border-gray-200 rounded-lg pl-9 pr-4 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent w-64"
+              className="bg-gray-50 border border-gray-200 rounded-lg pl-9 pr-4 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1a3a6b] focus:border-transparent w-full sm:w-64"
             />
           </div>
         </div>
+
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
-                {["Agent", "Company", "Assured Name", "Auth No.", "Date Created"].map(h => (
-                  <th key={h} className="text-left text-xs font-semibold text-gray-600 px-6 py-3 uppercase tracking-wider">{h}</th>
-                ))}
+                <th className="text-left text-xs font-semibold text-gray-500 px-6 py-3 uppercase tracking-wider">
+                  Agent
+                </th>
+                <th className="text-left text-xs font-semibold text-gray-500 px-6 py-3 uppercase tracking-wider">
+                  Company
+                </th>
+                <th className="text-left text-xs font-semibold text-gray-500 px-6 py-3 uppercase tracking-wider">
+                  Assured Name
+                </th>
+                <th className="text-left text-xs font-semibold text-gray-500 px-6 py-3 uppercase tracking-wider">
+                  Auth No.
+                </th>
+                <th className="text-left text-xs font-semibold text-gray-500 px-6 py-3 uppercase tracking-wider">
+                  Date Created
+                </th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                [...Array(4)].map((_, i) => (
+                [...Array(5)].map((_, i) => (
                   <tr key={i} className="border-b border-gray-100">
                     {[...Array(5)].map((_, j) => (
                       <td key={j} className="px-6 py-4">
-                        <div className="h-3.5 bg-gray-100 rounded animate-pulse" style={{ width: `${60 + j * 10}%` }} />
+                        <div
+                          className="h-3.5 bg-gray-100 rounded animate-pulse"
+                          style={{ width: `${60 + j * 10}%` }}
+                        />
                       </td>
                     ))}
                   </tr>
                 ))
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={5} className="px-6 py-12 text-center text-gray-500">No transactions found</td></tr>
+              ) : paginatedTransactions.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="px-6 py-12 text-center text-gray-500"
+                  >
+                    No transactions found
+                  </td>
+                </tr>
               ) : (
-                filtered.map((t) => (
-                  <tr key={t.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4"><span className="text-sm font-medium text-gray-900">{t.agent}</span></td>
-                    <td className="px-6 py-4"><span className="text-sm text-gray-600">{t.company}</span></td>
-                    <td className="px-6 py-4"><span className="text-sm text-gray-700">{t.assuredName}</span></td>
+                paginatedTransactions.map((t) => (
+                  <tr
+                    key={t.id}
+                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                  >
                     <td className="px-6 py-4">
-                      <span className="font-mono text-xs text-primary-600 bg-primary-50 px-2 py-1 rounded-md">{t.authNo}</span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {t.agent}
+                      </span>
                     </td>
-                    <td className="px-6 py-4"><span className="text-sm text-gray-500">{t.dateCreated}</span></td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-gray-600">{t.company}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-gray-700">
+                        {t.assuredName}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <code className="text-xs font-mono font-medium text-[#1a3a6b] bg-[#1a3a6b]/10 px-2 py-1 rounded-md">
+                        {t.authNo}
+                      </code>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-gray-500">
+                        {t.dateCreated}
+                      </span>
+                    </td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
-        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
-          <p className="text-sm text-gray-600">
-            Showing <span className="font-semibold text-gray-900">{filtered.length}</span> of{" "}
-            <span className="font-semibold text-gray-900">{transactions.length}</span> records
-          </p>
-          <div className="flex gap-2">
-            <button className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"><ChevronLeft size={16} /></button>
-            <button className="w-8 h-8 rounded-lg text-sm font-medium bg-primary-500 text-white shadow-sm">1</button>
-            <button className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"><ChevronRight size={16} /></button>
+
+        {/* Pagination */}
+        {!loading && totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
+            <p className="text-sm text-gray-500">
+              Showing{" "}
+              <span className="font-medium text-gray-700">
+                {paginatedTransactions.length}
+              </span>{" "}
+              of{" "}
+              <span className="font-medium text-gray-700">
+                {filteredTransactions.length}
+              </span>{" "}
+              transactions
+            </p>
+            <div className="flex gap-1">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                let pageNum;
+                if (totalPages <= 5) pageNum = i + 1;
+                else if (currentPage <= 3) pageNum = i + 1;
+                else if (currentPage >= totalPages - 2)
+                  pageNum = totalPages - 4 + i;
+                else pageNum = currentPage - 2 + i;
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
+                      currentPage === pageNum
+                        ? "bg-[#1a3a6b] text-white shadow-sm"
+                        : "text-gray-600 hover:bg-gray-100"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                }
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </Card>
     </div>
   );

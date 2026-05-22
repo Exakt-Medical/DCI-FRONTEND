@@ -40,7 +40,6 @@ export default function Vouchers({
 
   const loadProducts = async () => {
     try {
-      // Check if service method exists, otherwise use mock data
       if (voucherService.getProducts) {
         const res = await voucherService.getProducts();
         if (res?.data?.length > 0) {
@@ -48,7 +47,6 @@ export default function Vouchers({
           return;
         }
       }
-      // Use mock data as fallback
       setProducts(MOCK_PRODUCTS);
     } catch (e) {
       console.error("Failed to load products:", e);
@@ -74,7 +72,6 @@ export default function Vouchers({
 
   const loadAssignedVouchers = async () => {
     try {
-      // Use mock data directly since the service method doesn't exist
       setAssignedVouchers(MOCK_ASSIGNED_VOUCHERS);
     } catch (e) {
       console.error("Failed to load assigned vouchers:", e);
@@ -112,21 +109,12 @@ export default function Vouchers({
     }).format(amount);
   };
 
+  // Agent View - Assigned Vouchers
   if (viewOnly) {
     return (
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">My Vouchers</h1>
-          <p className="text-sm text-gray-500">
-            Vouchers assigned to you by your manager
-          </p>
-        </div>
-
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <p className="text-sm text-blue-700">
-            📌 These vouchers have been allocated to you. Use them for customer
-            verification.
-          </p>
+      <div className="space-y-6">
+        <div className="border-b border-gray-200 pb-4">
+          <h1 className="text-xl font-semibold text-gray-900">My Vouchers</h1>
         </div>
 
         <AssignedVouchersTable
@@ -138,50 +126,54 @@ export default function Vouchers({
     );
   }
 
+  // Manager/Admin View
   return (
-    <div className="max-w-7xl mx-auto">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
-          CTPL Insurance
-        </h1>
-        <p className="text-sm text-gray-500">
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="border-b border-gray-200 pb-4">
+        <h1 className="text-xl font-semibold text-gray-900">CTPL Insurance</h1>
+        <p className="text-sm text-gray-500 mt-1">
           Purchase Compulsory Third Party Liability insurance for LTO vehicle
           registration
         </p>
       </div>
 
-      <div className="flex gap-2 mb-6 border-b border-gray-200">
-        <button
-          onClick={() => setActiveTab("vouchers")}
-          className={`px-6 py-2.5 text-sm font-medium transition-all relative ${
-            activeTab === "vouchers"
-              ? "text-primary-600"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Available Plans
-          {activeTab === "vouchers" && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600"></div>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab("history")}
-          className={`px-6 py-2.5 text-sm font-medium transition-all relative ${
-            activeTab === "history"
-              ? "text-primary-600"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Purchase History
-          <span className="ml-2 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-            {purchaseHistory.length}
-          </span>
-          {activeTab === "history" && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600"></div>
-          )}
-        </button>
+      {/* Tabs */}
+      <div className="border-b border-gray-200">
+        <div className="flex gap-8">
+          <button
+            onClick={() => setActiveTab("vouchers")}
+            className={`pb-3 text-sm font-medium transition-colors relative ${
+              activeTab === "vouchers"
+                ? "text-[#1a3a6b]"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Available Plans
+            {activeTab === "vouchers" && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1a3a6b] rounded-full"></div>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab("history")}
+            className={`pb-3 text-sm font-medium transition-colors relative ${
+              activeTab === "history"
+                ? "text-[#1a3a6b]"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Purchase History
+            <span className="ml-2 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+              {purchaseHistory.length}
+            </span>
+            {activeTab === "history" && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#1a3a6b] rounded-full"></div>
+            )}
+          </button>
+        </div>
       </div>
 
+      {/* Content */}
       {activeTab === "vouchers" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {products.map((product) => (
@@ -201,6 +193,7 @@ export default function Vouchers({
         />
       )}
 
+      {/* Modals */}
       {showPurchaseModal && selectedProduct && (
         <PurchaseModal
           selectedProduct={selectedProduct}
