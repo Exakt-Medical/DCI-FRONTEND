@@ -147,9 +147,12 @@ export const CompanyPage = () => {
           </h1>
           <p className="text-sm text-gray-500">Manage insurance companies</p>
         </div>
-        <Button onClick={handleAddCompany} className="flex items-center gap-2">
+        <button
+          onClick={handleAddCompany}
+          className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors"
+        >
           <Plus size={16} /> Add Company
-        </Button>
+        </button>
       </div>
 
       {/* Stats Cards */}

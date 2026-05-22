@@ -29,8 +29,8 @@ export const AssignedVouchersTable = ({
   if (assignedVouchers.length === 0) {
     return (
       <Card className="p-8 text-center relative overflow-hidden">
-        {/* Navy Blue Accent Line */}
-        <div className="absolute top-0 left-0 w-1 h-full bg-[#1a3a6b]" />
+        {/* Primary Color Accent Line */}
+        <div className="absolute top-0 left-0 w-1 h-full bg-primary-500" />
         <div className="flex flex-col items-center gap-3">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
             <Eye size={32} className="text-gray-400" />
@@ -56,7 +56,7 @@ export const AssignedVouchersTable = ({
 
   return (
     <div className="space-y-4">
-      {/* Search Bar with Navy Border on Focus */}
+      {/* Search Bar with Primary Border on Focus */}
       <div className="relative max-w-md">
         <Search
           size={18}
@@ -67,34 +67,106 @@ export const AssignedVouchersTable = ({
           placeholder="Search by voucher code, product, or assigned by..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1a3a6b] focus:border-transparent"
+          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
         />
       </div>
-      {/* Stats Summary with Navy Accents */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-        <div className="bg-white rounded-lg p-3 border-t-4 border-[#1a3a6b] shadow-sm">
-          <p className="text-xs text-gray-500 font-medium">Active</p>
-          <p className="text-xl font-bold text-gray-900">
-            {assignedVouchers.filter((v) => v.status === "Active").length}
-          </p>
+
+      {/* Stats Summary - Bento Grid Style with Animations */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* Active Card */}
+        <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-100 shadow-lg p-5 hover:shadow-xl transition-all group">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Active
+              </p>
+              <p className="text-3xl font-black text-gray-900 mt-2 tracking-tight">
+                {assignedVouchers.filter((v) => v.status === "Active").length}
+              </p>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-primary-500/10 flex items-center justify-center group-hover:bg-primary-500/20 transition-colors">
+              <div className="w-2 h-2 bg-primary-500 rounded-full" />
+            </div>
+          </div>
+          <div className="mt-4 pt-3 border-t border-gray-100">
+            <div className="flex items-center gap-2">
+              <div className="h-1 w-8 bg-primary-500 rounded-full group-hover:w-12 transition-all duration-300" />
+              <div className="h-1 w-4 bg-primary-300 rounded-full" />
+              <div className="h-1 w-2 bg-primary-200 rounded-full" />
+            </div>
+          </div>
         </div>
-        <div className="bg-white rounded-lg p-3 border-t-4 border-[#1a3a6b] shadow-sm">
-          <p className="text-xs text-gray-500 font-medium">Used</p>
-          <p className="text-xl font-bold text-gray-900">
-            {assignedVouchers.filter((v) => v.status === "Used").length}
-          </p>
+
+        {/* Used Card */}
+        <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-100 shadow-lg p-5 hover:shadow-xl transition-all group">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Used
+              </p>
+              <p className="text-3xl font-black text-gray-900 mt-2 tracking-tight">
+                {assignedVouchers.filter((v) => v.status === "Used").length}
+              </p>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-primary-500/10 flex items-center justify-center group-hover:bg-primary-500/20 transition-colors">
+              <div className="w-2 h-2 bg-primary-500 rounded-full" />
+            </div>
+          </div>
+          <div className="mt-4 pt-3 border-t border-gray-100">
+            <div className="flex items-center gap-2">
+              <div className="h-1 w-8 bg-primary-500 rounded-full group-hover:w-12 transition-all duration-300" />
+              <div className="h-1 w-4 bg-primary-300 rounded-full" />
+              <div className="h-1 w-2 bg-primary-200 rounded-full" />
+            </div>
+          </div>
         </div>
-        <div className="bg-white rounded-lg p-3 border-t-4 border-[#1a3a6b] shadow-sm">
-          <p className="text-xs text-gray-500 font-medium">Expired</p>
-          <p className="text-xl font-bold text-gray-900">
-            {assignedVouchers.filter((v) => v.status === "Expired").length}
-          </p>
+
+        {/* Expired Card */}
+        <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-100 shadow-lg p-5 hover:shadow-xl transition-all group">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Expired
+              </p>
+              <p className="text-3xl font-black text-gray-900 mt-2 tracking-tight">
+                {assignedVouchers.filter((v) => v.status === "Expired").length}
+              </p>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-primary-500/10 flex items-center justify-center group-hover:bg-primary-500/20 transition-colors">
+              <div className="w-2 h-2 bg-primary-500 rounded-full" />
+            </div>
+          </div>
+          <div className="mt-4 pt-3 border-t border-gray-100">
+            <div className="flex items-center gap-2">
+              <div className="h-1 w-8 bg-primary-500 rounded-full group-hover:w-12 transition-all duration-300" />
+              <div className="h-1 w-4 bg-primary-300 rounded-full" />
+              <div className="h-1 w-2 bg-primary-200 rounded-full" />
+            </div>
+          </div>
         </div>
-        <div className="bg-white rounded-lg p-3 border-t-4 border-[#1a3a6b] shadow-sm">
-          <p className="text-xs text-gray-500 font-medium">Total</p>
-          <p className="text-xl font-bold text-gray-900">
-            {assignedVouchers.length}
-          </p>
+
+        {/* Total Card */}
+        <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-100 shadow-lg p-5 hover:shadow-xl transition-all group">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Total
+              </p>
+              <p className="text-3xl font-black text-gray-900 mt-2 tracking-tight">
+                {assignedVouchers.length}
+              </p>
+            </div>
+            <div className="w-8 h-8 rounded-full bg-primary-500/10 flex items-center justify-center group-hover:bg-primary-500/20 transition-colors">
+              <div className="w-2 h-2 bg-primary-500 rounded-full" />
+            </div>
+          </div>
+          <div className="mt-4 pt-3 border-t border-gray-100">
+            <div className="flex items-center gap-2">
+              <div className="h-1 w-8 bg-primary-500 rounded-full group-hover:w-12 transition-all duration-300" />
+              <div className="h-1 w-4 bg-primary-300 rounded-full" />
+              <div className="h-1 w-2 bg-primary-200 rounded-full" />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -169,7 +241,7 @@ export const AssignedVouchersTable = ({
                       disabled={voucher.status !== "Active"}
                       className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg transition-colors ${
                         voucher.status === "Active"
-                          ? "text-[#1a3a6b] hover:text-[#1a3a6b]/80 hover:bg-[#1a3a6b]/10 cursor-pointer"
+                          ? "text-primary-600 hover:text-primary-700 hover:bg-primary-50 cursor-pointer"
                           : "text-gray-400 cursor-not-allowed"
                       }`}
                     >

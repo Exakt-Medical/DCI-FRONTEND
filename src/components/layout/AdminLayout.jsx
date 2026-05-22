@@ -40,51 +40,71 @@ export const AdminLayout = ({
         label: "Dashboard",
         icon: LayoutDashboard,
         section: "MAIN",
+        disabled: false,
       },
       {
         id: "accounts",
         label: "Accounts",
         icon: Users,
         section: "ADMINISTRATION",
+        disabled: false,
       },
       {
         id: "company",
         label: "Company",
         icon: Building2,
         section: "ADMINISTRATION",
+        disabled: false,
       },
       {
         id: "branches",
         label: "Branches",
         icon: MapPin,
         section: "ADMINISTRATION",
+        disabled: false,
       },
       {
         id: "vehicles",
         label: "Vehicle Database",
         icon: Car,
         section: "MANAGE",
+        disabled: true, // Disabled - under development
       },
-      { id: "mvtype", label: "MV Type", icon: FileText, section: "MANAGE" },
+      {
+        id: "mvtype",
+        label: "MV Type",
+        icon: FileText,
+        section: "MANAGE",
+        disabled: true, // Disabled - under development
+      },
       {
         id: "activitylogs",
         label: "Activity Logs",
         icon: Activity,
         section: "MANAGE",
+        disabled: false,
       },
       {
         id: "verification",
         label: "Verification",
         icon: Shield,
         section: "INSURANCE",
+        disabled: false,
       },
       {
         id: "transactions",
         label: "Transactions",
         icon: CreditCard,
         section: "INSURANCE",
+        disabled: false,
       },
-      { id: "vouchers", label: "Vouchers", icon: Ticket, section: "INSURANCE" },
+      {
+        id: "vouchers",
+        label: "Vouchers",
+        icon: Ticket,
+        section: "INSURANCE",
+        disabled: false,
+      },
     ],
     viewer: [
       {
@@ -92,51 +112,71 @@ export const AdminLayout = ({
         label: "Dashboard",
         icon: LayoutDashboard,
         section: "MAIN",
+        disabled: false,
       },
       {
         id: "accounts",
         label: "Accounts",
         icon: Users,
         section: "ADMINISTRATION",
+        disabled: false,
       },
       {
         id: "company",
         label: "Company",
         icon: Building2,
         section: "ADMINISTRATION",
+        disabled: false,
       },
       {
         id: "branches",
         label: "Branches",
         icon: MapPin,
         section: "ADMINISTRATION",
+        disabled: false,
       },
       {
         id: "vehicles",
         label: "Vehicle Database",
         icon: Car,
         section: "MANAGE",
+        disabled: true, // Disabled - under development
       },
-      { id: "mvtype", label: "MV Type", icon: FileText, section: "MANAGE" },
+      {
+        id: "mvtype",
+        label: "MV Type",
+        icon: FileText,
+        section: "MANAGE",
+        disabled: true, // Disabled - under development
+      },
       {
         id: "activitylogs",
         label: "Activity Logs",
         icon: Activity,
         section: "MANAGE",
+        disabled: false,
       },
       {
         id: "verification",
         label: "Verification",
         icon: Shield,
         section: "INSURANCE",
+        disabled: false,
       },
       {
         id: "transactions",
         label: "Transactions",
         icon: CreditCard,
         section: "INSURANCE",
+        disabled: false,
       },
-      { id: "vouchers", label: "Vouchers", icon: Ticket, section: "INSURANCE" },
+      {
+        id: "vouchers",
+        label: "Vouchers",
+        icon: Ticket,
+        section: "INSURANCE",
+        disabled: false,
+      },
     ],
     manager: [
       {
@@ -144,45 +184,64 @@ export const AdminLayout = ({
         label: "Dashboard",
         icon: LayoutDashboard,
         section: "MAIN",
+        disabled: false,
       },
       {
         id: "accounts",
         label: "Accounts",
         icon: Users,
         section: "ADMINISTRATION",
+        disabled: false,
       },
       {
         id: "company",
         label: "Company",
         icon: Building2,
         section: "ADMINISTRATION",
+        disabled: false,
       },
       {
         id: "branches",
         label: "Branches",
         icon: MapPin,
         section: "ADMINISTRATION",
+        disabled: false,
       },
-      { id: "vouchers", label: "Vouchers", icon: Ticket, section: "VOUCHERS" },
+      {
+        id: "vouchers",
+        label: "Vouchers",
+        icon: Ticket,
+        section: "VOUCHERS",
+        disabled: false,
+      },
       {
         id: "transfer-vouchers",
         label: "Transfer",
         icon: ArrowLeftRight,
         section: "VOUCHERS",
+        disabled: false,
       },
       {
         id: "verification",
         label: "Verification",
         icon: Shield,
         section: "INSURANCE",
+        disabled: false,
       },
       {
         id: "transactions",
         label: "Transactions",
         icon: CreditCard,
         section: "INSURANCE",
+        disabled: false,
       },
-      { id: "ledger", label: "Ledger", icon: BookOpen, section: "REPORTS" },
+      {
+        id: "ledger",
+        label: "Ledger",
+        icon: BookOpen,
+        section: "REPORTS",
+        disabled: false,
+      },
     ],
     agent: [
       {
@@ -190,18 +249,21 @@ export const AdminLayout = ({
         label: "Dashboard",
         icon: LayoutDashboard,
         section: "MAIN",
+        disabled: false,
       },
       {
         id: "verification",
         label: "Verification",
         icon: Shield,
         section: "INSURANCE",
+        disabled: false,
       },
       {
         id: "vouchers",
         label: "My Vouchers",
         icon: Ticket,
         section: "VOUCHERS",
+        disabled: false,
       },
     ],
   };
@@ -216,10 +278,10 @@ export const AdminLayout = ({
   }, {});
 
   const userInfo = {
-    admin: { label: "Admin User", initial: "A", color: "bg-[#1a3a6b]" },
+    admin: { label: "Admin User", initial: "A", color: "bg-primary-500" },
     viewer: { label: "Viewer", initial: "V", color: "bg-gray-600" },
-    manager: { label: "Manager", initial: "M", color: "bg-[#1a3a6b]" },
-    agent: { label: "Agent", initial: "AG", color: "bg-[#1a3a6b]" },
+    manager: { label: "Manager", initial: "M", color: "bg-primary-500" },
+    agent: { label: "Agent", initial: "AG", color: "bg-primary-500" },
   };
 
   const currentUser = userInfo[role] || userInfo.admin;
@@ -234,7 +296,11 @@ export const AdminLayout = ({
     return names[role] || "User";
   };
 
-  const handleNavigation = (id) => onNavigate(id);
+  const handleNavigation = (id, disabled) => {
+    if (!disabled) {
+      onNavigate(id);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -249,7 +315,7 @@ export const AdminLayout = ({
           {/* Logo Area */}
           <div className="h-16 flex items-center justify-between px-4 border-b border-gray-100">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-[#1a3a6b] rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center">
                 <span className="text-xs font-bold text-white">DCI</span>
               </div>
               {sidebarOpen && (
@@ -280,24 +346,33 @@ export const AdminLayout = ({
                 {items.map((item) => {
                   const Icon = item.icon;
                   const isActive = currentPage === item.id;
+                  const isDisabled = item.disabled;
+
                   return (
                     <button
                       key={item.id}
-                      onClick={() => handleNavigation(item.id)}
+                      onClick={() => handleNavigation(item.id, isDisabled)}
+                      disabled={isDisabled}
                       className={cn(
                         "w-full flex items-center transition-all duration-200 my-1",
                         sidebarOpen
                           ? "px-4 py-2 gap-3"
                           : "px-2 py-3 justify-center",
-                        isActive
-                          ? "bg-[#1a3a6b]/10 text-[#1a3a6b] border-r-2 border-[#1a3a6b]"
-                          : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                        isActive && !isDisabled
+                          ? "bg-primary-500/10 text-primary-600 border-r-2 border-primary-500"
+                          : isDisabled
+                            ? "text-gray-400 cursor-not-allowed opacity-60"
+                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
                       )}
+                      title={isDisabled ? "Under Development" : ""}
                     >
                       <Icon size={18} />
                       {sidebarOpen && (
                         <span className="text-sm font-medium">
                           {item.label}
+                          {isDisabled && (
+                            <span className="ml-2 text-[10px] text-gray-400"></span>
+                          )}
                         </span>
                       )}
                     </button>

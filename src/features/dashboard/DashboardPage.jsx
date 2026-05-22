@@ -95,28 +95,13 @@ export const DashboardPage = () => {
         </p>
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid - Bento Grid Style with Animated Accent */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {statCards.map((stat, idx) => (
           <div
             key={idx}
-            className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition-shadow"
+            className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-100 shadow-lg p-6 hover:shadow-xl transition-all group"
           >
-            <div className="flex items-center justify-between mb-3">
-              <div
-                className={cn(
-                  "w-10 h-10 rounded-lg flex items-center justify-center",
-                  stat.color,
-                )}
-              >
-                <stat.icon size={20} className={stat.iconColor} />
-              </div>
-              {!loading && (
-                <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-                  {stat.change}
-                </span>
-              )}
-            </div>
             {loading ? (
               <>
                 <div className="h-4 bg-gray-200 rounded w-2/3 mb-2 animate-pulse" />
@@ -124,12 +109,26 @@ export const DashboardPage = () => {
               </>
             ) : (
               <>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {stat.label}
-                </p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">
-                  {stat.value.toLocaleString()}
-                </p>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                      {stat.label}
+                    </p>
+                    <p className="text-4xl font-black text-gray-900 mt-2 tracking-tight">
+                      {stat.value.toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="w-8 h-8 rounded-full bg-primary-500/10 flex items-center justify-center group-hover:bg-primary-500/20 transition-colors">
+                    <div className="w-2 h-2 bg-primary-500 rounded-full" />
+                  </div>
+                </div>
+                <div className="mt-4 pt-3 border-t border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <div className="h-1 w-8 bg-primary-500 rounded-full group-hover:w-12 transition-all duration-300" />
+                    <div className="h-1 w-4 bg-primary-300 rounded-full" />
+                    <div className="h-1 w-2 bg-primary-200 rounded-full" />
+                  </div>
+                </div>
               </>
             )}
           </div>
