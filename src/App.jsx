@@ -17,8 +17,11 @@ import { PlaceholderPage } from "./features/placeholder/PlaceholderPage";
 import { ProfilePage } from "./features/profile/ProfilePage";
 import { TransactionLedger } from "./features/TransactionLedger/TransactionLedger";
 import { TicketPage } from "./features/tickets/TicketPage";
+import { useAlert } from "./hooks/useAlert";
 
 function App() {
+  const { success, error, info, confirm } = useAlert();
+
   // Load initial state from localStorage
   const [view, setView] = useState(() => {
     return localStorage.getItem("authView") || "login";
@@ -92,15 +95,15 @@ function App() {
     setPage("profile");
   };
 
-  const handleChangePassword = (passwordData) => {
+  const handleChangePassword = async (passwordData) => {
     console.log("Password changed:", passwordData);
-    alert("Password changed successfully!");
+    await success("Password Changed", "Password changed successfully!");
   };
 
-  const handleUpdateProfile = (updatedData) => {
+  const handleUpdateProfile = async (updatedData) => {
     setUserProfile(updatedData);
     localStorage.setItem("userProfile", JSON.stringify(updatedData));
-    alert("Profile updated successfully!");
+    await success("Profile Updated", "Profile updated successfully!");
   };
 
   // Navigation function for components that need to navigate
@@ -137,8 +140,11 @@ function App() {
   if (view === "register")
     return (
       <RegistrationWizard
-        onComplete={() => {
-          alert("Registration submitted! Awaiting admin approval.");
+        onComplete={async () => {
+          await success(
+            "Registration Submitted",
+            "Registration submitted! Awaiting admin approval.",
+          );
           setView("login");
         }}
         onCancel={() => setView("login")}

@@ -2,7 +2,15 @@ import { useState, useEffect } from "react";
 import { Card } from "../components/Card";
 import { Button } from "../components/Button";
 import { Spinner } from "../components/Spinner";
-import { User, Lock, Eye, EyeOff, AlertCircle, LogIn } from "lucide-react";
+import {
+  User,
+  Lock,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  LogIn,
+  UserPlus,
+} from "lucide-react";
 import { authService } from "../services/authService";
 import DciLogo from "../assets/DCI-LOGO.png";
 
@@ -53,8 +61,7 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
 
       onLogin(role.toLowerCase());
     } catch (err) {
-      const msg =
-        err.response?.data?.error || "Invalid username or password";
+      const msg = err.response?.data?.error || "Invalid username or password";
       setError(msg);
     } finally {
       setLoading(false);
@@ -219,6 +226,17 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
                 <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
                   viewer2 / viewer123
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200"></div>
+              </div>
+              <div className="relative flex justify-center text-xs">
+                <span className="px-2 bg-white text-gray-400">Or</span>
               </div>
             </div>
           </div>
