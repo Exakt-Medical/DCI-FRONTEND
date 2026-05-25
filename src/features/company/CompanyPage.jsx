@@ -1,143 +1,423 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "../../components/Card";
-import { Button } from "../../components/Button";
-import { Input } from "../../components/Input";
-import { Modal } from "../../components/Modal";
-import { StatusBadge } from "../../components/StatusBadge";
+import {
+  Search,
+  Building2,
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Upload,
+} from "lucide-react";
 import { companyService } from "../../services/companyService";
+import { CompanyStatCard } from "./components/CompanyStatCard";
+import { CompanyTableRow } from "./components/CompanyTableRow";
+import { CompanyFormModal } from "./components/CompanyFormModal";
+import { CompanyViewModal } from "./components/CompanyViewModal";
+import { CompanyDeleteModal } from "./components/CompanyDeleteModal";
+import { UploadBulkModal } from "../../components/UploadBulkModal";
+import { Dropdown } from "../../components/Dropdown";
 
 export const CompanyPage = () => {
+  const role = localStorage.getItem("role");
+  const isViewer = role === "VIEWER";
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("All");
-  const [showModal, setShowModal] = useState(false);
-  const [editTarget, setEditTarget] = useState(null);
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [copiedId, setCopiedId] = useState(null);
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedCompany, setSelectedCompany] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const itemsPerPage = 5;
 
-  const tabs = ["All", "Pending", "Active", "Inactive", "Declined", "Deactivated"];
-
-  useEffect(() => {
-    loadCompanies();
-  }, []);
-
-  const loadCompanies = async () => {
+  const fetchCompanies = useCallback(async () => {
     try {
-      const res = await companyService.getAll();
-      setCompanies(res.data);
+      setLoading(true);
+      const response = await companyService.getAll();
+      setCompanies(response.data);
+      setError(null);
     } catch (err) {
-      console.error("Failed to load companies:", err);
+      setError("Failed to load companies");
+      console.error(err);
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    fetchCompanies();
+  }, [fetchCompanies]);
+
+  const totalCompanies = companies.length;
+  const totalActive = companies.filter((c) => c.isactive).length;
+  const totalInactive = companies.filter((c) => !c.isactive && c.approvalStatus !== "REJECTED").length;
+  const totalDeactivated = companies.filter((c) => c.approvalStatus === "REJECTED").length;
+
+  const filteredCompanies = companies.filter((company) => {
+    const matchesSearch =
+      searchTerm === "" ||
+      company.companyId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      company.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (company.companyShortname || "").toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesStatus =
+      selectedStatus === "all" || company.approvalStatus === selectedStatus || 
+      (selectedStatus === "Active" && company.isactive) ||
+      (selectedStatus === "Inactive" && !company.isactive && company.approvalStatus !== "REJECTED") ||
+      (selectedStatus === "Deactivated" && company.approvalStatus === "REJECTED");
+
+    return matchesSearch && matchesStatus;
+  });
+
+  const totalPages = Math.ceil(filteredCompanies.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedCompanies = filteredCompanies.slice(
+    startIndex,
+    startIndex + itemsPerPage,
+  );
+
+  const copyToClipboard = (text, id) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const filtered = filter === "All" ? companies : companies.filter(c => c.status === filter.toUpperCase());
-  const cn = (...classes) => classes.filter(Boolean).join(" ");
+  const handleAddCompany = () => {
+    setSelectedCompany(null);
+    setIsEditing(false);
+    setIsFormModalOpen(true);
+  };
 
-  const handleAction = async (action, id) => {
-    if (action === "approve" || action === "decline") {
-      try {
-        await companyService.updateStatus(id, action);
-        loadCompanies();
-      } catch (err) {
-        console.error("Failed to update company:", err);
-      }
-    } else if (action === "edit") {
-      setEditTarget(companies.find(c => c.id === id));
-      setShowModal(true);
+  const handleEditCompany = (company) => {
+    setSelectedCompany(company);
+    setIsEditing(true);
+    setIsFormModalOpen(true);
+  };
+
+  const handleViewCompany = (company) => {
+    setSelectedCompany(company);
+    setIsViewModalOpen(true);
+  };
+
+  const handleDeleteCompany = (company) => {
+    setSelectedCompany(company);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    try {
+      await companyService.delete(selectedCompany.id);
+      setCompanies(companies.filter((c) => c.id !== selectedCompany.id));
+      setIsDeleteModalOpen(false);
+      setSelectedCompany(null);
+    } catch (err) {
+      console.error("Delete failed", err);
     }
   };
 
-  const handleSave = async () => {
-    setShowModal(false);
-    loadCompanies();
+  const handleToggleActive = async (company) => {
+    try {
+      const response = await companyService.update(company.id, {
+        ...company,
+        isactive: !company.isactive,
+      });
+      setCompanies(
+        companies.map((c) =>
+          c.id === company.id ? { ...c, ...response.data } : c,
+        ),
+      );
+    } catch (err) {
+      console.error("Toggle active failed", err);
+    }
   };
 
+  const saveCompany = async (companyData) => {
+    try {
+      if (isEditing && selectedCompany) {
+        const response = await companyService.update(selectedCompany.id, companyData);
+        setCompanies(
+          companies.map((c) =>
+            c.id === selectedCompany.id ? { ...c, ...response.data } : c,
+          ),
+        );
+      } else {
+        const response = await companyService.create(companyData);
+        setCompanies([response.data, ...companies]);
+      }
+      setIsFormModalOpen(false);
+      setSelectedCompany(null);
+    } catch (err) {
+      console.error("Save failed", err);
+    }
+  };
+
+  const handleBulkUpload = async (records) => {
+    return companyService.bulkCreate(records);
+  };
+
+  const companyTemplateHeaders = ["companyId", "companyName", "companyShortname"];
+
+  const statusOptions = [
+    { value: "all", label: "All Status" },
+    { value: "Active", label: "Active" },
+    { value: "Inactive", label: "Inactive" },
+    { value: "Deactivated", label: "Deactivated" },
+  ];
+
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
+    <div className="max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="mb-6 flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 dark:text-white mb-1">Company Management</h1>
-          <p className="text-sm text-gray-500 dark:text-slate-500">Manage insurance company accounts and approvals</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">
+            Company Management
+          </h1>
+          <p className="text-sm text-gray-500">Manage insurance companies</p>
         </div>
-        <Button onClick={() => { setEditTarget(null); setShowModal(true); }}>+ Add Company</Button>
-      </div>
-      <div className="flex gap-1 mb-5 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 border border-gray-200 dark:border-gray-700 w-fit flex-wrap">
-        {tabs.map(t => (
-          <button
-            key={t}
-            onClick={() => setFilter(t)}
-            className={cn(
-              "px-4 py-2 rounded-lg text-xs font-semibold transition-all",
-              filter === t ? "bg-primary-500 text-white" : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
-            )}
-          >
-            {t}
-            {t !== "All" && <span className="ml-1.5 text-[10px] opacity-70">
-              {companies.filter(c => t.toUpperCase() === c.status).length}
-            </span>}
-          </button>
-        ))}
-      </div>
-      <Card>
-        {loading ? (
-          <div className="p-5 text-center text-gray-500">Loading companies...</div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-700">
-                    {["Code", "Name", "Provider", "Status", "Date Created", "Actions"].map(h => (
-                      <th key={h} className="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 px-5 py-3 uppercase tracking-wider">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(c => (
-                    <tr key={c.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                      <td className="px-5 py-3.5 font-mono text-xs text-primary-600 dark:text-primary-400">{c.code}</td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center text-xs">🏢</div>
-                          <span className="text-gray-900 dark:text-white text-xs font-medium">{c.name}</span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5 text-gray-600 dark:text-slate-400 text-xs">{c.provider}</td>
-                      <td className="px-5 py-3.5"><StatusBadge status={c.status} /></td>
-                      <td className="px-5 py-3.5 text-gray-500 dark:text-slate-500 text-xs">{c.dateCreated}</td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-1">
-                          <button title="Approve" onClick={() => handleAction("approve", c.id)} className="w-7 h-7 rounded-lg bg-limerick-500/10 hover:bg-limerick-500/20 text-limerick-600 dark:text-limerick-400 text-sm transition-all flex items-center justify-center">✓</button>
-                          <button title="Deny" onClick={() => handleAction("decline", c.id)} className="w-7 h-7 rounded-lg bg-carnelian-500/10 hover:bg-carnelian-500/20 text-carnelian-600 dark:text-carnelian-400 text-sm transition-all flex items-center justify-center">✕</button>
-                          <button title="Edit" onClick={() => handleAction("edit", c.id)} className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-slate-400 text-xs transition-all flex items-center justify-center">✎</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {filtered.length === 0 && (
-                    <tr><td colSpan={6} className="px-5 py-12 text-center text-gray-500 dark:text-slate-500">No companies found</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex items-center justify-between px-5 py-3 border-t border-gray-200 dark:border-gray-700">
-              <p className="text-xs text-gray-500 dark:text-slate-500">Showing {filtered.length} of {companies.length} companies</p>
-            </div>
-          </>
+        {!isViewer && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => setIsUploadModalOpen(true)}
+              className="bg-white border border-primary-300 text-primary-600 px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-primary-50 transition-colors"
+            >
+              <Upload size={16} />
+            </button>
+            <button
+              onClick={handleAddCompany}
+              className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors"
+            >
+              <Plus size={16} /> Add Company
+            </button>
+          </div>
         )}
-      </Card>
-      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title={editTarget ? "Edit Company" : "Add New Company"} size="md">
-        <div className="p-6 grid grid-cols-2 gap-4">
-          <div className="col-span-2"><Input label="Company Name" defaultValue={editTarget?.name} placeholder="Company name" /></div>
-          <Input label="Company Code" defaultValue={editTarget?.code} placeholder="e.g. PIC-001" />
-          <Input label="Branch Name" defaultValue={editTarget?.branch} placeholder="Branch" />
-          <div className="col-span-2"><Input label="Address" defaultValue={editTarget?.address} placeholder="Full address" /></div>
-          <div className="col-span-2 flex justify-end gap-2 mt-2">
-            <Button variant="secondary" onClick={() => setShowModal(false)}>Cancel</Button>
-            <Button onClick={handleSave}>{editTarget ? "Save Changes" : "Add Company"}</Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <CompanyStatCard
+          title="Total Companies"
+          value={totalCompanies}
+          icon={Building2}
+          color="gray"
+        />
+        <CompanyStatCard
+          title="Active"
+          value={totalActive}
+          icon={Building2}
+          color="green"
+        />
+        <CompanyStatCard
+          title="Inactive"
+          value={totalInactive}
+          icon={Building2}
+          color="yellow"
+        />
+        <CompanyStatCard
+          title="Deactivated"
+          value={totalDeactivated}
+          icon={Building2}
+          color="red"
+        />
+      </div>
+
+      {/* Search and Filters */}
+      <Card className="p-4 mb-5">
+        <div className="flex flex-col sm:flex-row gap-3 items-center">
+          <div className="flex-1 relative">
+            <Search
+              size={18}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            />
+            <input
+              type="text"
+              placeholder="Search by ID, name, or short name..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-gray-700">Status:</span>
+              <Dropdown
+                options={statusOptions}
+                value={selectedStatus}
+                onChange={(value) => {
+                  setSelectedStatus(value);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+            {selectedStatus !== "all" && (
+              <button
+                onClick={() => {
+                  setSelectedStatus("all");
+                  setCurrentPage(1);
+                }}
+                className="text-xs text-primary-600 hover:text-primary-700 whitespace-nowrap"
+              >
+                Clear Filters
+              </button>
+            )}
           </div>
         </div>
-      </Modal>
+      </Card>
+
+      {/* Companies Table */}
+      <Card className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Code
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Name
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Short Name
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Active
+                </th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                    Loading companies...
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-red-500">
+                    {error}
+                  </td>
+                </tr>
+              ) : paginatedCompanies.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                    No companies found
+                  </td>
+                </tr>
+              ) : (
+                paginatedCompanies.map((company) => (
+                  <CompanyTableRow
+                    key={company.id}
+                    company={company}
+                    copiedId={copiedId}
+                    onCopy={copyToClipboard}
+                    onView={handleViewCompany}
+                    onEdit={handleEditCompany}
+                    onDelete={handleDeleteCompany}
+                    onToggleActive={handleToggleActive}
+                    isViewer={isViewer}
+                  />
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+            <p className="text-xs text-gray-500">
+              Showing {startIndex + 1} to{" "}
+              {Math.min(startIndex + itemsPerPage, filteredCompanies.length)} of{" "}
+              {filteredCompanies.length} companies
+            </p>
+            <div className="flex gap-1">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="p-1 text-gray-500 hover:text-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <div className="flex gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) pageNum = i + 1;
+                  else if (currentPage <= 3) pageNum = i + 1;
+                  else if (currentPage >= totalPages - 2)
+                    pageNum = totalPages - 4 + i;
+                  else pageNum = currentPage - 2 + i;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`w-7 h-7 text-xs rounded-lg transition-colors ${
+                        currentPage === pageNum
+                          ? "bg-primary-500 text-white"
+                          : "text-gray-600 hover:bg-gray-100"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                }
+                disabled={currentPage === totalPages}
+                className="p-1 text-gray-500 hover:text-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* Modals */}
+      <CompanyFormModal
+        isOpen={isFormModalOpen}
+        onClose={() => setIsFormModalOpen(false)}
+        onSave={saveCompany}
+        company={selectedCompany}
+        isEditing={isEditing}
+      />
+
+      <CompanyViewModal
+        isOpen={isViewModalOpen}
+        onClose={() => setIsViewModalOpen(false)}
+        company={selectedCompany}
+      />
+
+      <CompanyDeleteModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        companyName={selectedCompany?.companyName}
+      />
+
+      <UploadBulkModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onUpload={handleBulkUpload}
+        templateHeaders={companyTemplateHeaders}
+        moduleName="Companies"
+      />
     </div>
   );
 };
