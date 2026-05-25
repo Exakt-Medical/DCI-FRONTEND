@@ -14,9 +14,9 @@ import { AccountPage } from "./features/accounts/AccountPage";
 import { TransactionLogsPage } from "./features/TransactionLogs/TransactionLogsPage";
 import { ActivityLogsPage } from "./features/ActivityLogs/ActivityLogsPage";
 import { PlaceholderPage } from "./features/placeholder/PlaceholderPage";
-import { ProfilePage } from "./features/profile/ProfilePage";
+import { ProfilePage } from "./features/Profile/ProfilePage";
 import { TransactionLedger } from "./features/TransactionLedger/TransactionLedger";
-import { TicketPage } from "./features/tickets/TicketPage";
+import { TicketPage } from "./features/Tickets/TicketPage";
 import { useAlert } from "./hooks/useAlert";
 
 function App() {
