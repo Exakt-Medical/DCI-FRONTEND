@@ -27,11 +27,11 @@ export const UserTableRow = ({
           {user.role}
         </span>
       </td>
-      {["AGENT", "SUBAGENT"].includes(user.role) && (
-        <td className="px-4 py-3">
-          <span className="text-sm text-gray-700">{user.managerName || "-"}</span>
-        </td>
-      )}
+      <td className="px-4 py-3">
+        <span className="text-sm text-gray-700">
+          {["AGENT", "SUBAGENT"].includes(user.role) ? (user.managerName || "N/A") : "N/A"}
+        </span>
+      </td>
       <td className="px-4 py-3">
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
           user.isactive
