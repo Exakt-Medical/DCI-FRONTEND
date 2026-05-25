@@ -17,23 +17,38 @@ import { PlaceholderPage } from "./features/placeholder/PlaceholderPage";
 import { ProfilePage } from "./features/Profile/ProfilePage";
 import { TransactionLedger } from "./features/TransactionLedger/TransactionLedger";
 import { TicketPage } from "./features/Tickets/TicketPage";
+import { MaintenancePage } from "./features/maintenance/MaintenancePage";
 import { useAlert } from "./hooks/useAlert";
 
 function App() {
-  const { success, error, info, confirm } = useAlert();
+  const { success } = useAlert();
 
-  // Load initial state from localStorage
+  // Check if URL has the secret path to access the app
+  const [hasAccess, setHasAccess] = useState(() => {
+    // Check if the current path includes '/vvip-access'
+    return window.location.pathname.includes("/vvip-access");
+  });
+
+  // Load initial state from localStorage (only if has access)
   const [view, setView] = useState(() => {
-    return localStorage.getItem("authView") || "login";
+    if (hasAccess) {
+      return localStorage.getItem("authView") || "login";
+    }
+    return null;
   });
+
   const [role, setRole] = useState(() => {
-    return localStorage.getItem("authRole") || null;
+    if (hasAccess) {
+      return localStorage.getItem("authRole") || null;
+    }
+    return null;
   });
+
   const [page, setPage] = useState("dashboard");
   const [certificateData, setCertificateData] = useState(null);
   const [pendingPayment, setPendingPayment] = useState(null);
 
-  // User profile data - load from localStorage
+  // User profile data
   const [userProfile, setUserProfile] = useState(() => {
     const savedProfile = localStorage.getItem("userProfile");
     return savedProfile
@@ -46,26 +61,22 @@ function App() {
         };
   });
 
-  // Save auth state to localStorage whenever it changes
+  // Save auth state to localStorage
   useEffect(() => {
-    if (view && view !== "login") {
+    if (hasAccess && view && view !== "login") {
       localStorage.setItem("authView", view);
     }
-    if (role) {
+    if (hasAccess && role) {
       localStorage.setItem("authRole", role);
     }
-  }, [view, role]);
+  }, [view, role, hasAccess]);
 
   const handleLogin = (userRole, userData) => {
     setRole(userRole);
     setView(userRole);
     setPage("dashboard");
-
-    // Save to localStorage
     localStorage.setItem("authRole", userRole);
     localStorage.setItem("authView", userRole);
-
-    // Save user profile if provided
     if (userData) {
       setUserProfile(userData);
       localStorage.setItem("userProfile", JSON.stringify(userData));
@@ -78,8 +89,6 @@ function App() {
     setPage("dashboard");
     setCertificateData(null);
     setPendingPayment(null);
-
-    // Clear localStorage
     localStorage.removeItem("authRole");
     localStorage.removeItem("authView");
     localStorage.removeItem("userProfile");
@@ -106,7 +115,6 @@ function App() {
     await success("Profile Updated", "Profile updated successfully!");
   };
 
-  // Navigation function for components that need to navigate
   const handleComponentNavigate = (path, options) => {
     if (options?.state) {
       if (options.state.selectedProduct) {
@@ -129,6 +137,12 @@ function App() {
     setPage("vouchers");
   };
 
+  // SHOW MAINTENANCE PAGE AS DEFAULT - Only show app if URL has /vvip-access
+  if (!hasAccess) {
+    return <MaintenancePage />;
+  }
+
+  // Normal app routing (only accessible with /vvip-access in URL)
   if (view === "login")
     return (
       <LoginPage
@@ -152,7 +166,6 @@ function App() {
     );
 
   const renderPage = () => {
-    // Profile Page - All roles can access
     if (page === "profile") {
       return (
         <ProfilePage
@@ -165,7 +178,6 @@ function App() {
       );
     }
 
-    // Dashboard - Different views based on role
     if (page === "dashboard") {
       if (role === "manager") {
         return <ManagerDashboard />;
@@ -173,7 +185,6 @@ function App() {
       return <DashboardPage />;
     }
 
-    // Tickets - Admin, Manager, Viewer can access (not Agent, Sub-Agent)
     if (page === "tickets") {
       if (role === "agent" || role === "subagent") {
         return (
@@ -187,7 +198,6 @@ function App() {
       return <TicketPage />;
     }
 
-    // Transaction Ledger - Admin and Manager only
     if (page === "ledger") {
       if (role === "admin" || role === "manager") {
         return <TransactionLedger />;
@@ -201,7 +211,6 @@ function App() {
       );
     }
 
-    // Accounts - Admin, Manager can access (not Agent, Sub-Agent, Viewer)
     if (page === "accounts") {
       if (role === "agent" || role === "subagent" || role === "viewer")
         return (
@@ -214,7 +223,6 @@ function App() {
       return <AccountPage />;
     }
 
-    // Company - Admin, Manager, Viewer can access (not Agent, Sub-Agent)
     if (page === "company") {
       if (role === "agent" || role === "subagent")
         return (
@@ -227,7 +235,6 @@ function App() {
       return <CompanyPage />;
     }
 
-    // Branches - Admin, Manager, Viewer can access (not Agent, Sub-Agent)
     if (page === "branches") {
       if (role === "agent" || role === "subagent")
         return (
@@ -240,11 +247,9 @@ function App() {
       return <CompanyBranchPage />;
     }
 
-    // Verification - All roles can access
     if (page === "verification")
       return <VerificationPage onCertificate={() => {}} />;
 
-    // Vouchers - Different views based on role
     if (page === "vouchers") {
       if (role === "agent" || role === "subagent") {
         return (
@@ -292,7 +297,6 @@ function App() {
       );
     }
 
-    // Transfer Vouchers - Only Manager can access
     if (page === "transfer-vouchers") {
       if (role !== "manager")
         return (
@@ -305,7 +309,6 @@ function App() {
       return <TransferVoucherPage />;
     }
 
-    // Payment - Manager can access
     if (page === "payment") {
       if (role !== "manager" && role !== "admin")
         return (
@@ -324,7 +327,6 @@ function App() {
       );
     }
 
-    // Vehicles - Admin and Viewer can access
     if (page === "vehicles") {
       if (role === "manager" || role === "agent" || role === "subagent")
         return (
@@ -343,7 +345,6 @@ function App() {
       );
     }
 
-    // MV Type - Admin and Viewer can access
     if (page === "mvtype") {
       if (role === "manager" || role === "agent" || role === "subagent")
         return (
@@ -362,7 +363,6 @@ function App() {
       );
     }
 
-    // Activity Logs / Logs - Admin, Viewer, and Manager can access (not Agent, Sub-Agent)
     if (page === "activitylogs") {
       if (role === "agent" || role === "subagent")
         return (
@@ -375,7 +375,6 @@ function App() {
       return <ActivityLogsPage />;
     }
 
-    // Transactions - Admin, Viewer, and Manager can access (not Agent, Sub-Agent)
     if (page === "transactions") {
       if (role === "agent" || role === "subagent")
         return (
