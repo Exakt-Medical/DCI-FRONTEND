@@ -17,7 +17,7 @@ import { PlaceholderPage } from "./features/placeholder/PlaceholderPage";
 import { ProfilePage } from "./features/Profile/ProfilePage";
 import { TransactionLedger } from "./features/TransactionLedger/TransactionLedger";
 import { TicketPage } from "./features/Tickets/TicketPage";
-import { MaintenancePage } from "./features/maintenance/MaintenancePage";
+import { MaintenancePage } from "./features/Maintenance/MaintenancePage";
 import { useAlert } from "./hooks/useAlert";
 
 function App() {
