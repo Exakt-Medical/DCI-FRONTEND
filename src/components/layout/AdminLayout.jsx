@@ -18,6 +18,7 @@ import {
   Ticket,
   ArrowLeftRight,
   BookOpen,
+  HelpCircle,
 } from "lucide-react";
 
 export const AdminLayout = ({
@@ -39,6 +40,13 @@ export const AdminLayout = ({
         id: "dashboard",
         label: "Dashboard",
         icon: LayoutDashboard,
+        section: "MAIN",
+        disabled: false,
+      },
+      {
+        id: "tickets",
+        label: "Tickets",
+        icon: HelpCircle,
         section: "MAIN",
         disabled: false,
       },
@@ -101,6 +109,13 @@ export const AdminLayout = ({
         disabled: false,
       },
       {
+        id: "tickets",
+        label: "Support Tickets",
+        icon: HelpCircle,
+        section: "MAIN",
+        disabled: false,
+      },
+      {
         id: "company",
         label: "Company",
         icon: Building2,
@@ -148,6 +163,13 @@ export const AdminLayout = ({
         id: "dashboard",
         label: "Dashboard",
         icon: LayoutDashboard,
+        section: "MAIN",
+        disabled: false,
+      },
+      {
+        id: "tickets",
+        label: "Support Tickets",
+        icon: HelpCircle,
         section: "MAIN",
         disabled: false,
       },
@@ -394,8 +416,10 @@ export const AdminLayout = ({
                 <h1 className="text-lg font-semibold text-gray-800">
                   {currentPage === "transfer-vouchers"
                     ? "Transfer Vouchers"
-                    : currentPage.charAt(0).toUpperCase() +
-                      currentPage.slice(1)}
+                    : currentPage === "tickets"
+                      ? "Support Tickets"
+                      : currentPage.charAt(0).toUpperCase() +
+                        currentPage.slice(1)}
                 </h1>
                 <p className="text-xs text-gray-500">
                   Vehicle Verification Insurance Program
