@@ -16,6 +16,7 @@ import { ActivityLogsPage } from "./features/ActivityLogs/ActivityLogsPage";
 import { PlaceholderPage } from "./features/placeholder/PlaceholderPage";
 import { ProfilePage } from "./features/profile/ProfilePage";
 import { TransactionLedger } from "./features/TransactionLedger/TransactionLedger";
+import { TicketPage } from "./features/tickets/TicketPage"; // Import TicketPage
 
 function App() {
   // Load initial state from localStorage
@@ -164,6 +165,20 @@ function App() {
         return <ManagerDashboard />;
       }
       return <DashboardPage />;
+    }
+
+    // Tickets - Admin, Manager, Viewer can access (not Agent)
+    if (page === "tickets") {
+      if (role === "agent") {
+        return (
+          <PlaceholderPage
+            title="Access Denied"
+            icon="🔒"
+            description="You don't have permission to access support tickets. Please contact your administrator."
+          />
+        );
+      }
+      return <TicketPage />;
     }
 
     // Transaction Ledger - Access based on role

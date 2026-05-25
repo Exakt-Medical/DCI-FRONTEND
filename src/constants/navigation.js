@@ -12,6 +12,7 @@ import {
   Ticket,
   ArrowLeftRight,
   BookOpen,
+  HelpCircle, // Add for tickets icon
 } from "lucide-react";
 
 export const navConfig = {
@@ -20,6 +21,13 @@ export const navConfig = {
       id: "dashboard",
       label: "Dashboard",
       icon: LayoutDashboard,
+      section: "MAIN",
+      disabled: false,
+    },
+    {
+      id: "tickets",
+      label: "Tickets",
+      icon: HelpCircle,
       section: "MAIN",
       disabled: false,
     },
@@ -96,6 +104,13 @@ export const navConfig = {
       disabled: false,
     },
     {
+      id: "tickets",
+      label: "Support Tickets",
+      icon: HelpCircle,
+      section: "MAIN",
+      disabled: false,
+    },
+    {
       id: "accounts",
       label: "Accounts",
       icon: Users,
@@ -164,6 +179,13 @@ export const navConfig = {
       id: "dashboard",
       label: "Dashboard",
       icon: LayoutDashboard,
+      section: "MAIN",
+      disabled: false,
+    },
+    {
+      id: "tickets",
+      label: "Support Tickets",
+      icon: HelpCircle,
       section: "MAIN",
       disabled: false,
     },
