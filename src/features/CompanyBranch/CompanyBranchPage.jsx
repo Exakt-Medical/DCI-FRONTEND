@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
-import { Dropdown } from "../../components/Dropdown"; // Import your Dropdown component
 import {
   Search,
   Filter,
@@ -9,20 +8,27 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
+  Upload,
   CheckSquare,
   XSquare,
   AlertTriangle,
 } from "lucide-react";
-import { MOCK_BRANCHES } from "../../constants/branchMockData";
-import { MOCK_COMPANIES } from "../../constants/companyMockData";
+import { branchService } from "../../services/branchService";
+import { companyService } from "../../services/companyService";
 import { BranchStatCard } from "./components/BranchStatCard";
 import { BranchTableRow } from "./components/BranchTableRow";
 import { BranchFormModal } from "./components/BranchFormModal";
 import { BranchViewModal } from "./components/BranchViewModal";
 import { BranchDeleteModal } from "./components/BranchDeleteModal";
+import { UploadBulkModal } from "../../components/UploadBulkModal";
 
 export const CompanyBranchPage = () => {
-  const [branches, setBranches] = useState(MOCK_BRANCHES);
+  const role = localStorage.getItem("role");
+  const isViewer = role === "VIEWER";
+  const [branches, setBranches] = useState([]);
+  const [companies, setCompanies] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
@@ -33,40 +39,51 @@ export const CompanyBranchPage = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const itemsPerPage = 10;
 
-  // Status options for dropdown
-  const statusOptions = [
-    { value: "all", label: "All Status" },
-    { value: "Active", label: "Active" },
-    { value: "Inactive", label: "Inactive" },
-    { value: "Deactivated", label: "Deactivated" },
-  ];
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [branchesRes, companiesRes] = await Promise.all([
+        branchService.getAll(),
+        companyService.getAll(),
+      ]);
+      setBranches(branchesRes.data);
+      setCompanies(companiesRes.data);
+      setError(null);
+    } catch (err) {
+      setError("Failed to load data");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  // Calculate totals
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
   const totalBranches = branches.length;
-  const totalActive = branches.filter((b) => b.status === "Active").length;
-  const totalInactive = branches.filter((b) => b.status === "Inactive").length;
-  const totalDeactivated = branches.filter(
-    (b) => b.status === "Deactivated",
-  ).length;
+  const totalActive = branches.filter((b) => b.isactive).length;
+  const totalInactive = branches.filter((b) => !b.isactive).length;
 
-  // Filter branches based on search and filters
   const filteredBranches = branches.filter((branch) => {
     const matchesSearch =
       searchTerm === "" ||
-      branch.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      branch.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      branch.branch.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      branch.manager.toLowerCase().includes(searchTerm.toLowerCase());
+      branch.branchId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      branch.branchName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      branch.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (branch.branchShortname || "").toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus =
-      selectedStatus === "all" || branch.status === selectedStatus;
+      selectedStatus === "all" ||
+      (selectedStatus === "Active" && branch.isactive) ||
+      (selectedStatus === "Inactive" && !branch.isactive);
 
     return matchesSearch && matchesStatus;
   });
 
-  // Pagination
   const totalPages = Math.ceil(filteredBranches.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedBranches = filteredBranches.slice(
@@ -102,43 +119,71 @@ export const CompanyBranchPage = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
-    setBranches(branches.filter((b) => b.id !== selectedBranch.id));
-    setIsDeleteModalOpen(false);
-    setSelectedBranch(null);
+  const confirmDelete = async () => {
+    try {
+      await branchService.delete(selectedBranch.id);
+      setBranches(branches.filter((b) => b.id !== selectedBranch.id));
+      setIsDeleteModalOpen(false);
+      setSelectedBranch(null);
+    } catch (err) {
+      console.error("Delete failed", err);
+    }
   };
 
-  const saveBranch = (branchData) => {
-    if (isEditing && selectedBranch) {
-      // Update existing branch
+  const handleToggleActive = async (branch) => {
+    try {
+      const response = await branchService.update(branch.id, {
+        ...branch,
+        isactive: !branch.isactive,
+      });
       setBranches(
         branches.map((b) =>
-          b.id === selectedBranch.id
-            ? {
-                ...b,
-                ...branchData,
-                dateCreated: b.dateCreated,
-                id: b.id,
-              }
-            : b,
+          b.id === branch.id ? { ...b, ...response.data } : b,
         ),
       );
-    } else {
-      // Create new branch
-      const newBranch = {
-        id: Math.max(...branches.map((b) => b.id), 0) + 1,
-        ...branchData,
-        dateCreated: new Date().toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }),
-      };
-      setBranches([newBranch, ...branches]);
+    } catch (err) {
+      console.error("Toggle active failed", err);
     }
-    setIsFormModalOpen(false);
-    setSelectedBranch(null);
   };
+
+  const saveBranch = async (branchData) => {
+    try {
+      const payload = {
+        branchId: branchData.branchId,
+        branchName: branchData.branchName,
+        branchShortname: branchData.branchShortname || null,
+        companyId: parseInt(branchData.companyId),
+        isactive: branchData.isactive,
+      };
+
+      if (isEditing && selectedBranch) {
+        const response = await branchService.update(selectedBranch.id, payload);
+        setBranches(
+          branches.map((b) =>
+            b.id === selectedBranch.id ? { ...b, ...response.data } : b,
+          ),
+        );
+      } else {
+        const response = await branchService.create(payload);
+        setBranches([response.data, ...branches]);
+      }
+      setIsFormModalOpen(false);
+      setSelectedBranch(null);
+    } catch (err) {
+      console.error("Save failed", err);
+    }
+  };
+
+  const handleBulkUpload = async (records) => {
+    const payload = records.map((r) => ({
+      ...r,
+      companyId: parseInt(r.companyId),
+      isactive: true,
+    }));
+    return branchService.bulkCreate(payload);
+  };
+
+  const branchTemplateHeaders = ["branchId", "branchName", "branchShortname", "companyId"];
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -152,12 +197,22 @@ export const CompanyBranchPage = () => {
             Manage insurance companies and their branches
           </p>
         </div>
-        <button
-          onClick={handleAddBranch}
-          className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors"
-        >
-          <Plus size={16} /> Add Branch
-        </button>
+        {!isViewer && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => setIsUploadModalOpen(true)}
+              className="bg-white border border-primary-300 text-primary-600 px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-primary-50 transition-colors"
+            >
+              <Upload size={16} />
+            </button>
+            <button
+              onClick={handleAddBranch}
+              className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors"
+            >
+              <Plus size={16} /> Add Branch
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -182,7 +237,7 @@ export const CompanyBranchPage = () => {
         />
         <BranchStatCard
           title="Deactivated"
-          value={totalDeactivated}
+          value={0}
           icon={AlertTriangle}
           color="red"
         />
@@ -198,7 +253,7 @@ export const CompanyBranchPage = () => {
             />
             <input
               type="text"
-              placeholder="Search by code, company, branch, or manager..."
+              placeholder="Search by ID, company, or branch..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -217,16 +272,18 @@ export const CompanyBranchPage = () => {
         </div>
 
         {showFilters && (
-          <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-gray-200 items-center">
+          <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-gray-200">
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-gray-700">Status:</span>
-              <Dropdown
-                options={statusOptions}
+              <select
                 value={selectedStatus}
-                onChange={setSelectedStatus}
-                placeholder="Select status"
-                showCheckmark={true}
-              />
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="all">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
             </div>
             {selectedStatus !== "all" && (
               <button
@@ -253,19 +310,13 @@ export const CompanyBranchPage = () => {
                   Company
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Branch / Address
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Manager
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Vouchers
+                  Branch
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Date Created
+                  Updated
                 </th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Actions
@@ -273,17 +324,39 @@ export const CompanyBranchPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {paginatedBranches.map((branch) => (
-                <BranchTableRow
-                  key={branch.id}
-                  branch={branch}
-                  copiedId={copiedId}
-                  onCopy={copyToClipboard}
-                  onView={handleViewBranch}
-                  onEdit={handleEditBranch}
-                  onDelete={handleDeleteBranch}
-                />
-              ))}
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                    Loading branches...
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-red-500">
+                    {error}
+                  </td>
+                </tr>
+              ) : paginatedBranches.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                    No branches found
+                  </td>
+                </tr>
+              ) : (
+                paginatedBranches.map((branch) => (
+                  <BranchTableRow
+                    key={branch.id}
+                    branch={branch}
+                    copiedId={copiedId}
+                    onCopy={copyToClipboard}
+                    onView={handleViewBranch}
+                    onEdit={handleEditBranch}
+                    onDelete={handleDeleteBranch}
+                    onToggleActive={handleToggleActive}
+                    isViewer={isViewer}
+                  />
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -348,7 +421,7 @@ export const CompanyBranchPage = () => {
         onSave={saveBranch}
         branch={selectedBranch}
         isEditing={isEditing}
-        companies={MOCK_COMPANIES}
+        companies={companies}
       />
 
       <BranchViewModal
@@ -361,7 +434,15 @@ export const CompanyBranchPage = () => {
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={confirmDelete}
-        branchName={selectedBranch?.branch}
+        branchName={selectedBranch?.branchName}
+      />
+
+      <UploadBulkModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onUpload={handleBulkUpload}
+        templateHeaders={branchTemplateHeaders}
+        moduleName="Branches"
       />
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { LoginPage } from "./authentication/LoginPage";
 import { RegistrationWizard } from "./authentication/RegistrationWizard";
 import { AdminLayout } from "./components/layout/AdminLayout";
@@ -14,59 +14,18 @@ import { AccountPage } from "./features/accounts/AccountPage";
 import { TransactionLogsPage } from "./features/TransactionLogs/TransactionLogsPage";
 import { ActivityLogsPage } from "./features/ActivityLogs/ActivityLogsPage";
 import { PlaceholderPage } from "./features/placeholder/PlaceholderPage";
-import { ProfilePage } from "./features/profile/ProfilePage";
-import { TransactionLedger } from "./features/TransactionLedger/TransactionLedger";
-import { TicketPage } from "./features/tickets/TicketPage"; // Import TicketPage
 
 function App() {
-  // Load initial state from localStorage
-  const [view, setView] = useState(() => {
-    return localStorage.getItem("authView") || "login";
-  });
-  const [role, setRole] = useState(() => {
-    return localStorage.getItem("authRole") || null;
-  });
+  const [view, setView] = useState("login");
+  const [role, setRole] = useState(null);
   const [page, setPage] = useState("dashboard");
   const [certificateData, setCertificateData] = useState(null);
   const [pendingPayment, setPendingPayment] = useState(null);
 
-  // User profile data - load from localStorage
-  const [userProfile, setUserProfile] = useState(() => {
-    const savedProfile = localStorage.getItem("userProfile");
-    return savedProfile
-      ? JSON.parse(savedProfile)
-      : {
-          name: "John Doe",
-          email: "john.doe@vvipctpl.com",
-          phone: "+63 912 345 6789",
-          company: "VVIP CTPL Insurance Corp",
-        };
-  });
-
-  // Save auth state to localStorage whenever it changes
-  useEffect(() => {
-    if (view && view !== "login") {
-      localStorage.setItem("authView", view);
-    }
-    if (role) {
-      localStorage.setItem("authRole", role);
-    }
-  }, [view, role]);
-
-  const handleLogin = (userRole, userData) => {
+  const handleLogin = (userRole) => {
     setRole(userRole);
     setView(userRole);
     setPage("dashboard");
-
-    // Save to localStorage
-    localStorage.setItem("authRole", userRole);
-    localStorage.setItem("authView", userRole);
-
-    // Save user profile if provided
-    if (userData) {
-      setUserProfile(userData);
-      localStorage.setItem("userProfile", JSON.stringify(userData));
-    }
   };
 
   const handleLogout = () => {
@@ -75,11 +34,6 @@ function App() {
     setPage("dashboard");
     setCertificateData(null);
     setPendingPayment(null);
-
-    // Clear localStorage
-    localStorage.removeItem("authRole");
-    localStorage.removeItem("authView");
-    localStorage.removeItem("userProfile");
   };
 
   const handleNavigate = (p) => {
@@ -88,24 +42,10 @@ function App() {
     setPendingPayment(null);
   };
 
-  const handleMyProfile = () => {
-    setPage("profile");
-  };
-
-  const handleChangePassword = (passwordData) => {
-    console.log("Password changed:", passwordData);
-    alert("Password changed successfully!");
-  };
-
-  const handleUpdateProfile = (updatedData) => {
-    setUserProfile(updatedData);
-    localStorage.setItem("userProfile", JSON.stringify(updatedData));
-    alert("Profile updated successfully!");
-  };
-
   // Navigation function for components that need to navigate
   const handleComponentNavigate = (path, options) => {
     if (options?.state) {
+      // Handle state if needed
       if (options.state.selectedProduct) {
         setPendingPayment({
           product: options.state.selectedProduct,
@@ -113,7 +53,7 @@ function App() {
         });
       }
     }
-    setPage(path.replace("/", ""));
+    setPage(path.replace("/", "")); // Remove leading slash
   };
 
   const handleGoToPayment = (product, formData) => {
@@ -146,19 +86,6 @@ function App() {
     );
 
   const renderPage = () => {
-    // Profile Page - All roles can access
-    if (page === "profile") {
-      return (
-        <ProfilePage
-          user={userProfile}
-          role={role}
-          onUpdateProfile={handleUpdateProfile}
-          onChangePassword={handleChangePassword}
-          onLogout={handleLogout}
-        />
-      );
-    }
-
     // Dashboard - Different views based on role
     if (page === "dashboard") {
       if (role === "manager") {
@@ -167,37 +94,9 @@ function App() {
       return <DashboardPage />;
     }
 
-    // Tickets - Admin, Manager, Viewer can access (not Agent)
-    if (page === "tickets") {
-      if (role === "agent") {
-        return (
-          <PlaceholderPage
-            title="Access Denied"
-            icon="🔒"
-            description="You don't have permission to access support tickets. Please contact your administrator."
-          />
-        );
-      }
-      return <TicketPage />;
-    }
-
-    // Transaction Ledger - Access based on role
-    if (page === "ledger") {
-      if (role === "admin" || role === "manager") {
-        return <TransactionLedger />;
-      }
-      return (
-        <PlaceholderPage
-          title="Access Denied"
-          icon="🔒"
-          description="You don't have permission to access the transaction ledger."
-        />
-      );
-    }
-
-    // Accounts - Admin, Manager can access (not Agent, not Viewer)
+    // Accounts - Admin, Manager can access (not Agent, Sub-Agent, Viewer)
     if (page === "accounts") {
-      if (role === "agent")
+      if (role === "agent" || role === "subagent" || role === "viewer")
         return (
           <PlaceholderPage
             title="Access Denied"
@@ -205,20 +104,12 @@ function App() {
             description="You don't have permission to manage accounts. Please contact your administrator."
           />
         );
-      if (role === "viewer")
-        return (
-          <PlaceholderPage
-            title="Access Denied"
-            icon="🔒"
-            description="Viewers cannot manage accounts. Please contact your administrator."
-          />
-        );
       return <AccountPage />;
     }
 
-    // Company - Admin, Manager, Viewer can access (not Agent)
+    // Company - Admin, Manager, Viewer can access (not Agent, Sub-Agent)
     if (page === "company") {
-      if (role === "agent")
+      if (role === "agent" || role === "subagent")
         return (
           <PlaceholderPage
             title="Access Denied"
@@ -229,9 +120,9 @@ function App() {
       return <CompanyPage />;
     }
 
-    // Branches - Admin, Manager, Viewer can access (not Agent)
+    // Branches - Admin, Manager, Viewer can access (not Agent, Sub-Agent)
     if (page === "branches") {
-      if (role === "agent")
+      if (role === "agent" || role === "subagent")
         return (
           <PlaceholderPage
             title="Access Denied"
@@ -248,7 +139,7 @@ function App() {
 
     // Vouchers - Different views based on role
     if (page === "vouchers") {
-      if (role === "agent") {
+      if (role === "agent" || role === "subagent") {
         return (
           <Vouchers
             viewOnly={true}
@@ -296,7 +187,7 @@ function App() {
 
     // Transfer Vouchers - Only Manager can access
     if (page === "transfer-vouchers") {
-      if (role === "agent")
+      if (role !== "manager")
         return (
           <PlaceholderPage
             title="Access Denied"
@@ -304,33 +195,17 @@ function App() {
             description="You don't have permission to transfer vouchers. Only managers can transfer vouchers."
           />
         );
-      if (role === "viewer")
-        return (
-          <PlaceholderPage
-            title="Access Denied"
-            icon="🔒"
-            description="Viewers cannot transfer vouchers. This action requires manager privileges."
-          />
-        );
       return <TransferVoucherPage />;
     }
 
-    // Payment - Only Admin and Manager can access
+    // Payment - Manager can access
     if (page === "payment") {
-      if (role === "agent")
+      if (role !== "manager" && role !== "admin")
         return (
           <PlaceholderPage
             title="Access Denied"
             icon="🔒"
-            description="Agents cannot purchase vouchers. Please contact your manager."
-          />
-        );
-      if (role === "viewer")
-        return (
-          <PlaceholderPage
-            title="Access Denied"
-            icon="🔒"
-            description="Viewers cannot purchase vouchers."
+            description="You don't have permission to purchase vouchers."
           />
         );
       return (
@@ -342,17 +217,9 @@ function App() {
       );
     }
 
-    // Vehicles - Only Admin and Viewer can access (Manager cannot)
+    // Vehicles - Admin and Viewer can access
     if (page === "vehicles") {
-      if (role === "manager")
-        return (
-          <PlaceholderPage
-            title="Access Denied"
-            icon="🔒"
-            description="Managers cannot access vehicle database. Please contact admin."
-          />
-        );
-      if (role === "agent")
+      if (role === "manager" || role === "agent" || role === "subagent")
         return (
           <PlaceholderPage
             title="Access Denied"
@@ -369,17 +236,9 @@ function App() {
       );
     }
 
-    // MV Type - Only Admin and Viewer can access
+    // MV Type - Admin and Viewer can access
     if (page === "mvtype") {
-      if (role === "manager")
-        return (
-          <PlaceholderPage
-            title="Access Denied"
-            icon="🔒"
-            description="Managers cannot manage MV types."
-          />
-        );
-      if (role === "agent")
+      if (role === "manager" || role === "agent" || role === "subagent")
         return (
           <PlaceholderPage
             title="Access Denied"
@@ -396,9 +255,9 @@ function App() {
       );
     }
 
-    // Activity Logs - Admin, Viewer, and Manager can access (not Agent)
+    // Activity Logs / Logs - Admin, Viewer, and Manager can access (not Agent, Sub-Agent)
     if (page === "activitylogs") {
-      if (role === "agent")
+      if (role === "agent" || role === "subagent")
         return (
           <PlaceholderPage
             title="Access Denied"
@@ -409,17 +268,23 @@ function App() {
       return <ActivityLogsPage />;
     }
 
-    // Transactions - Admin, Viewer, and Manager can access (not Agent)
-    if (page === "transactions") {
-      if (role === "agent")
+    // Ledger - Admin and Manager only
+    if (page === "ledger") {
+      if (role === "admin" || role === "manager")
         return (
           <PlaceholderPage
-            title="Access Denied"
-            icon="🔒"
-            description="You don't have permission to view transactions."
+            title="Ledger"
+            icon="📒"
+            description="Financial ledger for voucher transactions and agent allocations."
           />
         );
-      return <TransactionLogsPage />;
+      return (
+        <PlaceholderPage
+          title="Access Denied"
+          icon="🔒"
+          description="You don't have permission to access the ledger."
+        />
+      );
     }
 
     return <DashboardPage />;
@@ -432,8 +297,6 @@ function App() {
         onNavigate={handleNavigate}
         role={role}
         onLogout={handleLogout}
-        onMyProfile={handleMyProfile}
-        onChangePassword={handleChangePassword}
       >
         {renderPage()}
       </AdminLayout>

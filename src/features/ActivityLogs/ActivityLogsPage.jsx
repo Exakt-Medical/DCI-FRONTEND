@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card } from "../../components/Card";
-import { MOCK_ACTIVITY_LOGS } from "../../constants/mockActivityLogs";
+import { auditTrailService } from "../../services/auditTrailService";
 import { ActivityLogsHeader } from "./components/ActivityLogsHeader";
 import { ActivityLogsFilters } from "./components/ActivityLogsFilters";
 import { ActivityLogsTable } from "./components/ActivityLogsTable";
@@ -17,12 +17,31 @@ export const ActivityLogsPage = () => {
 
   const itemsPerPage = 10;
 
+  const mapLog = (record) => ({
+    id: record.id,
+    user: record.userstamp,
+    role: record.userrole,
+    action: record.actionMade,
+    details: record.details,
+    timestamp: record.timestamp,
+  });
+
+  const fetchLogs = () => {
+    setLoading(true);
+    auditTrailService
+      .getAll()
+      .then((res) => {
+        setLogs(res.data.map(mapLog));
+        setLoading(false);
+      })
+      .catch(() => {
+        setLogs([]);
+        setLoading(false);
+      });
+  };
+
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setLogs(MOCK_ACTIVITY_LOGS);
-      setLoading(false);
-    }, 1000);
+    fetchLogs();
   }, []);
 
   // Filter logs
@@ -51,15 +70,10 @@ export const ActivityLogsPage = () => {
 
   const handleExport = () => {
     console.log("Exporting logs...");
-    // Add export logic here
   };
 
   const handleRefresh = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setLogs(MOCK_ACTIVITY_LOGS);
-      setLoading(false);
-    }, 1000);
+    fetchLogs();
   };
 
   const handleSearch = (term) => {
