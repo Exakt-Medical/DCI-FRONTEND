@@ -34,35 +34,6 @@ export const MaintenancePage = () => {
               We're currently performing scheduled maintenance to improve your
               experience. Please check back soon.
             </p>
-
-            {/* Status */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-6">
-              <div className="flex items-center justify-center gap-2">
-                <Shield className="w-4 h-4 text-amber-600" />
-                <span className="text-xs text-amber-700 font-medium">
-                  Estimated downtime: ~2 hours
-                </span>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="space-y-3">
-              <button
-                onClick={handleRefresh}
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Check Status
-              </button>
-
-              <a
-                href="mailto:support@vvipctpl.com"
-                className="inline-flex items-center justify-center gap-2 w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                <MessageCircle className="w-4 h-4" />
-                Contact Support
-              </a>
-            </div>
           </div>
 
           {/* Footer */}
