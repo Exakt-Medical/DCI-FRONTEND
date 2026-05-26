@@ -6,6 +6,7 @@ import { TicketSearchBar } from "./components/TicketSearchBar";
 import { TicketTable } from "./components/TicketTable";
 import { TicketPagination } from "./components/TicketPagination";
 import { TicketDetailModal } from "./components/TicketDetailModal";
+import { CreateTicketModal } from "./CreateTicketModal";
 import { useTicketFilters } from "./hooks/useTicketFilters";
 import {
   MOCK_TICKETS,
@@ -19,12 +20,15 @@ import {
   XCircle,
   AlertCircle,
   RefreshCw,
+  Plus,
 } from "lucide-react";
 
 export const TicketPage = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [tickets, setTickets] = useState(MOCK_TICKETS);
 
   const {
     searchTerm,
@@ -44,7 +48,7 @@ export const TicketPage = () => {
     setActiveTab,
     setCurrentPage,
     clearFilters,
-  } = useTicketFilters(MOCK_TICKETS);
+  } = useTicketFilters(tickets);
 
   const handleRefresh = () => {
     window.location.reload();
@@ -68,6 +72,34 @@ export const TicketPage = () => {
     console.log("Add note:", ticket);
   };
 
+  const handleCreateTicket = async (formData) => {
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const newTicket = {
+      id: `TKT-${String(tickets.length + 1).padStart(4, "0")}`,
+      customer: "New Customer",
+      type: formData.type,
+      typeLabel: formData.type,
+      subject: formData.subject,
+      description: formData.description,
+      status: "pending",
+      statusLabel: "Pending",
+      priority: formData.priority,
+      date: new Date().toISOString().split("T")[0],
+      lastUpdated: new Date().toISOString().split("T")[0],
+      vehicleInfo: {
+        plateNo: "N/A",
+        make: "N/A",
+        model: "N/A",
+        year: "N/A",
+      },
+    };
+
+    setTickets([newTicket, ...tickets]);
+    console.log("Created ticket:", newTicket);
+  };
+
   const tabCounts = {
     all: stats.total,
     dataMismatch: stats.dataMismatch,
@@ -76,12 +108,25 @@ export const TicketPage = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with Create Button */}
       <div className="border-b border-gray-200 pb-4">
-        <h1 className="text-xl font-semibold text-gray-900">Support Tickets</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Manage and track customer support tickets and inquiries
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-gray-900">
+              Support Tickets
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Manage and track customer support tickets and inquiries
+            </p>
+          </div>
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors"
+          >
+            <Plus size={16} />
+            Create Ticket
+          </button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -151,6 +196,13 @@ export const TicketPage = () => {
         ticket={selectedTicket}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
+      />
+
+      {/* Create Ticket Modal */}
+      <CreateTicketModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleCreateTicket}
       />
     </div>
   );

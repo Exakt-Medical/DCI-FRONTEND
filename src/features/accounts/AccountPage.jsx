@@ -37,11 +37,11 @@ export const AccountPage = () => {
   const itemsPerPage = 5;
 
   const roleFilterMap = {
-    "All": "all",
-    "Managers": "MANAGER",
-    "Agents": "AGENT",
+    All: "all",
+    Managers: "MANAGER",
+    Agents: "AGENT",
     "Sub-agents": "SUBAGENT",
-    "Admin": "ADMIN",
+    Admin: "ADMIN",
   };
 
   const fetchData = useCallback(async () => {
@@ -143,9 +143,7 @@ export const AccountPage = () => {
         isactive: !user.isactive,
       });
       setUsers(
-        users.map((u) =>
-          u.id === user.id ? { ...u, ...response.data } : u,
-        ),
+        users.map((u) => (u.id === user.id ? { ...u, ...response.data } : u)),
       );
     } catch (err) {
       console.error("Toggle active failed", err);
@@ -196,7 +194,14 @@ export const AccountPage = () => {
     return userService.bulkCreate(payload);
   };
 
-  const userTemplateHeaders = ["username", "password", "firstName", "lastName", "email", "role"];
+  const userTemplateHeaders = [
+    "username",
+    "password",
+    "firstName",
+    "lastName",
+    "email",
+    "role",
+  ];
 
   const statusOptions = [
     { value: "all", label: "All Status" },
@@ -267,7 +272,7 @@ export const AccountPage = () => {
 
       {/* Role Tabs */}
       <div className="mb-4">
-        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl inline-flex">
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
           {ROLE_TABS.map((tab) => (
             <button
               key={tab}
@@ -275,10 +280,10 @@ export const AccountPage = () => {
                 setActiveTab(tab);
                 setCurrentPage(1);
               }}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                 activeTab === tab
                   ? "bg-white text-primary-600 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-200/50"
               }`}
             >
               {tab}
@@ -378,19 +383,28 @@ export const AccountPage = () => {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={showManagerColumn ? 6 : 5} className="px-4 py-8 text-center text-gray-500">
+                  <td
+                    colSpan={showManagerColumn ? 6 : 5}
+                    className="px-4 py-8 text-center text-gray-500"
+                  >
                     Loading users...
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={showManagerColumn ? 6 : 5} className="px-4 py-8 text-center text-red-500">
+                  <td
+                    colSpan={showManagerColumn ? 6 : 5}
+                    className="px-4 py-8 text-center text-red-500"
+                  >
                     {error}
                   </td>
                 </tr>
               ) : paginatedUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={showManagerColumn ? 6 : 5} className="px-4 py-8 text-center text-gray-500">
+                  <td
+                    colSpan={showManagerColumn ? 6 : 5}
+                    className="px-4 py-8 text-center text-gray-500"
+                  >
                     No users found
                   </td>
                 </tr>
@@ -447,7 +461,13 @@ export const AccountPage = () => {
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={confirmDelete}
-        userName={selectedUser ? [selectedUser.firstName, selectedUser.lastName].filter(Boolean).join(" ") || selectedUser.username : ""}
+        userName={
+          selectedUser
+            ? [selectedUser.firstName, selectedUser.lastName]
+                .filter(Boolean)
+                .join(" ") || selectedUser.username
+            : ""
+        }
       />
 
       <UploadBulkModal
