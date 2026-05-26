@@ -3,6 +3,7 @@ import { generateCertificatePDF } from "../../utils/generateCertificatePDF";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { RefreshCw, Shield, AlertCircle } from "lucide-react";
+import { FinalReviewModal } from "./components/Finalreviewmodal";
 import { VehicleSearchSection } from "./components/VehicleSearchSection";
 import { VehicleInfoCard } from "./components/VehicleInfoCard";
 import { OwnerInfoCard } from "./components/OwnerInfoCard";
@@ -10,16 +11,15 @@ import { VoucherRedemption } from "./components/VoucherRedemption";
 import { verificationService } from "../../services/verificationService";
 import { useAlert } from "../../hooks/useAlert";
 
-// Helper to load from localStorage
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 const getPurchaseHistory = () => {
   const stored = localStorage.getItem("ctpl_purchase_history");
-  if (stored) {
-    return JSON.parse(stored);
-  }
-  return [];
+  return stored ? JSON.parse(stored) : [];
 };
 
-// Insurance fee mapping
 const insuranceFeeMap = {
   "PRIVATE CARS (INCLUDING JEEPS AND AUVS)": {
     prescribedPremiumFee: "449.40",
@@ -58,7 +58,10 @@ const insuranceFeeMap = {
   },
 };
 
-// Initial state objects
+// ---------------------------------------------------------------------------
+// Initial state
+// ---------------------------------------------------------------------------
+
 const initialVehicleData = {
   mv_file_number: "",
   plate_number: "",
@@ -70,8 +73,7 @@ const initialVehicleData = {
   year_model: "",
   classification: "",
   body_type: "",
-  vehicle_category: "",
-  vehicle_type: "",
+  denomination: "",
   last_registration_date: "",
 };
 
@@ -97,20 +99,39 @@ const initialInsuranceData = {
   totalAmount: "",
 };
 
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export const VerificationPage = ({ onCertificate }) => {
+  // --- Step 1: verify state ---
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState(null);
   const [isRecordFound, setIsRecordFound] = useState(false);
+
+  // verificationId returned by /verify — needed to call /confirm later
+  const [verificationId, setVerificationId] = useState(null);
+
+  // --- Step 2: voucher state ---
   const [validatedVoucher, setValidatedVoucher] = useState(null);
   const [voucherError, setVoucherError] = useState(null);
   const [isValidatingVoucher, setIsValidatingVoucher] = useState(false);
+
+  // --- Data state ---
   const [vehicleData, setVehicleData] = useState(initialVehicleData);
   const [ownerData, setOwnerData] = useState(initialOwnerData);
   const [insuranceData, setInsuranceData] = useState(initialInsuranceData);
+
+  // --- Step 3: final review + confirm state ---
   const [showFinalReview, setShowFinalReview] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
+
   const { success, error, loading, close } = useAlert();
 
-  // Auto-calculate total amount when any fee changes
+  // ---------------------------------------------------------------------------
+  // Insurance helpers
+  // ---------------------------------------------------------------------------
+
   const calculateTotal = (data) => {
     const prescribed = parseFloat(data.prescribedPremiumFee) || 0;
     const dstVal = parseFloat(data.dst) || 0;
@@ -128,24 +149,102 @@ export const VerificationPage = ({ onCertificate }) => {
       lgt: "",
       validationFee: "",
     };
-
     const newData = {
       ...insuranceData,
       selectedCode: code,
       premiumType: code,
-      prescribedPremiumFee: fees.prescribedPremiumFee,
-      dst: fees.dst,
-      vat: fees.vat,
-      lgt: fees.lgt,
-      validationFee: fees.validationFee,
+      ...fees,
     };
-    const total = calculateTotal(newData);
-    setInsuranceData({ ...newData, totalAmount: total });
+    setInsuranceData({ ...newData, totalAmount: calculateTotal(newData) });
   };
 
   const updatePolicyNumber = (value) => {
     setInsuranceData({ ...insuranceData, policyNumber: value });
   };
+
+  // ---------------------------------------------------------------------------
+  // STEP 1 — Verify: call POST /api/v1/vvip/verify
+  // On success: save verificationId + populate vehicle/owner details
+  // On failure: show fetchError
+  // ---------------------------------------------------------------------------
+
+  const handleVerify = async ({ mvFileNo, plateNo, engineNo, chassisNo }) => {
+    setIsFetching(true);
+    setFetchError(null);
+    setIsRecordFound(false);
+    setVerificationId(null);
+    loading("Verifying vehicle...");
+
+    try {
+      const res = await verificationService.verify({
+        mvFileNumber: mvFileNo,
+        plateNumber: plateNo,
+        engineNumber: engineNo,
+        chassisNumber: chassisNo,
+      });
+      const data = res.data;
+      close();
+
+      // FAILED or ERROR from backend
+      if (data.verificationStatus !== "VERIFIED") {
+        setFetchError(
+          data.failureReason || "No matching vehicle record found.",
+        );
+        setIsRecordFound(false);
+        return;
+      }
+
+      // Save verificationId — required for confirm step
+      setVerificationId(data.verificationId);
+
+      // Populate vehicle details from VVS response
+      setVehicleData({
+        mv_file_number: data.mvFileNo || "",
+        plate_number: data.plateNumber || "",
+        engine_number: data.engineNumber || "",
+        chassis_number: data.chassisNumber || "",
+        make: data.make || "",
+        series: data.series || "",
+        color: data.color || "",
+        year_model: data.yearModel || "",
+        classification: data.classification || "",
+        body_type: data.bodyType || "",
+        denomination: data.denomination || "",
+        last_registration_date: data.lastRegistrationDate || "",
+      });
+
+      // Populate owner details — now separate fields, not one full name
+      setOwnerData({
+        firstName: data.ownerFirstName || "",
+        lastName: data.ownerLastName || "",
+        middleName: data.ownerMiddleName || "",
+        address: data.ownerAddress || "",
+        contactNo: "",
+        email: "",
+        tin: "",
+      });
+
+      setIsRecordFound(true);
+    } catch (err) {
+      close();
+      console.error(
+        "Verify error:",
+        err.response?.status,
+        err.response?.data,
+        err.message,
+      );
+      setFetchError("Error verifying vehicle. Please try again.");
+      setIsRecordFound(false);
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // STEP 2 — Voucher validation (frontend only, no backend call)
+  // Valid voucher → enables Final Review button
+  // Invalid voucher → shows error, button stays disabled
+  // ---------------------------------------------------------------------------
 
   const validateVoucher = (voucherCode) => {
     if (!voucherCode.trim()) {
@@ -167,27 +266,17 @@ export const VerificationPage = ({ onCertificate }) => {
 
       if (voucher) {
         setValidatedVoucher(voucher);
-        // Auto-populate insurance data from voucher
+        // Auto-populate insurance fees from voucher's insurance code
         const fees =
           insuranceFeeMap[voucher.insuranceCode] ||
           insuranceFeeMap["PRIVATE CARS (INCLUDING JEEPS AND AUVS)"];
-        setInsuranceData({
+        const newData = {
           selectedCode: voucher.insuranceCode,
           policyNumber: voucher.policyNumber,
           premiumType: voucher.insuranceCode,
-          prescribedPremiumFee: fees.prescribedPremiumFee,
-          dst: fees.dst,
-          vat: fees.vat,
-          lgt: fees.lgt,
-          validationFee: fees.validationFee,
-          totalAmount: (
-            parseFloat(fees.prescribedPremiumFee) +
-            parseFloat(fees.dst) +
-            parseFloat(fees.vat) +
-            parseFloat(fees.lgt) +
-            parseFloat(fees.validationFee)
-          ).toFixed(2),
-        });
+          ...fees,
+        };
+        setInsuranceData({ ...newData, totalAmount: calculateTotal(newData) });
         setVoucherError(null);
       } else {
         setValidatedVoucher(null);
@@ -195,112 +284,46 @@ export const VerificationPage = ({ onCertificate }) => {
           "Invalid or expired voucher code. Please check and try again.",
         );
       }
+
       setIsValidatingVoucher(false);
     }, 800);
   };
 
-  const handleVerify = async ({ mvFileNo, plateNo, engineNo, chassisNo }) => {
-    setIsFetching(true);
-    setFetchError(null);
-    loading("Looking up vehicle...");
+  // ---------------------------------------------------------------------------
+  // STEP 3 — Confirm: call POST /api/v1/vvip/{verificationId}/confirm
+  // On COMPLETED: mark voucher redeemed, generate PDF, show certificate no.
+  // On ERROR: show submission error
+  // ---------------------------------------------------------------------------
+
+  const handleGenerateCertificate = async () => {
+    if (!verificationId) {
+      await error(
+        "Error",
+        "Verification ID missing. Please verify the vehicle again.",
+      );
+      return;
+    }
+
+    setIsConfirming(true);
+    loading("Submitting final review...");
 
     try {
-      const res = await verificationService.lookup({
-        mvFileNo,
-        plateNo,
-        engineNo,
-        chassisNo,
-      });
+      const res = await verificationService.confirm(verificationId);
       const data = res.data;
       close();
 
-      if (!data.found) {
-        setFetchError("No records found in VVS database.");
-        setIsRecordFound(false);
-        return;
-      }
-
-      setVehicleData({
-        mv_file_number: data.mvFileNumber || "",
-        plate_number: data.plateNumber || "",
-        engine_number: data.engineNumber || "",
-        chassis_number: data.chassisNumber || "",
-        make: data.make || "",
-        series: data.series || "",
-        color: data.color || "",
-        year_model: data.yearModel || "",
-        body_type: data.bodyType || "",
-      });
-
-      setOwnerData({
-        firstName: data.ownerFullName || "",
-        lastName: "",
-        middleName: "",
-        address: "",
-        contactNo: "",
-        email: "",
-        tin: "",
-      });
-
-      setIsRecordFound(true);
-    } catch (err) {
-      close();
-      console.error(
-        "Lookup error:",
-        err.response?.status,
-        err.response?.data,
-        err.message,
-      );
-
-      setFetchError("Error fetching vehicle data. Please try again.");
-      setIsRecordFound(false);
-    } finally {
-      setIsFetching(false);
-    }
-  };
-
-  const handleResetForm = () => {
-    setFetchError(null);
-    setIsRecordFound(false);
-    setValidatedVoucher(null);
-    setVoucherError(null);
-    setVehicleData(initialVehicleData);
-    setOwnerData(initialOwnerData);
-    setInsuranceData(initialInsuranceData);
-  };
-
-  const isFormComplete = () => {
-    return isRecordFound && validatedVoucher !== null;
-  };
-
-  const handleSubmitForReview = () => {
-    setShowFinalReview(true);
-  };
-
-  const handleGenerateCertificate = async () => {
-    loading("Processing verification...");
-
-    try {
-      const res = await verificationService.verify({
-        mvFileNumber: vehicleData.mv_file_number,
-        plateNumber: vehicleData.plate_number,
-        engineNumber: vehicleData.engine_number,
-        chassisNumber: vehicleData.chassis_number,
-        premiumType: insuranceData.premiumType,
-      });
-
-      const { certificateNo, verificationStatus, failureReason } = res.data;
-      close();
-
-      if (verificationStatus !== "VERIFIED") {
+      // ConfirmRequest failed on VVS side
+      if (data.verificationStatus !== "COMPLETED") {
         await error(
-          "Verification Failed",
-          failureReason || "Vehicle details did not match.",
+          "Submission Failed",
+          data.failureReason || "ConfirmRequest failed. Please try again.",
         );
         return;
       }
 
-      // Mark voucher redeemed
+      const { certificateNo } = data;
+
+      // Mark voucher as redeemed in localStorage
       if (validatedVoucher) {
         const purchaseHistory = getPurchaseHistory();
         const updated = purchaseHistory.map((v) =>
@@ -317,14 +340,15 @@ export const VerificationPage = ({ onCertificate }) => {
 
       setShowFinalReview(false);
 
-      // Generate PDF in browser using jsPDF (auto-downloads)
+      // Generate and auto-download the PDF certificate
       await generateCertificatePDF({
         vehicle: vehicleData,
         owner: ownerData,
         insurance: insuranceData,
-        authNo: certificateNo, // use real certNo from backend as the auth code
+        authNo: certificateNo,
       });
 
+      // Notify parent with certificate data
       onCertificate({
         vehicle: vehicleData,
         owner: ownerData,
@@ -338,9 +362,43 @@ export const VerificationPage = ({ onCertificate }) => {
       );
     } catch (err) {
       close();
-      await error("Error", "Verification failed. Please try again.");
+      console.error(
+        "Confirm error:",
+        err.response?.status,
+        err.response?.data,
+        err.message,
+      );
+      await error(
+        "Submission Error",
+        "Failed to submit final review. Please try again.",
+      );
+    } finally {
+      setIsConfirming(false);
     }
   };
+
+  // ---------------------------------------------------------------------------
+  // Reset
+  // ---------------------------------------------------------------------------
+
+  const handleResetForm = () => {
+    setFetchError(null);
+    setIsRecordFound(false);
+    setVerificationId(null);
+    setValidatedVoucher(null);
+    setVoucherError(null);
+    setVehicleData(initialVehicleData);
+    setOwnerData(initialOwnerData);
+    setInsuranceData(initialInsuranceData);
+    setShowFinalReview(false);
+  };
+
+  // Final Review button enabled only when vehicle is verified AND voucher is valid
+  const isFormComplete = () => isRecordFound && validatedVoucher !== null;
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -353,12 +411,14 @@ export const VerificationPage = ({ onCertificate }) => {
         </p>
       </div>
 
+      {/* STEP 1 — Search + verify */}
       <VehicleSearchSection
         onVerify={handleVerify}
         isFetching={isFetching}
         fetchError={fetchError}
       />
 
+      {/* STEP 1 result — vehicle + owner details */}
       {isRecordFound && (
         <>
           <VehicleInfoCard vehicleData={vehicleData} />
@@ -366,6 +426,7 @@ export const VerificationPage = ({ onCertificate }) => {
         </>
       )}
 
+      {/* STEP 2 — Voucher / insurance validation */}
       <Card className="p-5 mb-5">
         <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
           <Shield size={18} className="text-primary-600" />
@@ -408,6 +469,7 @@ export const VerificationPage = ({ onCertificate }) => {
         )}
       </Card>
 
+      {/* Action buttons */}
       <div className="flex justify-between gap-3">
         <Button
           variant="secondary"
@@ -416,17 +478,22 @@ export const VerificationPage = ({ onCertificate }) => {
         >
           <RefreshCw size={16} /> Reset Form
         </Button>
-        <Button onClick={handleSubmitForReview} disabled={!isFormComplete()}>
+        <Button
+          onClick={() => setShowFinalReview(true)}
+          disabled={!isFormComplete()}
+        >
           Submit for Final Review
         </Button>
       </div>
 
+      {/* STEP 3 — Final review modal → confirm → certificate */}
       {showFinalReview && (
         <FinalReviewModal
           vehicleData={vehicleData}
           ownerData={ownerData}
           insuranceData={insuranceData}
           validatedVoucher={validatedVoucher}
+          isConfirming={isConfirming}
           onConfirm={handleGenerateCertificate}
           onClose={() => setShowFinalReview(false)}
         />
