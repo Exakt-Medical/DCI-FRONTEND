@@ -363,27 +363,31 @@ function App() {
       );
     }
 
+    // Activity Logs Page - Accessible by Admin and Manager only
     if (page === "activitylogs") {
-      if (role === "agent" || role === "subagent")
+      if (role === "agent" || role === "subagent" || role === "viewer") {
         return (
           <PlaceholderPage
             title="Access Denied"
             icon="🔒"
-            description="You don't have permission to view activity logs."
+            description="You don't have permission to view activity logs. Only administrators and managers can access this page."
           />
         );
+      }
       return <ActivityLogsPage />;
     }
 
+    // Transaction Logs Page - Accessible by Admin and Manager only
     if (page === "transactions") {
-      if (role === "agent" || role === "subagent")
+      if (role === "agent" || role === "subagent" || role === "viewer") {
         return (
           <PlaceholderPage
             title="Access Denied"
             icon="🔒"
-            description="You don't have permission to view transactions."
+            description="You don't have permission to view transaction logs. Only administrators and managers can access this page."
           />
         );
+      }
       return <TransactionLogsPage />;
     }
 

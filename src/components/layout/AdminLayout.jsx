@@ -14,6 +14,8 @@ import {
   ArrowLeftRight,
   BookOpen,
   HelpCircle,
+  History,
+  ListTodo,
 } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
@@ -83,9 +85,16 @@ export const AdminLayout = ({
       },
       {
         id: "activitylogs",
-        label: "Logs",
-        icon: Activity,
-        section: "MANAGE",
+        label: "Activity Logs",
+        icon: History,
+        section: "LOGS",
+        disabled: false,
+      },
+      {
+        id: "transactions",
+        label: "Transaction Logs",
+        icon: ListTodo,
+        section: "LOGS",
         disabled: false,
       },
       {
@@ -148,10 +157,17 @@ export const AdminLayout = ({
       },
       {
         id: "activitylogs",
-        label: "Logs",
-        icon: Activity,
-        section: "MANAGE",
-        disabled: false,
+        label: "Activity Logs",
+        icon: History,
+        section: "LOGS",
+        disabled: true, // Viewers cannot access logs
+      },
+      {
+        id: "transactions",
+        label: "Transaction Logs",
+        icon: ListTodo,
+        section: "LOGS",
+        disabled: true, // Viewers cannot access logs
       },
     ],
     manager: [
@@ -209,13 +225,20 @@ export const AdminLayout = ({
         label: "Transfer",
         icon: ArrowLeftRight,
         section: "VOUCHERS",
-        disabled: true, // Disabled by default
+        disabled: true,
       },
       {
         id: "activitylogs",
-        label: "Logs",
-        icon: Activity,
-        section: "MANAGE",
+        label: "Activity Logs",
+        icon: History,
+        section: "LOGS",
+        disabled: false,
+      },
+      {
+        id: "transactions",
+        label: "Transaction Logs",
+        icon: ListTodo,
+        section: "LOGS",
         disabled: false,
       },
       {
@@ -248,6 +271,20 @@ export const AdminLayout = ({
         section: "VOUCHERS",
         disabled: false,
       },
+      {
+        id: "activitylogs",
+        label: "Activity Logs",
+        icon: History,
+        section: "LOGS",
+        disabled: true, // Agents cannot access logs
+      },
+      {
+        id: "transactions",
+        label: "Transaction Logs",
+        icon: ListTodo,
+        section: "LOGS",
+        disabled: true, // Agents cannot access logs
+      },
     ],
     subagent: [
       {
@@ -270,6 +307,20 @@ export const AdminLayout = ({
         icon: Ticket,
         section: "VOUCHERS",
         disabled: false,
+      },
+      {
+        id: "activitylogs",
+        label: "Activity Logs",
+        icon: History,
+        section: "LOGS",
+        disabled: true, // Sub-agents cannot access logs
+      },
+      {
+        id: "transactions",
+        label: "Transaction Logs",
+        icon: ListTodo,
+        section: "LOGS",
+        disabled: true, // Sub-agents cannot access logs
       },
     ],
   };
