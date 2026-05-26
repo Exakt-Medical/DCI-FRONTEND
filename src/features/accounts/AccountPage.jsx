@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
-import { Search, Filter, Users, Plus, Upload } from "lucide-react";
+import { Search, Filter, Users, Plus, Upload, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { userService } from "../../services/userService";
 import { branchService } from "../../services/branchService";
 import { StatCard } from "./components/StatCard";
@@ -35,6 +35,21 @@ export const AccountPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const itemsPerPage = 5;
+  const [sortField, setSortField] = useState("firstName");
+  const [sortDirection, setSortDirection] = useState("asc");
+
+  const handleSort = (field) => {
+    setSortDirection((prev) => (sortField === field && prev === "asc" ? "desc" : "asc"));
+    setSortField(field);
+    setCurrentPage(1);
+  };
+
+  const SortIcon = ({ field }) => {
+    if (sortField !== field) return <ArrowUpDown size={12} className="inline ml-1 text-gray-300" />;
+    return sortDirection === "asc"
+      ? <ArrowUp size={12} className="inline ml-1 text-primary-600" />
+      : <ArrowDown size={12} className="inline ml-1 text-primary-600" />;
+  };
 
   const roleFilterMap = {
     "All": "all",
@@ -90,9 +105,18 @@ export const AccountPage = () => {
     return matchesSearch && matchesRole && matchesStatus;
   });
 
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const getSortValue = (user, field) => {
+    if (field === "name") return ((user.firstName || "") + " " + (user.lastName || "")).toLowerCase();
+    return (user[field] ?? "").toString().toLowerCase();
+  };
+
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
+    const cmp = getSortValue(a, sortField).localeCompare(getSortValue(b, sortField));
+    return sortDirection === "asc" ? cmp : -cmp;
+  });
+  const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedUsers = filteredUsers.slice(
+  const paginatedUsers = sortedUsers.slice(
     startIndex,
     startIndex + itemsPerPage,
   );
@@ -353,22 +377,22 @@ export const AccountPage = () => {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Name
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("name")}>
+                  Name <SortIcon field="name" />
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Role
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("role")}>
+                  Role <SortIcon field="role" />
                 </th>
                 {showManagerColumn && (
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Manager
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("managerName")}>
+                    Manager <SortIcon field="managerName" />
                   </th>
                 )}
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Status
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("isactive")}>
+                  Status <SortIcon field="isactive" />
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Updated
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("timestamp")}>
+                  Updated <SortIcon field="timestamp" />
                 </th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Actions
