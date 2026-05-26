@@ -4,6 +4,7 @@ import { Button } from "../../components/Button";
 import { Search, Filter, Users, Plus, Upload, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { userService } from "../../services/userService";
 import { branchService } from "../../services/branchService";
+import { companyService } from "../../services/companyService";
 import { StatCard } from "./components/StatCard";
 import { UserTableRow } from "./components/UserTableRow";
 import { UserFormModal } from "./components/UserFormModal";
@@ -13,13 +14,14 @@ import { AccountPagination } from "./components/AccountPagination";
 import { UploadBulkModal } from "../../components/UploadBulkModal";
 import { Dropdown } from "../../components/Dropdown";
 
-const ROLE_TABS = ["All", "Managers", "Agents", "Sub-agents", "Admin"];
+const ROLE_TABS = ["All", "Managers", "Agents", "Sub-agents", "Support", "Admin"];
 
 export const AccountPage = () => {
   const role = localStorage.getItem("role");
   const isViewer = role === "VIEWER";
   const [users, setUsers] = useState([]);
   const [branches, setBranches] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -56,18 +58,21 @@ export const AccountPage = () => {
     "Managers": "MANAGER",
     "Agents": "AGENT",
     "Sub-agents": "SUBAGENT",
+    "Support": "SUPPORT",
     "Admin": "ADMIN",
   };
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [usersRes, branchesRes] = await Promise.all([
+      const [usersRes, branchesRes, companiesRes] = await Promise.all([
         userService.getAll(),
         branchService.getAll(),
+        companyService.getAll(),
       ]);
       setUsers(usersRes.data);
       setBranches(branchesRes.data);
+      setCompanies(companiesRes.data);
       setError(null);
     } catch (err) {
       setError("Failed to load data");
@@ -85,6 +90,7 @@ export const AccountPage = () => {
   const totalManagers = users.filter((u) => u.role === "MANAGER").length;
   const totalAgents = users.filter((u) => u.role === "AGENT").length;
   const totalSubAgents = users.filter((u) => u.role === "SUBAGENT").length;
+  const totalSupport = users.filter((u) => u.role === "SUPPORT").length;
 
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
@@ -107,6 +113,11 @@ export const AccountPage = () => {
 
   const getSortValue = (user, field) => {
     if (field === "name") return ((user.firstName || "") + " " + (user.lastName || "")).toLowerCase();
+    if (field === "branchName") {
+      if (user.role === "ADMIN") return "head company, head branch";
+      if (["AGENT", "SUBAGENT"].includes(user.role)) return ((user.managerBranchCompanyName ? user.managerBranchCompanyName + " / " : "") + (user.managerBranchName || "") || "N/A").toLowerCase();
+      return ((user.branchCompanyName ? user.branchCompanyName + " / " : "") + (user.branchName || "") || "N/A").toLowerCase();
+    }
     return (user[field] ?? "").toString().toLowerCase();
   };
 
@@ -262,7 +273,7 @@ export const AccountPage = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
         <StatCard
           title="Total Users"
           value={totalUsers}
@@ -286,6 +297,12 @@ export const AccountPage = () => {
           value={totalSubAgents}
           icon={Users}
           color="purple"
+        />
+        <StatCard
+          title="Support"
+          value={totalSupport}
+          icon={Users}
+          color="orange"
         />
       </div>
 
@@ -383,6 +400,9 @@ export const AccountPage = () => {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("role")}>
                   Role <SortIcon field="role" />
                 </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("branchName")}>
+                  Company/Branch <SortIcon field="branchName" />
+                </th>
                 {showManagerColumn && (
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("managerName")}>
                     Manager <SortIcon field="managerName" />
@@ -402,19 +422,19 @@ export const AccountPage = () => {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={showManagerColumn ? 6 : 5} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={showManagerColumn ? 7 : 6} className="px-4 py-8 text-center text-gray-500">
                     Loading users...
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={showManagerColumn ? 6 : 5} className="px-4 py-8 text-center text-red-500">
+                  <td colSpan={showManagerColumn ? 7 : 6} className="px-4 py-8 text-center text-red-500">
                     {error}
                   </td>
                 </tr>
               ) : paginatedUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={showManagerColumn ? 6 : 5} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={showManagerColumn ? 7 : 6} className="px-4 py-8 text-center text-gray-500">
                     No users found
                   </td>
                 </tr>
@@ -458,7 +478,10 @@ export const AccountPage = () => {
         user={selectedUser}
         isEditing={isEditing}
         branches={branches}
+        companies={companies}
         allUsers={users}
+        currentUserRole={role}
+        currentUsername={localStorage.getItem("username")}
       />
 
       <ViewUserModal

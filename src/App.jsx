@@ -13,6 +13,7 @@ import PaymentPage from "./features/payment/PaymentPage";
 import { AccountPage } from "./features/accounts/AccountPage";
 import { TransactionLogsPage } from "./features/TransactionLogs/TransactionLogsPage";
 import { ActivityLogsPage } from "./features/ActivityLogs/ActivityLogsPage";
+import { TicketPage } from "./features/Tickets/TicketPage";
 import { PlaceholderPage } from "./features/placeholder/PlaceholderPage";
 
 function App() {
@@ -107,9 +108,9 @@ function App() {
       return <AccountPage />;
     }
 
-    // Company - Admin, Manager, Viewer can access (not Agent, Sub-Agent)
+    // Company - Admin, Viewer can access (not Manager, Agent, Sub-Agent)
     if (page === "company") {
-      if (role === "agent" || role === "subagent")
+      if (role === "manager" || role === "agent" || role === "subagent")
         return (
           <PlaceholderPage
             title="Access Denied"
@@ -120,9 +121,9 @@ function App() {
       return <CompanyPage />;
     }
 
-    // Branches - Admin, Manager, Viewer can access (not Agent, Sub-Agent)
+    // Branches - Admin, Viewer can access (not Manager, Agent, Sub-Agent)
     if (page === "branches") {
-      if (role === "agent" || role === "subagent")
+      if (role === "manager" || role === "agent" || role === "subagent")
         return (
           <PlaceholderPage
             title="Access Denied"
@@ -285,6 +286,19 @@ function App() {
           description="You don't have permission to access the ledger."
         />
       );
+    }
+
+    // Tickets - Admin and Support only
+    if (page === "tickets") {
+      if (role !== "admin" && role !== "support")
+        return (
+          <PlaceholderPage
+            title="Access Denied"
+            icon="🔒"
+            description="You don't have permission to access tickets."
+          />
+        );
+      return <TicketPage />;
     }
 
     return <DashboardPage />;

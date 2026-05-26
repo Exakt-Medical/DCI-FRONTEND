@@ -219,6 +219,9 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
                 <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
                   viewer2 / viewer123
                 </div>
+                <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
+                  support / support123
+                </div>
               </div>
             </div>
           </div>

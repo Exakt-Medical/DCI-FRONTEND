@@ -78,6 +78,13 @@ export const AdminLayout = ({
         disabled: false,
       },
       {
+        id: "tickets",
+        label: "Tickets",
+        icon: Ticket,
+        section: "TICKETS",
+        disabled: false,
+      },
+      {
         id: "activitylogs",
         label: "Logs",
         icon: Activity,
@@ -155,20 +162,6 @@ export const AdminLayout = ({
         id: "accounts",
         label: "Accounts",
         icon: Users,
-        section: "ADMINISTRATION",
-        disabled: false,
-      },
-      {
-        id: "company",
-        label: "Company",
-        icon: Building2,
-        section: "ADMINISTRATION",
-        disabled: false,
-      },
-      {
-        id: "branches",
-        label: "Branches",
-        icon: MapPin,
         section: "ADMINISTRATION",
         disabled: false,
       },
@@ -261,6 +254,22 @@ export const AdminLayout = ({
         disabled: false,
       },
     ],
+    support: [
+      {
+        id: "dashboard",
+        label: "Dashboard",
+        icon: LayoutDashboard,
+        section: "MAIN",
+        disabled: false,
+      },
+      {
+        id: "tickets",
+        label: "Tickets",
+        icon: Ticket,
+        section: "TICKETS",
+        disabled: false,
+      },
+    ],
   };
 
   const currentNav = navConfig[role] || navConfig.admin;
@@ -278,6 +287,7 @@ export const AdminLayout = ({
     manager: { label: "Manager", initial: "M", color: "bg-primary-500" },
     agent: { label: "Agent", initial: "AG", color: "bg-primary-500" },
     subagent: { label: "Sub-Agent", initial: "SA", color: "bg-primary-500" },
+    support: { label: "Support", initial: "S", color: "bg-primary-500" },
   };
 
   const currentUser = userInfo[role] || userInfo.admin;
@@ -289,6 +299,7 @@ export const AdminLayout = ({
       manager: "Manager",
       agent: "Agent",
       subagent: "Sub-Agent",
+      support: "Support",
     };
     return names[role] || "User";
   };
