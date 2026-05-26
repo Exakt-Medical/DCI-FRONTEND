@@ -5,10 +5,7 @@ import { Card } from "../../components/Card";
 import { ConcernTypeSelector } from "./components/modals/ConcernTypeSelector";
 import { RequestorInfoSection } from "./components/modals/RequestorInfoSection";
 import { VehicleSection } from "./components/modals/VehicleSection";
-import { AccountSection } from "./components/modals/AccountSection";
-import { VoucherSection } from "./components/modals/VoucherSection";
-import { CompanySection } from "./components/modals/CompanySection";
-import { SystemSection } from "./components/modals/SystemSection";
+import { OtherConcernSection } from "./components/modals/OtherConcernSection";
 
 export const CreateTicketModal = ({
   isOpen,
@@ -32,10 +29,10 @@ export const CreateTicketModal = ({
       correctValue: "",
       mismatchedField: "",
     },
-    accountInfo: { username: "", role: "", action: "" },
-    voucherInfo: { voucherCode: "", policyNumber: "" },
-    companyInfo: { companyId: "", companyName: "", branchId: "" },
-    systemInfo: { page: "", browser: "" },
+    otherInfo: {
+      category: "", // account, voucher, company, system, other
+      details: "",
+    },
     attachment: null,
   });
 
@@ -67,10 +64,23 @@ export const CreateTicketModal = ({
       concernType: typeId,
       vehicleSubType: "",
     }));
+
+    // Auto-set subject based on concern type
+    if (typeId === "vehicle") {
+      setFormData((prev) => ({ ...prev, subject: "Vehicle Issue" }));
+    } else if (typeId === "other") {
+      setFormData((prev) => ({ ...prev, subject: "Other Concern" }));
+    }
   };
 
   const handleVehicleSubTypeChange = (subTypeId) => {
     setFormData((prev) => ({ ...prev, vehicleSubType: subTypeId }));
+    // Auto-set subject based on vehicle sub-type
+    const subjectText =
+      subTypeId === "dataMismatch"
+        ? "Vehicle Data Mismatch"
+        : "Vehicle Not Found";
+    setFormData((prev) => ({ ...prev, subject: subjectText }));
   };
 
   const handleSubmit = async (e) => {
@@ -80,7 +90,6 @@ export const CreateTicketModal = ({
       !formData.requestedBy.name ||
       !formData.requestedBy.email ||
       !formData.concernType ||
-      !formData.subject ||
       !formData.description
     ) {
       setError("Please fill in all required fields.");
@@ -126,10 +135,7 @@ export const CreateTicketModal = ({
           correctValue: "",
           mismatchedField: "",
         },
-        accountInfo: { username: "", role: "", action: "" },
-        voucherInfo: { voucherCode: "", policyNumber: "" },
-        companyInfo: { companyId: "", companyName: "", branchId: "" },
-        systemInfo: { page: "", browser: "" },
+        otherInfo: { category: "", details: "" },
         attachment: null,
       });
       onClose();
@@ -150,7 +156,6 @@ export const CreateTicketModal = ({
   const renderDynamicFields = () => {
     // For login page mode - show account section for login/account issues
     if (isLoginPageMode) {
-      // Show account section for login or account concern types
       if (
         formData.concernType === "login" ||
         formData.concernType === "account"
@@ -160,7 +165,7 @@ export const CreateTicketModal = ({
       return null;
     }
 
-    // For regular mode - show different sections based on concern type
+    // For regular mode
     switch (formData.concernType) {
       case "vehicle":
         return (
@@ -170,14 +175,10 @@ export const CreateTicketModal = ({
             onVehicleSubTypeChange={handleVehicleSubTypeChange}
           />
         );
-      case "account":
-        return <AccountSection formData={formData} onChange={handleChange} />;
-      case "voucher":
-        return <VoucherSection formData={formData} onChange={handleChange} />;
-      case "company":
-        return <CompanySection formData={formData} onChange={handleChange} />;
-      case "system":
-        return <SystemSection formData={formData} onChange={handleChange} />;
+      case "other":
+        return (
+          <OtherConcernSection formData={formData} onChange={handleChange} />
+        );
       default:
         return null;
     }
@@ -262,26 +263,13 @@ export const CreateTicketModal = ({
                     isLoginPageMode={isLoginPageMode}
                   />
 
+                  {/* Subject is now auto-generated, not required as separate field */}
                   <Card className="p-4">
                     <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
                       <FileText size={18} className="text-primary-500" />
                       Ticket Details
                     </h3>
                     <div className="space-y-4">
-                      <div>
-                        <label className="text-xs font-medium text-gray-500">
-                          Subject *
-                        </label>
-                        <input
-                          type="text"
-                          name="subject"
-                          value={formData.subject}
-                          onChange={handleChange}
-                          placeholder="Brief summary of your issue"
-                          className="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                          required
-                        />
-                      </div>
                       <div>
                         <label className="text-xs font-medium text-gray-500">
                           Description *
