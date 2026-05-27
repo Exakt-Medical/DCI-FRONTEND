@@ -9,7 +9,6 @@ import { TransactionTable } from "./components/TransactionTable";
 export const TransactionLogsPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
-  const [selectedOrigin, setSelectedOrigin] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -24,23 +23,24 @@ export const TransactionLogsPage = () => {
     (t) => t.status === "Failed",
   ).length;
 
+  // Handle stat card click
+  const handleStatClick = (status) => {
+    setSelectedStatus(status);
+    setCurrentPage(1);
+  };
+
   // Filter transactions
   const filteredTransactions = MOCK_TRANSACTIONS.filter((transaction) => {
     const matchesSearch =
       searchTerm === "" ||
-      transaction.agent?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      transaction.assuredName
-        ?.toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      transaction.authNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      transaction.account?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      transaction.refNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       transaction.company?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus =
       selectedStatus === "all" || transaction.status === selectedStatus;
-    const matchesOrigin =
-      selectedOrigin === "all" || transaction.origin === selectedOrigin;
 
-    return matchesSearch && matchesStatus && matchesOrigin;
+    return matchesSearch && matchesStatus;
   });
 
   // Pagination
@@ -57,8 +57,8 @@ export const TransactionLogsPage = () => {
 
   const handleClearFilters = () => {
     setSelectedStatus("all");
-    setSelectedOrigin("all");
     setSearchTerm("");
+    setCurrentPage(1);
   };
 
   return (
@@ -73,25 +73,31 @@ export const TransactionLogsPage = () => {
         </p>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Clickable */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <TransactionStatCard
           title="Authenticated"
           value={totalAuthenticated}
           icon={CheckCircle}
           color="green"
+          isActive={selectedStatus === "Authenticated"}
+          onClick={() => handleStatClick("Authenticated")}
         />
         <TransactionStatCard
           title="Verified"
           value={totalVerified}
           icon={RefreshCw}
-          color="blue"
+          color="green"
+          isActive={selectedStatus === "Verified"}
+          onClick={() => handleStatClick("Verified")}
         />
         <TransactionStatCard
           title="Failed"
           value={totalFailed}
           icon={XCircle}
           color="red"
+          isActive={selectedStatus === "Failed"}
+          onClick={() => handleStatClick("Failed")}
         />
       </div>
 
@@ -101,8 +107,6 @@ export const TransactionLogsPage = () => {
         onSearchChange={setSearchTerm}
         selectedStatus={selectedStatus}
         onStatusChange={setSelectedStatus}
-        selectedOrigin={selectedOrigin}
-        onOriginChange={setSelectedOrigin}
         onClearFilters={handleClearFilters}
       />
 
