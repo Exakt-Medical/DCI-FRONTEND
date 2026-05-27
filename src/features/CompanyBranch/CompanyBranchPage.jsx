@@ -11,9 +11,13 @@ import {
   Upload,
   CheckSquare,
   XSquare,
+<<<<<<< HEAD
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+=======
+  AlertTriangle,
+>>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
 } from "lucide-react";
 import { branchService } from "../../services/branchService";
 import { companyService } from "../../services/companyService";
@@ -42,6 +46,7 @@ export const CompanyBranchPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const itemsPerPage = 10;
+<<<<<<< HEAD
   const [sortField, setSortField] = useState("name");
   const [sortDirection, setSortDirection] = useState("asc");
 
@@ -57,6 +62,8 @@ export const CompanyBranchPage = () => {
       ? <ArrowUp size={12} className="inline ml-1 text-primary-600" />
       : <ArrowDown size={12} className="inline ml-1 text-primary-600" />;
   };
+=======
+>>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
 
   const getCombinedName = (branch) =>
     `${branch.companyName} - ${branch.branchName}`;
@@ -109,6 +116,7 @@ export const CompanyBranchPage = () => {
     return matchesSearch && matchesStatus;
   });
 
+<<<<<<< HEAD
   const sortedBranches = [...filteredBranches].sort((a, b) => {
     let cmp;
     if (sortField === "name") {
@@ -124,8 +132,11 @@ export const CompanyBranchPage = () => {
   });
 
   const totalPages = Math.ceil(sortedBranches.length / itemsPerPage);
+=======
+  const totalPages = Math.ceil(filteredBranches.length / itemsPerPage);
+>>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedBranches = sortedBranches.slice(
+  const paginatedBranches = filteredBranches.slice(
     startIndex,
     startIndex + itemsPerPage,
   );
@@ -207,6 +218,7 @@ export const CompanyBranchPage = () => {
   };
 
   const handleBulkUpload = async (records) => {
+<<<<<<< HEAD
     const invalid = records.find((r) => !r.company_code);
     if (invalid) {
       throw new Error(`Row with branch_id "${invalid.branch_id}" has a missing company_code. Please check your CSV.`);
@@ -216,6 +228,12 @@ export const CompanyBranchPage = () => {
       branchName: r.branch_name,
       companyCode: r.company_code,
       status: "ACTIVE",
+=======
+    const payload = records.map((r) => ({
+      ...r,
+      companyId: parseInt(r.companyId),
+      isactive: true,
+>>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
     }));
     return branchService.bulkCreate(payload);
   };
@@ -299,6 +317,24 @@ export const CompanyBranchPage = () => {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
+<<<<<<< HEAD
+=======
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Code
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Company
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Branch
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Updated
+                </th>
+>>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("name")}>
@@ -352,8 +388,8 @@ export const CompanyBranchPage = () => {
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
             <p className="text-xs text-gray-500">
               Showing {startIndex + 1} to{" "}
-              {Math.min(startIndex + itemsPerPage, sortedBranches.length)} of{" "}
-              {sortedBranches.length} branches
+              {Math.min(startIndex + itemsPerPage, filteredBranches.length)} of{" "}
+              {filteredBranches.length} branches
             </p>
             <div className="flex gap-1 items-center">
               <button

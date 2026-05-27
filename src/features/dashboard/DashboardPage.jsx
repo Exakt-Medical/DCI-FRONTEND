@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 
 export const DashboardPage = () => {
-  const role = localStorage.getItem("role");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
@@ -25,10 +24,6 @@ export const DashboardPage = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (role !== "ADMIN") {
-        setLoading(false);
-        return;
-      }
       try {
         const [statsRes, txRes] = await Promise.all([
           dashboardService.getStats(),
@@ -43,7 +38,7 @@ export const DashboardPage = () => {
       }
     };
     fetchData();
-  }, [role]);
+  }, []);
 
   // Pagination
   const filteredTransactions = transactions.filter((t) =>

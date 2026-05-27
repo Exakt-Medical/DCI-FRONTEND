@@ -10,23 +10,20 @@ export const Button = ({
   type = "button",
 }) => {
   const variants = {
-    primary:
-      "bg-blue-600 hover:bg-blue-700 text-white shadow-md",
+    primary: "bg-[#0059b5] hover:bg-[#004a97] text-white shadow-md", // Updated to use your color
 
     secondary:
       "bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300",
 
-    ghost:
-      "hover:bg-gray-100 text-gray-600 hover:text-gray-900",
+    ghost: "hover:bg-gray-100 text-gray-600 hover:text-gray-900",
 
-    danger:
-      "bg-red-100 hover:bg-red-200 text-red-600 border border-red-200",
+    danger: "bg-red-100 hover:bg-red-200 text-red-600 border border-red-200",
 
     success:
       "bg-green-100 hover:bg-green-200 text-green-700 border border-green-200",
 
     outline:
-      "border border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white",
+      "border border-[#0059b5] text-[#0059b5] hover:bg-[#0059b5] hover:text-white", // Also update outline variant
   };
 
   const sizes = {
@@ -45,7 +42,7 @@ export const Button = ({
         variants[variant],
         sizes[size],
         disabled && "opacity-40 cursor-not-allowed",
-        className
+        className,
       )}
     >
       {children}

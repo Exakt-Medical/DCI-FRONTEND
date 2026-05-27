@@ -1,4 +1,7 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
+import { Button } from "../../../components/Button";
+import { Input } from "../../../components/Input";
+import Switch from "../../../components/Switch";
 import { X, UserPlus, Edit2 } from "lucide-react";
 
 export const UserFormModal = ({
@@ -8,10 +11,7 @@ export const UserFormModal = ({
   user,
   isEditing,
   branches = [],
-  companies = [],
   allUsers = [],
-  currentUserRole,
-  currentUsername,
 }) => {
   const [formData, setFormData] = useState({
     username: "",
@@ -20,20 +20,18 @@ export const UserFormModal = ({
     lastName: "",
     email: "",
     role: "AGENT",
-    companyId: "",
     branchId: "",
     managerId: "",
+<<<<<<< HEAD
     status: "ACTIVE",
+=======
+    isactive: true,
+    allowedToBuyVoucher: false,
+>>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
   });
-
-  const currentUser = useMemo(
-    () => allUsers.find((u) => u.username === currentUsername),
-    [currentUsername, allUsers],
-  );
 
   useEffect(() => {
     if (user && isEditing) {
-      const branch = branches.find((b) => b.id === user.branchId);
       setFormData({
         username: user.username || "",
         password: "",
@@ -41,10 +39,14 @@ export const UserFormModal = ({
         lastName: user.lastName || "",
         email: user.email || "",
         role: user.role || "AGENT",
-        companyId: branch ? String(branch.companyId) : "",
         branchId: user.branchId ? String(user.branchId) : "",
         managerId: user.managerId ? String(user.managerId) : "",
+<<<<<<< HEAD
         status: user.status || "ACTIVE",
+=======
+        isactive: user.isactive !== undefined ? user.isactive : true,
+        allowedToBuyVoucher: user.allowedToBuyVoucher ?? false,
+>>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
       });
     } else {
       setFormData({
@@ -54,35 +56,26 @@ export const UserFormModal = ({
         lastName: "",
         email: "",
         role: "AGENT",
-        companyId: "",
         branchId: "",
         managerId: "",
+<<<<<<< HEAD
         status: "ACTIVE",
+=======
+        isactive: true,
+        allowedToBuyVoucher: false,
+>>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
       });
     }
-  }, [user, isEditing, isOpen, branches]);
+  }, [user, isEditing, isOpen]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const payload = { ...formData };
-    if (payload.role === "ADMIN" || payload.role === "VIEWER" || payload.role === "SUPPORT") {
-      payload.companyId = "";
-      payload.branchId = "";
-      payload.managerId = "";
-    }
-    if (payload.role === "AGENT" || payload.role === "SUBAGENT") {
-      if (currentUserRole === "MANAGER") {
-        payload.companyId = "";
-        payload.branchId = currentUser?.branchId ? String(currentUser.branchId) : "";
-        payload.managerId = currentUser?.id ? String(currentUser.id) : "";
-      }
-    }
-    onSave(payload);
+    onSave(formData);
   };
 
   const isAgentOrSubagent = formData.role === "AGENT" || formData.role === "SUBAGENT";
-  const isAdminOrViewer = formData.role === "ADMIN" || formData.role === "VIEWER" || formData.role === "SUPPORT";
 
+<<<<<<< HEAD
   const filteredBranches = formData.companyId
     ? branches.filter((b) => String(b.companyId) === formData.companyId)
     : [];
@@ -124,6 +117,11 @@ export const UserFormModal = ({
   };
 
   const managerCreatesAgent = (isAgentOrSubagent && currentUserRole === "MANAGER");
+=======
+  const filteredManagers = allUsers.filter(
+    (u) => u.role === "MANAGER" && u.isactive && String(u.branchId) === formData.branchId,
+  );
+>>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
 
   if (!isOpen) return null;
 
@@ -254,149 +252,85 @@ export const UserFormModal = ({
             </div>
           )}
 
-          {!managerCreatesAgent && (
-            <div className="grid grid-cols-2 gap-3">
-              {/* Company */}
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700">
-                  Company{!isAdminOrViewer ? <span className="text-red-500"> *</span> : null}
-                </label>
-                {isAdminOrViewer ? (
-                  <input
-                    type="text"
-                    value="N/A"
-                    readOnly
-                    className="w-full bg-gray-100 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-500 cursor-not-allowed"
-                  />
-                ) : (
-                  <select
-                    value={formData.companyId}
-                    onChange={(e) => handleCompanyChange(e.target.value)}
-                    required
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-                  >
-                    <option value="">Select Company</option>
-                    {companies.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.companyName}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              {/* Branch */}
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700">
-                  Branch{!isAdminOrViewer ? <span className="text-red-500"> *</span> : null}
-                </label>
-                {isAdminOrViewer ? (
-                  <input
-                    type="text"
-                    value="N/A"
-                    readOnly
-                    className="w-full bg-gray-100 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-500 cursor-not-allowed"
-                  />
-                ) : hasNoBranches ? (
-                  <input
-                    type="text"
-                    value="NO BRANCH"
-                    readOnly
-                    className="w-full bg-gray-100 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-500 cursor-not-allowed"
-                  />
-                ) : (
-                  <select
-                    value={formData.branchId}
-                    onChange={(e) => handleBranchChange(e.target.value)}
-                    disabled={!formData.companyId}
-                    required
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <option value="">
-                      {formData.companyId ? "Select Branch" : "Select company first"}
-                    </option>
-                    {filteredBranches.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.branchName}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            </div>
-          )}
-
           <div className="grid grid-cols-2 gap-3">
-            {/* Manager (only for Agent/Subagent, hidden when managerCreatesAgent) */}
-            {isAgentOrSubagent && !managerCreatesAgent && (
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Branch
+              </label>
+              <select
+                value={formData.branchId}
+                onChange={(e) =>
+                  setFormData({ ...formData, branchId: e.target.value, managerId: "" })
+                }
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+              >
+                <option value="">Select Branch</option>
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.branchName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {isAgentOrSubagent && (
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-gray-700">
                   Manager
                 </label>
-                {hasNoManagers ? (
-                  <input
-                    type="text"
-                    value="NO MANAGER"
-                    readOnly
-                    className="w-full bg-gray-100 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-500 cursor-not-allowed"
-                  />
-                ) : (
-                  <select
-                    value={formData.managerId}
-                    onChange={(e) =>
-                      setFormData({ ...formData, managerId: e.target.value })
-                    }
-                    disabled={!formData.branchId}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <option value="">
-                      {formData.branchId ? "Select Manager" : "Select branch first"}
-                    </option>
-                    {filteredManagers.map((mgr) => {
-                      const mgrName = [mgr.firstName, mgr.lastName].filter(Boolean).join(" ") || mgr.username;
-                      return (
-                        <option key={mgr.id} value={mgr.id}>
-                          {mgrName}
-                        </option>
-                      );
-                    })}
-                  </select>
-                )}
+                <select
+                  value={formData.managerId}
+                  onChange={(e) =>
+                    setFormData({ ...formData, managerId: e.target.value })
+                  }
+                  disabled={!formData.branchId}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="">
+                    {formData.branchId ? "Select Manager" : "Select branch first"}
+                  </option>
+                  {filteredManagers.map((mgr) => {
+                    const mgrName = [mgr.firstName, mgr.lastName].filter(Boolean).join(" ") || mgr.username;
+                    return (
+                      <option key={mgr.id} value={mgr.id}>
+                        {mgrName}
+                      </option>
+                    );
+                  })}
+                </select>
               </div>
             )}
+          </div>
 
-            {/* Role */}
-            <div className={isAgentOrSubagent && !managerCreatesAgent ? "space-y-2" : "space-y-2 col-span-2"}>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
               <label className="block text-sm font-semibold text-gray-700">
                 Role
               </label>
-              {currentUserRole === "MANAGER" ? (
-                <select
-                  value={formData.role}
-                  onChange={(e) => {
-                    setFormData({ ...formData, role: e.target.value });
-                  }}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-                >
-                  <option value="AGENT">Agent</option>
-                  <option value="SUBAGENT">Sub Agent</option>
-                </select>
-              ) : (
-                <select
-                  value={formData.role}
-                  onChange={(e) => {
-                    setFormData({ ...formData, role: e.target.value, companyId: "", branchId: "", managerId: "" });
-                  }}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-                >
-                  <option value="MANAGER">Manager</option>
-                  <option value="AGENT">Agent</option>
-                  <option value="SUBAGENT">Sub Agent</option>
-                  <option value="SUPPORT">Support</option>
-                  <option value="ADMIN">Admin</option>
-                  <option value="VIEWER">Viewer</option>
-                </select>
-              )}
+              <select
+                value={formData.role}
+                onChange={(e) => {
+                  setFormData({ ...formData, role: e.target.value, managerId: "" });
+                }}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+              >
+                <option value="MANAGER">Manager</option>
+                <option value="AGENT">Agent</option>
+                <option value="SUBAGENT">Sub Agent</option>
+                <option value="ADMIN">Admin</option>
+                <option value="VIEWER">Viewer</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Allowed to Buy Voucher
+              </label>
+              <Switch
+                checked={!!formData.allowedToBuyVoucher}
+                onChange={(val) => setFormData({ ...formData, allowedToBuyVoucher: val })}
+                ariaLabel="Allowed to buy voucher"
+              />
             </div>
           </div>
 

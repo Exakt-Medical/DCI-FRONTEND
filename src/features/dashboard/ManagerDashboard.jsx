@@ -60,9 +60,7 @@ export const ManagerDashboard = () => {
             {value.toLocaleString()}
           </p>
           {trend && (
-            <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
-              <TrendingUp size={12} /> +{trend} from last week
-            </p>
+            <p className="text-xs text-green-600 mt-2 flex items-center gap-1"></p>
           )}
         </div>
         <div className="w-8 h-8 rounded-full bg-primary-500/10 flex items-center justify-center group-hover:bg-primary-500/20 transition-colors">

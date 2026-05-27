@@ -1,9 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card } from "../../components/Card";
+<<<<<<< HEAD
 import { Search, Users, Plus, Upload, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+=======
+import { Button } from "../../components/Button";
+import { Search, Filter, Users, Plus, Upload } from "lucide-react";
+>>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
 import { userService } from "../../services/userService";
 import { branchService } from "../../services/branchService";
-import { companyService } from "../../services/companyService";
 import { StatCard } from "./components/StatCard";
 import { UserTableRow } from "./components/UserTableRow";
 import { UserFormModal } from "./components/UserFormModal";
@@ -13,14 +17,13 @@ import { AccountPagination } from "./components/AccountPagination";
 import { UploadBulkModal } from "../../components/UploadBulkModal";
 
 
-const ROLE_TABS = ["All", "Managers", "Agents", "Sub-agents", "Support", "Admin"];
+const ROLE_TABS = ["All", "Managers", "Agents", "Sub-agents", "Admin"];
 
 export const AccountPage = () => {
   const role = localStorage.getItem("role");
   const isViewer = role === "VIEWER";
   const [users, setUsers] = useState([]);
   const [branches, setBranches] = useState([]);
-  const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -34,6 +37,7 @@ export const AccountPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const itemsPerPage = 5;
+<<<<<<< HEAD
   const [sortField, setSortField] = useState("username");
   const [sortDirection, setSortDirection] = useState("asc");
 
@@ -49,27 +53,26 @@ export const AccountPage = () => {
       ? <ArrowUp size={12} className="inline ml-1 text-primary-600" />
       : <ArrowDown size={12} className="inline ml-1 text-primary-600" />;
   };
+=======
+>>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
 
   const roleFilterMap = {
-    "All": "all",
-    "Managers": "MANAGER",
-    "Agents": "AGENT",
+    All: "all",
+    Managers: "MANAGER",
+    Agents: "AGENT",
     "Sub-agents": "SUBAGENT",
-    "Support": "SUPPORT",
-    "Admin": "ADMIN",
+    Admin: "ADMIN",
   };
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [usersRes, branchesRes, companiesRes] = await Promise.all([
+      const [usersRes, branchesRes] = await Promise.all([
         userService.getAll(),
         branchService.getAll(),
-        companyService.getAll(),
       ]);
       setUsers(usersRes.data);
       setBranches(branchesRes.data);
-      setCompanies(companiesRes.data);
       setError(null);
     } catch (err) {
       setError("Failed to load data");
@@ -84,8 +87,14 @@ export const AccountPage = () => {
   }, [fetchData]);
 
   const totalUsers = users.length;
+<<<<<<< HEAD
   const totalActive = users.filter((u) => u.status === "ACTIVE").length;
   const totalInactive = users.filter((u) => u.status !== "ACTIVE").length;
+=======
+  const totalManagers = users.filter((u) => u.role === "MANAGER").length;
+  const totalAgents = users.filter((u) => u.role === "AGENT").length;
+  const totalSubAgents = users.filter((u) => u.role === "SUBAGENT").length;
+>>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
 
   const filteredUsers = users.filter((user) => {
     const combinedDisplay = [
@@ -115,6 +124,7 @@ export const AccountPage = () => {
     return matchesSearch && matchesRole && matchesStatus;
   });
 
+<<<<<<< HEAD
   const getSortValue = (user, field) => {
     if (field === "branchName") {
       if (user.role === "ADMIN") return "head company, head branch";
@@ -129,8 +139,11 @@ export const AccountPage = () => {
     return sortDirection === "asc" ? cmp : -cmp;
   });
   const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
+=======
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+>>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedUsers = sortedUsers.slice(
+  const paginatedUsers = filteredUsers.slice(
     startIndex,
     startIndex + itemsPerPage,
   );
@@ -175,9 +188,7 @@ export const AccountPage = () => {
         status: user.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
       });
       setUsers(
-        users.map((u) =>
-          u.id === user.id ? { ...u, ...response.data } : u,
-        ),
+        users.map((u) => (u.id === user.id ? { ...u, ...response.data } : u)),
       );
     } catch (err) {
       console.error("Toggle active failed", err);
@@ -235,7 +246,27 @@ export const AccountPage = () => {
     return userService.bulkCreate(payload);
   };
 
+<<<<<<< HEAD
   const userTemplateHeaders = ["first_name", "last_name", "middle_initial", "ext_name", "username", "password", "email", "mobile", "role"];
+=======
+  const userTemplateHeaders = [
+    "username",
+    "password",
+    "firstName",
+    "lastName",
+    "email",
+    "role",
+  ];
+
+  const statusOptions = [
+    { value: "all", label: "All Status" },
+    { value: "Active", label: "Active" },
+    { value: "Inactive", label: "Inactive" },
+  ];
+
+  const isAgentOrSubagent = (user) => ["AGENT", "SUBAGENT"].includes(user.role);
+  const showManagerColumn = paginatedUsers.some(isAgentOrSubagent);
+>>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -268,7 +299,11 @@ export const AccountPage = () => {
       </div>
 
       {/* Stats Cards */}
+<<<<<<< HEAD
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+=======
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+>>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
         <StatCard
           title="Total Users"
           value={totalUsers}
@@ -289,15 +324,19 @@ export const AccountPage = () => {
           title="Inactive"
           value={totalInactive}
           icon={Users}
+<<<<<<< HEAD
           color="red"
           onClick={() => { setActiveStatusTab("inactive"); setCurrentPage(1); }}
           active={activeStatusTab === "inactive"}
+=======
+          color="purple"
+>>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
         />
       </div>
 
       {/* Role Tabs */}
       <div className="mb-4">
-        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl inline-flex">
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
           {ROLE_TABS.map((tab) => (
             <button
               key={tab}
@@ -305,10 +344,10 @@ export const AccountPage = () => {
                 setActiveTab(tab);
                 setCurrentPage(1);
               }}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
                 activeTab === tab
                   ? "bg-white text-primary-600 shadow-sm"
-                  : "text-gray-600 hover:text-gray-900"
+                  : "text-gray-600 hover:text-gray-900 hover:bg-gray-200/50"
               }`}
             >
               {tab}
@@ -343,6 +382,7 @@ export const AccountPage = () => {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
+<<<<<<< HEAD
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("username")}>
@@ -362,25 +402,67 @@ export const AccountPage = () => {
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("dateCreated")}>
                   Date Created <SortIcon field="dateCreated" />
+=======
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Name
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Role
+                </th>
+                {showManagerColumn && (
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Manager
+                  </th>
+                )}
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Updated
+                </th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                  Actions
+>>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
+<<<<<<< HEAD
                   <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+=======
+                  <td
+                    colSpan={showManagerColumn ? 6 : 5}
+                    className="px-4 py-8 text-center text-gray-500"
+                  >
+>>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
                     Loading users...
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
+<<<<<<< HEAD
                   <td colSpan={7} className="px-4 py-8 text-center text-red-500">
+=======
+                  <td
+                    colSpan={showManagerColumn ? 6 : 5}
+                    className="px-4 py-8 text-center text-red-500"
+                  >
+>>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
                     {error}
                   </td>
                 </tr>
               ) : paginatedUsers.length === 0 ? (
                 <tr>
+<<<<<<< HEAD
                   <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+=======
+                  <td
+                    colSpan={showManagerColumn ? 6 : 5}
+                    className="px-4 py-8 text-center text-gray-500"
+                  >
+>>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
                     No users found
                   </td>
                 </tr>
@@ -422,10 +504,7 @@ export const AccountPage = () => {
         user={selectedUser}
         isEditing={isEditing}
         branches={branches}
-        companies={companies}
         allUsers={users}
-        currentUserRole={role}
-        currentUsername={localStorage.getItem("username")}
       />
 
       <ViewUserModal
@@ -438,7 +517,17 @@ export const AccountPage = () => {
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={confirmDelete}
+<<<<<<< HEAD
         userName={selectedUser ? selectedUser.username : ""}
+=======
+        userName={
+          selectedUser
+            ? [selectedUser.firstName, selectedUser.lastName]
+                .filter(Boolean)
+                .join(" ") || selectedUser.username
+            : ""
+        }
+>>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
       />
 
       <UploadBulkModal
