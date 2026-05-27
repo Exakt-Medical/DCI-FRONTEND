@@ -9,8 +9,13 @@ import {
   Copy,
 } from "lucide-react";
 
+// Normalise to Title Case for badge lookup: "OPEN" → "Open", "pending" → "Pending"
+const normaliseStatus = (status) =>
+  status ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase() : "—";
+
 const getStatusBadge = (status) => {
   const styles = {
+    Open: "bg-blue-100 text-blue-700",
     Pending: "bg-yellow-100 text-yellow-700",
     Processing: "bg-blue-100 text-blue-700",
     Resolved: "bg-green-100 text-green-700",
@@ -22,6 +27,8 @@ const getStatusBadge = (status) => {
 
 const getStatusIcon = (status) => {
   switch (status) {
+    case "Open":
+      return <Ticket size={12} />;
     case "Pending":
       return <Clock size={12} />;
     case "Processing":
@@ -38,14 +45,14 @@ const getStatusIcon = (status) => {
 };
 
 const getTypeBadge = (type) => {
-  if (type === "Data Mismatch") {
-    return "bg-purple-100 text-purple-700";
-  }
+  if (type === "Data Mismatch") return "bg-purple-100 text-purple-700";
   return "bg-orange-100 text-orange-700";
 };
 
 const formatDate = (dateString) => {
+  if (!dateString) return "—";
   const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "—";
   return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -62,6 +69,22 @@ const handleCopyTicketNumber = async (referenceNumber) => {
   } catch (err) {
     console.error("Failed to copy:", err);
   }
+};
+
+// Safely render requestedBy whether it's a string ("Lester") or an object ({ name, company })
+const renderRequestedBy = (requestedBy) => {
+  if (!requestedBy) return <span className="text-gray-400">—</span>;
+  if (typeof requestedBy === "string") {
+    return <p className="text-sm font-medium text-gray-900">{requestedBy}</p>;
+  }
+  return (
+    <div>
+      <p className="text-sm font-medium text-gray-900">{requestedBy.name}</p>
+      {requestedBy.company && (
+        <p className="text-xs text-gray-500">{requestedBy.company}</p>
+      )}
+    </div>
+  );
 };
 
 export const TicketTable = ({ tickets, onViewDetails }) => {
@@ -97,79 +120,85 @@ export const TicketTable = ({ tickets, onViewDetails }) => {
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
-          {tickets.map((ticket) => (
-            <tr key={ticket.id} className="hover:bg-gray-50 transition-colors">
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-mono font-medium text-gray-900">
-                    {ticket.referenceNumber}
-                  </span>
-                  <button
-                    onClick={() =>
-                      handleCopyTicketNumber(ticket.referenceNumber)
-                    }
-                    className="text-gray-400 hover:text-primary-600 transition-colors"
-                    title="Copy ticket number"
-                  >
-                    <Copy size={14} />
-                  </button>
-                </div>
-              </td>
-              <td className="px-4 py-3">
-                <span
-                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(
-                    ticket.status,
-                  )}`}
-                >
-                  {getStatusIcon(ticket.status)}
-                  {ticket.status}
-                </span>
-              </td>
-              <td className="px-4 py-3">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {ticket.requestedBy.name}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {ticket.requestedBy.company}
-                  </p>
-                </div>
-              </td>
-              <td className="px-4 py-3">
-                <span
-                  className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getTypeBadge(
-                    ticket.type,
-                  )}`}
-                >
-                  {ticket.type}
-                </span>
-              </td>
-              <td className="px-4 py-3">
-                <span className="text-sm text-gray-600">
-                  {ticket.processedBy || "—"}
-                </span>
-              </td>
-              <td className="px-4 py-3">
-                <span className="text-sm text-gray-500">
-                  {formatDate(ticket.dateUpdated)}
-                </span>
-              </td>
-              <td className="px-4 py-3">
-                <span className="text-sm text-gray-500">
-                  {formatDate(ticket.dateRequested)}
-                </span>
-              </td>
-              <td className="px-4 py-3 text-center">
-                <button
-                  onClick={() => onViewDetails(ticket)}
-                  className="p-1 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                  title="View Details"
-                >
-                  <Eye size={16} />
-                </button>
+          {tickets.length === 0 ? (
+            <tr>
+              <td
+                colSpan={8}
+                className="px-4 py-10 text-center text-sm text-gray-400"
+              >
+                No tickets found.
               </td>
             </tr>
-          ))}
+          ) : (
+            tickets.map((ticket) => {
+              const displayStatus = normaliseStatus(ticket.status);
+              return (
+                <tr
+                  key={ticket.id}
+                  className="hover:bg-gray-50 transition-colors"
+                >
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-mono font-medium text-gray-900">
+                        {ticket.referenceNumber}
+                      </span>
+                      <button
+                        onClick={() =>
+                          handleCopyTicketNumber(ticket.referenceNumber)
+                        }
+                        className="text-gray-400 hover:text-primary-600 transition-colors"
+                        title="Copy reference number"
+                      >
+                        <Copy size={14} />
+                      </button>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(displayStatus)}`}
+                    >
+                      {getStatusIcon(displayStatus)}
+                      {displayStatus}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {renderRequestedBy(ticket.requestedBy)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getTypeBadge(ticket.type)}`}
+                    >
+                      {ticket.type}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-sm text-gray-600">
+                      {ticket.processedBy || "—"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-sm text-gray-500">
+                      {formatDate(ticket.dateUpdated)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-sm text-gray-500">
+                      {formatDate(ticket.dateRequested)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <button
+                      onClick={() => onViewDetails(ticket)}
+                      className="p-1 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                      title="View Details"
+                    >
+                      <Eye size={16} />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })
+          )}
         </tbody>
       </table>
     </div>

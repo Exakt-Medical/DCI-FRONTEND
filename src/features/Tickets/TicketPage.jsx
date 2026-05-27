@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "../../components/Card";
 import { StatCard } from "./components/StatCard";
 import { TicketTabs } from "./components/TicketTabs";
@@ -8,11 +8,8 @@ import { TicketPagination } from "./components/TicketPagination";
 import { TicketDetailModal } from "./components/TicketDetailModal";
 import { CreateTicketModal } from "./CreateTicketModal";
 import { useTicketFilters } from "./hooks/useTicketFilters";
-import {
-  MOCK_TICKETS,
-  statusOptions,
-  typeOptions,
-} from "../../constants/ticketMockData";
+import { ticketService } from "../../services/ticketService"; // ← service layer
+import { statusOptions, typeOptions } from "../../constants/ticketMockData";
 import {
   Ticket,
   Clock,
@@ -28,8 +25,31 @@ export const TicketPage = () => {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [tickets, setTickets] = useState(MOCK_TICKETS);
 
+  // ── Data & loading state ──────────────────────────────────────────────────
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // ── Fetch all tickets ─────────────────────────────────────────────────────
+  const fetchTickets = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await ticketService.getAll();
+      setTickets(data);
+    } catch (err) {
+      setError(err.message ?? "Failed to load tickets.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTickets();
+  }, [fetchTickets]);
+
+  // ── Filters / pagination (unchanged hook) ────────────────────────────────
   const {
     searchTerm,
     selectedStatus,
@@ -50,12 +70,11 @@ export const TicketPage = () => {
     clearFilters,
   } = useTicketFilters(tickets);
 
-  const handleRefresh = () => {
-    window.location.reload();
-  };
+  // ── Handlers ─────────────────────────────────────────────────────────────
+  const handleRefresh = () => fetchTickets();
 
   const handleExport = () => {
-    console.log("Exporting tickets...");
+    console.log("Exporting tickets…");
   };
 
   const handleViewDetails = (ticket) => {
@@ -73,42 +92,21 @@ export const TicketPage = () => {
   };
 
   const handleCreateTicket = async (formData) => {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    const newTicket = {
-      id: `TKT-${String(tickets.length + 1).padStart(4, "0")}`,
-      customer: "New Customer",
-      type: formData.type,
-      typeLabel: formData.type,
-      subject: formData.subject,
-      description: formData.description,
-      status: "pending",
-      statusLabel: "Pending",
-      priority: formData.priority,
-      date: new Date().toISOString().split("T")[0],
-      lastUpdated: new Date().toISOString().split("T")[0],
-      vehicleInfo: {
-        plateNo: "N/A",
-        make: "N/A",
-        model: "N/A",
-        year: "N/A",
-      },
-    };
-
-    setTickets([newTicket, ...tickets]);
-    console.log("Created ticket:", newTicket);
+    const created = await ticketService.create(formData);
+    setTickets((prev) => [created, ...prev]);
   };
 
+  // ── Tab counts ────────────────────────────────────────────────────────────
   const tabCounts = {
     all: stats.total,
     dataMismatch: stats.dataMismatch,
     vehicleNotFound: stats.vehicleNotFound,
   };
 
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
-      {/* Header with Create Button */}
+      {/* Header */}
       <div className="border-b border-gray-200 pb-4">
         <div className="flex items-center justify-between">
           <div>
@@ -129,6 +127,19 @@ export const TicketPage = () => {
         </div>
       </div>
 
+      {/* Error banner */}
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+          <button
+            onClick={fetchTickets}
+            className="ml-3 underline hover:no-underline"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <StatCard title="Total" value={stats.total} icon={Ticket} />
@@ -147,14 +158,14 @@ export const TicketPage = () => {
         />
       </div>
 
-      {/* Tab Navigation */}
+      {/* Tabs */}
       <TicketTabs
         activeTab={activeTab}
         onTabChange={setActiveTab}
         counts={tabCounts}
       />
 
-      {/* Search and Filters */}
+      {/* Search & Filters */}
       <Card className="p-4">
         <TicketSearchBar
           searchTerm={searchTerm}
@@ -173,32 +184,40 @@ export const TicketPage = () => {
         />
       </Card>
 
-      {/* Tickets Table */}
+      {/* Table */}
       <Card className="overflow-hidden">
-        <TicketTable
-          tickets={paginatedTickets}
-          onViewDetails={handleViewDetails}
-          onAddNote={handleAddNote}
-        />
-
-        <TicketPagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          startIndex={startIndex}
-          itemsPerPage={itemsPerPage}
-          totalItems={filteredTickets.length}
-          onPageChange={setCurrentPage}
-        />
+        {loading ? (
+          <div className="flex items-center justify-center py-16 text-sm text-gray-400">
+            <RefreshCw size={16} className="animate-spin mr-2" />
+            Loading tickets…
+          </div>
+        ) : (
+          <>
+            <TicketTable
+              tickets={paginatedTickets}
+              onViewDetails={handleViewDetails}
+              onAddNote={handleAddNote}
+            />
+            <TicketPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              startIndex={startIndex}
+              itemsPerPage={itemsPerPage}
+              totalItems={filteredTickets.length}
+              onPageChange={setCurrentPage}
+            />
+          </>
+        )}
       </Card>
 
-      {/* Ticket Detail Modal */}
+      {/* Detail Modal */}
       <TicketDetailModal
         ticket={selectedTicket}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
       />
 
-      {/* Create Ticket Modal */}
+      {/* Create Modal */}
       <CreateTicketModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
