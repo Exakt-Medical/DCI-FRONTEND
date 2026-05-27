@@ -28,6 +28,7 @@ export const TicketPage = () => {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [activeStat, setActiveStat] = useState("total");
   const [tickets, setTickets] = useState(MOCK_TICKETS);
 
   const {
@@ -50,13 +51,55 @@ export const TicketPage = () => {
     clearFilters,
   } = useTicketFilters(tickets);
 
-  const handleRefresh = () => {
-    window.location.reload();
-  };
+  // 🔥 NORMALIZER (fixes ALL case issues)
+  const normalize = (str) => (str || "").toLowerCase().replace(/\s+/g, "");
 
-  const handleExport = () => {
-    console.log("Exporting tickets...");
-  };
+  // 🔥 STAT FILTER (FIXED)
+  const filteredByStat = filteredTickets.filter((ticket) => {
+    const status = normalize(ticket.status);
+
+    if (activeStat === "total") return true;
+    if (activeStat === "pending") return status === "pending";
+    if (activeStat === "processing") return status === "processing";
+    if (activeStat === "resolved") return status === "resolved";
+    if (activeStat === "declined") return status === "declined";
+    if (activeStat === "cancelled") return status === "cancelled";
+
+    return true;
+  });
+
+  const statConfig = [
+    { key: "total", title: "Total", value: stats.total, icon: Ticket },
+    { key: "pending", title: "Pending", value: stats.pending, icon: Clock },
+    {
+      key: "processing",
+      title: "Processing",
+      value: stats.processing,
+      icon: RefreshCw,
+    },
+    {
+      key: "resolved",
+      title: "Resolved",
+      value: stats.resolved,
+      icon: CheckCircle,
+    },
+    {
+      key: "declined",
+      title: "Declined",
+      value: stats.declined,
+      icon: XCircle,
+    },
+    {
+      key: "cancelled",
+      title: "Cancelled",
+      value: stats.cancelled,
+      icon: AlertCircle,
+    },
+  ];
+
+  const handleRefresh = () => window.location.reload();
+
+  const handleExport = () => console.log("Exporting tickets...");
 
   const handleViewDetails = (ticket) => {
     setSelectedTicket(ticket);
@@ -73,18 +116,15 @@ export const TicketPage = () => {
   };
 
   const handleCreateTicket = async (formData) => {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await new Promise((r) => setTimeout(r, 1000));
 
     const newTicket = {
       id: `TKT-${String(tickets.length + 1).padStart(4, "0")}`,
       customer: "New Customer",
       type: formData.type,
-      typeLabel: formData.type,
       subject: formData.subject,
       description: formData.description,
       status: "pending",
-      statusLabel: "Pending",
       priority: formData.priority,
       date: new Date().toISOString().split("T")[0],
       lastUpdated: new Date().toISOString().split("T")[0],
@@ -97,18 +137,11 @@ export const TicketPage = () => {
     };
 
     setTickets([newTicket, ...tickets]);
-    console.log("Created ticket:", newTicket);
-  };
-
-  const tabCounts = {
-    all: stats.total,
-    dataMismatch: stats.dataMismatch,
-    vehicleNotFound: stats.vehicleNotFound,
   };
 
   return (
     <div className="space-y-6">
-      {/* Header with Create Button */}
+      {/* HEADER */}
       <div className="border-b border-gray-200 pb-4">
         <div className="flex items-center justify-between">
           <div>
@@ -119,9 +152,10 @@ export const TicketPage = () => {
               Manage and track customer support tickets and inquiries
             </p>
           </div>
+
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors"
+            className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-xl"
           >
             <Plus size={16} />
             Create Ticket
@@ -129,32 +163,24 @@ export const TicketPage = () => {
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* STATS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <StatCard title="Total" value={stats.total} icon={Ticket} />
-        <StatCard title="Pending" value={stats.pending} icon={Clock} />
-        <StatCard
-          title="Processing"
-          value={stats.processing}
-          icon={RefreshCw}
-        />
-        <StatCard title="Resolved" value={stats.resolved} icon={CheckCircle} />
-        <StatCard title="Declined" value={stats.declined} icon={XCircle} />
-        <StatCard
-          title="Cancelled"
-          value={stats.cancelled}
-          icon={AlertCircle}
-        />
+        {statConfig.map((stat) => (
+          <StatCard
+            key={stat.key}
+            title={stat.title}
+            value={stat.value}
+            icon={stat.icon}
+            isActive={activeStat === stat.key}
+            onClick={() => {
+              setActiveStat(stat.key);
+              setCurrentPage(1);
+            }}
+          />
+        ))}
       </div>
 
-      {/* Tab Navigation */}
-      <TicketTabs
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        counts={tabCounts}
-      />
-
-      {/* Search and Filters */}
+      {/* SEARCH */}
       <Card className="p-4">
         <TicketSearchBar
           searchTerm={searchTerm}
@@ -173,10 +199,10 @@ export const TicketPage = () => {
         />
       </Card>
 
-      {/* Tickets Table */}
+      {/* TABLE */}
       <Card className="overflow-hidden">
         <TicketTable
-          tickets={paginatedTickets}
+          tickets={filteredByStat}
           onViewDetails={handleViewDetails}
           onAddNote={handleAddNote}
         />
@@ -186,19 +212,18 @@ export const TicketPage = () => {
           totalPages={totalPages}
           startIndex={startIndex}
           itemsPerPage={itemsPerPage}
-          totalItems={filteredTickets.length}
+          totalItems={filteredByStat.length}
           onPageChange={setCurrentPage}
         />
       </Card>
 
-      {/* Ticket Detail Modal */}
+      {/* MODALS */}
       <TicketDetailModal
         ticket={selectedTicket}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
       />
 
-      {/* Create Ticket Modal */}
       <CreateTicketModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}

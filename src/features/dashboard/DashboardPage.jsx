@@ -95,44 +95,155 @@ export const DashboardPage = () => {
         </p>
       </div>
 
-      {/* Stats Grid - Bento Grid Style with Animated Accent */}
+      {/* Stats Grid - Clickable Bento Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {statCards.map((stat, idx) => (
-          <div
-            key={idx}
-            className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-100 shadow-lg p-6 hover:shadow-xl transition-all group"
-          >
-            {loading ? (
-              <>
-                <div className="h-4 bg-gray-200 rounded w-2/3 mb-2 animate-pulse" />
-                <div className="h-8 bg-gray-200 rounded w-1/2 animate-pulse" />
-              </>
-            ) : (
-              <>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                      {stat.label}
-                    </p>
-                    <p className="text-4xl font-black text-gray-900 mt-2 tracking-tight">
-                      {stat.value.toLocaleString()}
-                    </p>
+        {statCards.map((stat, idx) => {
+          const getActiveStyles = () => {
+            if (!stat.isActive) return {};
+
+            switch (stat.color) {
+              case "green":
+                return {
+                  card: "ring-2 ring-green-500 bg-green-50",
+                  title: "text-green-700",
+                  value: "text-green-700",
+                  iconBg: "bg-green-500/20",
+                  bar1: "bg-green-500",
+                  bar2: "bg-green-300",
+                  bar3: "bg-green-200",
+                };
+
+              case "blue":
+                return {
+                  card: "ring-2 ring-blue-500 bg-blue-50",
+                  title: "text-blue-700",
+                  value: "text-blue-700",
+                  iconBg: "bg-blue-500/20",
+                  bar1: "bg-blue-500",
+                  bar2: "bg-blue-300",
+                  bar3: "bg-blue-200",
+                };
+
+              case "red":
+                return {
+                  card: "ring-2 ring-red-500 bg-red-50",
+                  title: "text-red-700",
+                  value: "text-red-700",
+                  iconBg: "bg-red-500/20",
+                  bar1: "bg-red-500",
+                  bar2: "bg-red-300",
+                  bar3: "bg-red-200",
+                };
+
+              default:
+                return {
+                  card: "ring-2 ring-primary-500 bg-primary-50",
+                  title: "text-primary-700",
+                  value: "text-primary-700",
+                  iconBg: "bg-primary-500/20",
+                  bar1: "bg-primary-500",
+                  bar2: "bg-primary-300",
+                  bar3: "bg-primary-200",
+                };
+            }
+          };
+
+          const activeStyles = getActiveStyles();
+
+          return (
+            <div
+              key={idx}
+              onClick={stat.onClick}
+              className={`
+          bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-100 shadow-lg p-6
+          hover:shadow-xl transition-all group cursor-pointer
+          ${stat.isActive ? activeStyles.card : "hover:scale-[1.02]"}
+        `}
+            >
+              {loading ? (
+                <>
+                  <div className="h-4 bg-gray-200 rounded w-2/3 mb-2 animate-pulse" />
+                  <div className="h-8 bg-gray-200 rounded w-1/2 animate-pulse" />
+                </>
+              ) : (
+                <>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p
+                        className={`
+                    text-xs font-semibold text-gray-400 uppercase tracking-wider
+                    ${stat.isActive ? activeStyles.title : ""}
+                  `}
+                      >
+                        {stat.label}
+                      </p>
+
+                      <p
+                        className={`
+                    text-4xl font-black text-gray-900 mt-2 tracking-tight
+                    ${stat.isActive ? activeStyles.value : ""}
+                  `}
+                      >
+                        {stat.value.toLocaleString()}
+                      </p>
+                    </div>
+
+                    <div
+                      className={`
+                  w-8 h-8 rounded-full bg-primary-500/10 flex items-center justify-center
+                  group-hover:bg-primary-500/20 transition-colors
+                  ${stat.isActive ? activeStyles.iconBg : ""}
+                `}
+                    >
+                      {stat.icon ? (
+                        <stat.icon
+                          size={14}
+                          className={
+                            stat.isActive
+                              ? `text-${stat.color}-600`
+                              : "text-primary-600"
+                          }
+                        />
+                      ) : (
+                        <div
+                          className={`
+                      w-2 h-2 rounded-full
+                      ${stat.isActive ? activeStyles.bar1 : "bg-primary-500"}
+                    `}
+                        />
+                      )}
+                    </div>
                   </div>
-                  <div className="w-8 h-8 rounded-full bg-primary-500/10 flex items-center justify-center group-hover:bg-primary-500/20 transition-colors">
-                    <div className="w-2 h-2 bg-primary-500 rounded-full" />
+
+                  <div className="mt-4 pt-3 border-t border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`
+                    h-1 w-8 rounded-full transition-all duration-300 group-hover:w-12
+                    ${stat.isActive ? activeStyles.bar1 : "bg-primary-500"}
+                  `}
+                      />
+
+                      <div
+                        className={`
+                    h-1 w-4 rounded-full
+                    ${stat.isActive ? activeStyles.bar2 : "bg-primary-300"}
+                  `}
+                      />
+
+                      <div
+                        className={`
+                    h-1 w-2 rounded-full
+                    ${stat.isActive ? activeStyles.bar3 : "bg-primary-200"}
+                  `}
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="mt-4 pt-3 border-t border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <div className="h-1 w-8 bg-primary-500 rounded-full group-hover:w-12 transition-all duration-300" />
-                    <div className="h-1 w-4 bg-primary-300 rounded-full" />
-                    <div className="h-1 w-2 bg-primary-200 rounded-full" />
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        ))}
+                </>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Recent Transactions Table */}

@@ -11,34 +11,37 @@ export function PurchaseModal({
   onQuantityChange,
 }) {
   const handleQuantityChange = (e) => {
-    const newQuantity = parseInt(e.target.value) || 1;
-    if (onQuantityChange) {
-      onQuantityChange(
-        Math.max(1, Math.min(newQuantity, selectedProduct.stock || 999)),
-      );
-    }
+    // Disabled for now - future bulk purchase feature
+    // const newQuantity = parseInt(e.target.value) || 1;
+    // if (onQuantityChange) {
+    //   onQuantityChange(
+    //     Math.max(1, Math.min(newQuantity, selectedProduct.stock || 999)),
+    //   );
+    // }
   };
 
   const handleIncrement = () => {
-    if (onQuantityChange) {
-      onQuantityChange(
-        Math.min(selectedQuantity + 1, selectedProduct.stock || 999),
-      );
-    }
+    // Disabled for now - future bulk purchase feature
+    // if (onQuantityChange) {
+    //   onQuantityChange(
+    //     Math.min(selectedQuantity + 1, selectedProduct.stock || 999),
+    //   );
+    // }
   };
 
   const handleDecrement = () => {
-    if (onQuantityChange) {
-      onQuantityChange(Math.max(selectedQuantity - 1, 1));
-    }
+    // Disabled for now - future bulk purchase feature
+    // if (onQuantityChange) {
+    //   onQuantityChange(Math.max(selectedQuantity - 1, 1));
+    // }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onConfirm(selectedQuantity);
+    onConfirm(1); // Force quantity to 1 for now
   };
 
-  const totalAmount = selectedProduct.price * selectedQuantity;
+  const totalAmount = selectedProduct.price * 1; // Force quantity to 1 for now
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
@@ -80,17 +83,17 @@ export function PurchaseModal({
             </div>
           </div>
 
-          {/* Quantity Selector */}
+          {/* Quantity Selector - Disabled but visible for future bulk purchase */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Quantity
+              Quantity{" "}
             </label>
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={handleDecrement}
-                disabled={selectedQuantity <= 1}
-                className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={true} // Disabled for now
+                className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center bg-gray-100 opacity-50 cursor-not-allowed transition-colors"
               >
                 <svg
                   className="w-5 h-5"
@@ -109,18 +112,19 @@ export function PurchaseModal({
 
               <input
                 type="number"
-                value={selectedQuantity}
+                value={1} // Fixed value for now
                 onChange={handleQuantityChange}
                 min="1"
-                max={selectedProduct.stock || 999}
-                className="w-20 text-center px-3 py-2 border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+                max="1" // Max set to 1 for now
+                disabled={true} // Disabled for now
+                className="w-20 text-center px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
               />
 
               <button
                 type="button"
                 onClick={handleIncrement}
-                disabled={selectedQuantity >= (selectedProduct.stock || 999)}
-                className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={true} // Disabled for now
+                className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center bg-gray-100 opacity-50 cursor-not-allowed transition-colors"
               >
                 <svg
                   className="w-5 h-5"
@@ -137,11 +141,7 @@ export function PurchaseModal({
                 </svg>
               </button>
 
-              {selectedProduct.stock && (
-                <span className="text-sm text-gray-500">
-                  Max: {selectedProduct.stock}
-                </span>
-              )}
+              <span className="text-sm text-gray-400">Max: 1</span>
             </div>
           </div>
 
@@ -153,12 +153,9 @@ export function PurchaseModal({
                 <span className="text-2xl font-bold text-primary-600">
                   {formatCurrency(totalAmount)}
                 </span>
-                {selectedQuantity > 1 && (
-                  <p className="text-xs text-gray-500">
-                    ({selectedQuantity} tickets ×{" "}
-                    {formatCurrency(selectedProduct.price)})
-                  </p>
-                )}
+                <p className="text-xs text-gray-500">
+                  (1 ticket × {formatCurrency(selectedProduct.price)})
+                </p>
               </div>
             </div>
           </div>
@@ -171,7 +168,7 @@ export function PurchaseModal({
           >
             {isProcessing
               ? "Processing..."
-              : `Proceed to Payment ${selectedQuantity > 1 ? `(${formatCurrency(totalAmount)})` : ""}`}
+              : `Proceed to Payment (${formatCurrency(totalAmount)})`}
           </button>
         </div>
       </div>

@@ -7,6 +7,7 @@ import {
   AlertCircle,
   FileText,
   Lock,
+  HelpCircle,
 } from "lucide-react";
 import { Card } from "../../../../components/Card";
 
@@ -44,35 +45,10 @@ const fullConcernTypes = [
       "Problems with vehicle registration, LTO data mismatch, or vehicle information",
   },
   {
-    id: "account",
-    label: "Account Problem",
-    icon: Users,
-    description: "Login issues, account access, role/permission problems",
-  },
-  {
-    id: "voucher",
-    label: "Voucher Problem",
-    icon: Ticket,
-    description:
-      "Issues with voucher redemption, expiration, or missing vouchers",
-  },
-  {
-    id: "company",
-    label: "Company/Branch Issue",
-    icon: Building2,
-    description: "Problems with company or branch information",
-  },
-  {
-    id: "system",
-    label: "System Error",
-    icon: AlertCircle,
-    description: "Technical issues, bugs, or system errors",
-  },
-  {
     id: "other",
     label: "Other Concern",
-    icon: FileText,
-    description: "Other inquiries or concerns",
+    icon: HelpCircle,
+    description: "Account, Voucher, Company/Branch, System, or other issues",
   },
 ];
 
@@ -89,7 +65,7 @@ export const ConcernTypeSelector = ({
         <AlertCircle size={18} className="text-primary-500" />
         Concern Type *
       </h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {concernTypes.map((concern) => {
           const Icon = concern.icon;
           const isSelected = selectedType === concern.id;

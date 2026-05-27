@@ -320,15 +320,18 @@ function App() {
       );
     }
 
+    // TRANSFER VOUCHERS - ENABLED for managers (no restriction)
     if (page === "transfer-vouchers") {
-      if (role !== "manager")
+      // Only show access denied for non-manager roles
+      if (role !== "admin" && role !== "manager") {
         return (
           <PlaceholderPage
             title="Access Denied"
             icon="🔒"
-            description="You don't have permission to transfer vouchers. Only managers can transfer vouchers."
+            description="You don't have permission to transfer vouchers."
           />
         );
+      }
       return <TransferVoucherPage />;
     }
 

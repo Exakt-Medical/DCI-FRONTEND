@@ -1,10 +1,8 @@
-import { StatusBadge } from "../../../components/StatusBadge";
-import { Copy, CheckCircle, Eye, Edit, Power } from "lucide-react";
+import { Eye, Edit, Power } from "lucide-react";
+import { formatDateTime } from "../../../utils/formatDate";
 
 export const BranchTableRow = ({
   branch,
-  copiedId,
-  onCopy,
   onView,
   onEdit,
   onDelete,
@@ -13,32 +11,6 @@ export const BranchTableRow = ({
 }) => {
   return (
     <tr className="hover:bg-gray-50 transition-colors">
-      <td className="px-4 py-3">
-        <span className="font-mono font-bold text-primary-600 text-sm">
-          {branch.branchId}
-        </span>
-      </td>
-      <td className="px-4 py-3">
-        <p className="font-medium text-gray-900">{branch.companyName}</p>
-      </td>
-      <td className="px-4 py-3">
-        <p className="text-sm text-gray-700">{branch.branchName}</p>
-        {branch.branchShortname && (
-          <p className="text-xs text-gray-400">{branch.branchShortname}</p>
-        )}
-      </td>
-      <td className="px-4 py-3">
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-          branch.isactive
-            ? "bg-green-100 text-green-800"
-            : "bg-red-100 text-red-800"
-        }`}>
-          {branch.isactive ? "Active" : "Inactive"}
-        </span>
-      </td>
-      <td className="px-4 py-3 text-gray-500 text-xs">
-        {branch.timestamp ? new Date(branch.timestamp).toLocaleDateString() : "-"}
-      </td>
       <td className="px-4 py-3 text-center">
         <div className="flex items-center justify-center gap-2">
           {isViewer ? (
@@ -51,17 +23,6 @@ export const BranchTableRow = ({
             </button>
           ) : (
             <>
-              <button
-                onClick={() => onCopy(branch.branchId, branch.id)}
-                className="p-1 text-gray-400 hover:text-primary-600 transition-colors"
-                title="Copy Code"
-              >
-                {copiedId === branch.id ? (
-                  <CheckCircle size={14} />
-                ) : (
-                  <Copy size={14} />
-                )}
-              </button>
               <button
                 onClick={() => onView(branch)}
                 className="p-1 text-gray-400 hover:text-primary-600 transition-colors"
@@ -80,11 +41,11 @@ export const BranchTableRow = ({
                 <button
                   onClick={() => onToggleActive(branch)}
                   className={`p-1 transition-colors ${
-                    branch.isactive
+                    branch.status === "ACTIVE"
                       ? "text-gray-400 hover:text-red-600"
                       : "text-gray-400 hover:text-green-600"
                   }`}
-                  title={branch.isactive ? "Deactivate" : "Activate"}
+                  title={branch.status === "ACTIVE" ? "Deactivate" : "Activate"}
                 >
                   <Power size={14} />
                 </button>
@@ -92,6 +53,28 @@ export const BranchTableRow = ({
             </>
           )}
         </div>
+      </td>
+      <td className="px-4 py-3">
+        <p className="font-medium text-gray-900">
+          {branch.companyName} - {branch.branchName}
+        </p>
+      </td>
+      <td className="px-4 py-3">
+        <span className="text-sm text-gray-600">{branch.companyProvider || "—"}</span>
+      </td>
+      <td className="px-4 py-3">
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+          branch.status === "ACTIVE"
+            ? "bg-green-100 text-green-800"
+            : branch.status === "INACTIVE"
+            ? "bg-yellow-100 text-yellow-800"
+            : "bg-red-100 text-red-800"
+        }`}>
+          {branch.status}
+        </span>
+      </td>
+      <td className="px-4 py-3 text-gray-500 text-xs">
+        {formatDateTime(branch.dateCreated)}
       </td>
     </tr>
   );
