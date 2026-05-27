@@ -14,7 +14,10 @@ export const ActivityLogsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [actionFilter, setActionFilter] = useState("");
   const [userFilter, setUserFilter] = useState("");
-
+  const [sortConfig, setSortConfig] = useState({
+    key: "timestamp",
+    direction: "desc",
+  });
   const itemsPerPage = 10;
 
   const mapLog = (record) => ({
@@ -57,12 +60,48 @@ export const ActivityLogsPage = () => {
     return matchesSearch && matchesAction && matchesUser;
   });
 
-  // Pagination
-  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
-  const paginatedLogs = filteredLogs.slice(
+  // SORTED logs (AFTER filteredLogs)
+  const sortedLogs = [...filteredLogs].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+
+    const aValue = a[sortConfig.key];
+    const bValue = b[sortConfig.key];
+
+    if (!aValue || !bValue) return 0;
+
+    const isDate = sortConfig.key === "timestamp";
+
+    const aComp = isDate ? new Date(aValue) : aValue.toString().toLowerCase();
+
+    const bComp = isDate ? new Date(bValue) : bValue.toString().toLowerCase();
+
+    if (aComp < bComp) return sortConfig.direction === "asc" ? -1 : 1;
+    if (aComp > bComp) return sortConfig.direction === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const totalPages = Math.ceil(sortedLogs.length / itemsPerPage);
+
+  const paginatedLogs = sortedLogs.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage,
   );
+
+  const handleSort = (key) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        return {
+          key,
+          direction: prev.direction === "asc" ? "desc" : "asc",
+        };
+      }
+
+      return {
+        key,
+        direction: "asc",
+      };
+    });
+  };
 
   // Get unique filter options
   const uniqueActions = [...new Set(logs.map((log) => log.action))];
@@ -113,7 +152,11 @@ export const ActivityLogsPage = () => {
           onExport={handleExport}
         />
 
-        <ActivityLogsTable logs={paginatedLogs} />
+        <ActivityLogsTable
+          logs={paginatedLogs}
+          onSort={handleSort}
+          sortConfig={sortConfig}
+        />
 
         <ActivityLogsPagination
           currentPage={currentPage}

@@ -200,28 +200,30 @@ export const MOCK_TRANSACTIONS = [
     status: "Verified",
     dateCreated: "May 27, 2026 10:16 AM",
   },
+  // FAILED Scenario 1: Vehicle Not Found
   {
     id: 3,
     account: "Juan Dela Cruz",
     company: "ALPHA INSURANCE AND SURETY COMPANY INC. - MANILA",
     refNo: "R123456VLQQIS7FHOX8O",
     description: "INITIATED VEHICLE VERIFICATION VIA WEB (PLATE NO: LAJ1234)",
-    response:
-      "- VEHICLE NOT FOUND!\n- THIS VEHICLE HAS ALREADY BEEN VERIFIED AND HAS AN EXISTING CERTIFICATE.",
+    response: "VEHICLE NOT FOUND!",
     origin: "Web",
     status: "Failed",
     dateCreated: "May 27, 2026 10:16 AM",
   },
+
+  // FAILED Scenario 2: Already Verified
   {
     id: 4,
     account: "Maria Santos",
     company: "ALPHA INSURANCE AND SURETY COMPANY INC. - MANILA",
     refNo: "R987654ABCDEFGHIJKLM",
-    description: "SUBMIT VEHICLE WITH THE FOLLOWING RN#987654XYZ123456789",
+    description: "INITIATED VEHICLE VERIFICATION VIA WEB (PLATE NO: XYZ5678)",
     response:
-      "SUCCESSFULLY AUTHENTICATED USING AUTHENTICATION CODE #M987-1234A-B5C6-D7E8",
+      "THIS VEHICLE HAS ALREADY BEEN VERIFIED AND HAS AN EXISTING CERTIFICATE.",
     origin: "Web",
-    status: "Authenticated",
+    status: "Failed",
     dateCreated: "May 26, 2026 02:30 PM",
   },
   {
