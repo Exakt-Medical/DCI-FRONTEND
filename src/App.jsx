@@ -44,6 +44,13 @@ function App() {
     return null;
   });
 
+  const [allowedToBuyVoucher, setAllowedToBuyVoucher] = useState(() => {
+    if (hasAccess) {
+      return localStorage.getItem("authAllowedToBuyVoucher") === "true";
+    }
+    return false;
+  });
+
   const [page, setPage] = useState("dashboard");
   const [certificateData, setCertificateData] = useState(null);
   const [pendingPayment, setPendingPayment] = useState(null);
@@ -69,7 +76,10 @@ function App() {
     if (hasAccess && role) {
       localStorage.setItem("authRole", role);
     }
-  }, [view, role, hasAccess]);
+    if (hasAccess) {
+      localStorage.setItem("authAllowedToBuyVoucher", String(allowedToBuyVoucher));
+    }
+  }, [view, role, allowedToBuyVoucher, hasAccess]);
 
   const handleLogin = (userRole, userData) => {
     setRole(userRole);
@@ -77,6 +87,9 @@ function App() {
     setPage("dashboard");
     localStorage.setItem("authRole", userRole);
     localStorage.setItem("authView", userRole);
+    const allowed = !!userData?.allowedToBuyVoucher;
+    setAllowedToBuyVoucher(allowed);
+    localStorage.setItem("authAllowedToBuyVoucher", String(allowed));
     if (userData) {
       setUserProfile(userData);
       localStorage.setItem("userProfile", JSON.stringify(userData));
@@ -91,6 +104,7 @@ function App() {
     setPendingPayment(null);
     localStorage.removeItem("authRole");
     localStorage.removeItem("authView");
+    localStorage.removeItem("authAllowedToBuyVoucher");
     localStorage.removeItem("userProfile");
   };
 
@@ -251,6 +265,15 @@ function App() {
       return <VerificationPage onCertificate={() => {}} />;
 
     if (page === "vouchers") {
+      if (!allowedToBuyVoucher) {
+        return (
+          <PlaceholderPage
+            title="Access Denied"
+            icon="🔒"
+            description="You don't have permission to purchase vouchers. Please contact your administrator."
+          />
+        );
+      }
       if (role === "agent" || role === "subagent") {
         return (
           <Vouchers
@@ -313,7 +336,7 @@ function App() {
     }
 
     if (page === "payment") {
-      if (role !== "manager" && role !== "admin")
+      if (!allowedToBuyVoucher || (role !== "manager" && role !== "admin"))
         return (
           <PlaceholderPage
             title="Access Denied"
