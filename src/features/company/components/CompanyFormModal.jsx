@@ -12,6 +12,8 @@ export const CompanyFormModal = ({
   const [formData, setFormData] = useState({
     code: "",
     companyName: "",
+    provider: "",
+    address: "",
     status: "ACTIVE",
   });
 
@@ -20,12 +22,16 @@ export const CompanyFormModal = ({
       setFormData({
         code: company.code || "",
         companyName: company.companyName || "",
+        provider: company.provider || "",
+        address: company.address || "",
         status: company.status || "ACTIVE",
       });
     } else {
       setFormData({
         code: "",
         companyName: "",
+        provider: "",
+        address: "",
         status: "ACTIVE",
       });
     }
@@ -110,6 +116,21 @@ export const CompanyFormModal = ({
               </div>
             )}
 
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Provider
+              </label>
+              <input
+                type="text"
+                value={formData.provider}
+                onChange={(e) =>
+                  setFormData({ ...formData, provider: e.target.value })
+                }
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                placeholder="Enter provider name"
+              />
+            </div>
+
             <div className="space-y-2 md:col-span-2">
               <label className="block text-sm font-semibold text-gray-700">
                 Company Name <span className="text-red-500">*</span>
@@ -123,6 +144,21 @@ export const CompanyFormModal = ({
                 required
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                 placeholder="Enter company name"
+              />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Address
+              </label>
+              <textarea
+                value={formData.address}
+                onChange={(e) =>
+                  setFormData({ ...formData, address: e.target.value })
+                }
+                rows={3}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                placeholder="Enter company address"
               />
             </div>
           </div>

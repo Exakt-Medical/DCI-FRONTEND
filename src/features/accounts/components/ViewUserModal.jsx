@@ -1,9 +1,14 @@
 import { Button } from "../../../components/Button";
-import { X, Mail, Building, User as UserIcon, Calendar } from "lucide-react";
+import { X, Mail, Building, User as UserIcon, Calendar, Smartphone, ShieldCheck } from "lucide-react";
 import { formatDateTime } from "../../../utils/formatDate";
 
 export const ViewUserModal = ({ isOpen, onClose, user }) => {
   if (!isOpen || !user) return null;
+
+  const getFullName = () => {
+    const parts = [user.firstName, user.middleInitial, user.lastName, user.extName].filter(Boolean);
+    return parts.length > 0 ? parts.join(" ") : user.username;
+  };
 
   const getCompanyBranch = () => {
     if (user.role === "ADMIN" || user.role === "SUPPORT" || user.role === "VIEWER") {
@@ -24,10 +29,7 @@ export const ViewUserModal = ({ isOpen, onClose, user }) => {
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h2 className="text-lg font-bold text-gray-900">User Details</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X size={20} />
           </button>
         </div>
@@ -40,6 +42,7 @@ export const ViewUserModal = ({ isOpen, onClose, user }) => {
               </span>
             </div>
             <h3 className="text-lg font-bold text-gray-900">{user.username}</h3>
+            <p className="text-sm text-gray-500">{getFullName()}</p>
             <div className="mt-2">
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                 user.status === "ACTIVE"
@@ -59,6 +62,14 @@ export const ViewUserModal = ({ isOpen, onClose, user }) => {
               <div>
                 <p className="text-xs text-gray-500">Email</p>
                 <p className="text-sm text-gray-900">{user.email || "—"}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Smartphone size={16} className="text-gray-400" />
+              <div>
+                <p className="text-xs text-gray-500">Mobile</p>
+                <p className="text-sm text-gray-900">{user.mobile || "—"}</p>
               </div>
             </div>
 
@@ -87,20 +98,17 @@ export const ViewUserModal = ({ isOpen, onClose, user }) => {
             </div>
 
             <div className="flex items-center gap-3">
-              <Calendar size={16} className="text-gray-400" />
+              <ShieldCheck size={16} className="text-gray-400" />
               <div>
-                <p className="text-xs text-gray-500">Last Updated</p>
-                <p className="text-sm text-gray-900">
-                  {user.dateCreated ? formatDateTime(user.dateCreated) : "-"}
-                </p>
+                <p className="text-xs text-gray-500">Buy Voucher Allowed</p>
+                <p className="text-sm text-gray-900">{user.isBuyVoucherAllowed ? "Yes" : "No"}</p>
               </div>
             </div>
-          </div>
 
-          <div className="bg-gray-50 rounded-lg p-3 text-center">
-            <p className="text-sm text-gray-600">
-              This account was created at {formatDateTime(user.dateCreated)}
-            </p>
+            <div className="flex items-center gap-3">
+              <Calendar size={16} className="text-gray-400 shrink-0" />
+              <p className="text-sm text-gray-700">This account was created at <span className="font-medium text-gray-900">{user.dateCreated ? formatDateTime(user.dateCreated) : "-"}</span></p>
+            </div>
           </div>
         </div>
 
