@@ -29,11 +29,6 @@ export const UserTableRow = ({
       </td>
       <td className="px-4 py-3">
         <span className="text-sm text-gray-700">
-          {user.role === "ADMIN" ? "Head Company, Head Branch" : ["AGENT", "SUBAGENT"].includes(user.role) ? (user.managerBranchCompanyName && user.managerBranchName ? `${user.managerBranchCompanyName} / ${user.managerBranchName}` : "N/A") : (user.branchCompanyName && user.branchName ? `${user.branchCompanyName} / ${user.branchName}` : "N/A")}
-        </span>
-      </td>
-      <td className="px-4 py-3">
-        <span className="text-sm text-gray-700">
           {["AGENT", "SUBAGENT"].includes(user.role) ? (user.managerName || "N/A") : "N/A"}
         </span>
       </td>
