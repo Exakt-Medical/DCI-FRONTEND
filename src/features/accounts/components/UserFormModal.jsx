@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "../../../components/Button";
 import { Input } from "../../../components/Input";
+import Switch from "../../../components/Switch";
 import { X, UserPlus, Edit2 } from "lucide-react";
 
 export const UserFormModal = ({
@@ -22,6 +23,7 @@ export const UserFormModal = ({
     branchId: "",
     managerId: "",
     isactive: true,
+    allowedToBuyVoucher: false,
   });
 
   useEffect(() => {
@@ -36,6 +38,7 @@ export const UserFormModal = ({
         branchId: user.branchId ? String(user.branchId) : "",
         managerId: user.managerId ? String(user.managerId) : "",
         isactive: user.isactive !== undefined ? user.isactive : true,
+        allowedToBuyVoucher: user.allowedToBuyVoucher ?? false,
       });
     } else {
       setFormData({
@@ -48,6 +51,7 @@ export const UserFormModal = ({
         branchId: "",
         managerId: "",
         isactive: true,
+        allowedToBuyVoucher: false,
       });
     }
   }, [user, isEditing, isOpen]);
@@ -260,6 +264,17 @@ export const UserFormModal = ({
                 <option value="ADMIN">Admin</option>
                 <option value="VIEWER">Viewer</option>
               </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Allowed to Buy Voucher
+              </label>
+              <Switch
+                checked={!!formData.allowedToBuyVoucher}
+                onChange={(val) => setFormData({ ...formData, allowedToBuyVoucher: val })}
+                ariaLabel="Allowed to buy voucher"
+              />
             </div>
           </div>
 
