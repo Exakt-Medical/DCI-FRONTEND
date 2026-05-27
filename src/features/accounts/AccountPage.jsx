@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
-import { Search, Filter, Users, Plus, Upload } from "lucide-react";
+import { Search, Users, Plus, Upload, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { userService } from "../../services/userService";
 import { branchService } from "../../services/branchService";
 import { StatCard } from "./components/StatCard";
@@ -11,7 +11,7 @@ import { ViewUserModal } from "./components/ViewUserModal";
 import { DeleteConfirmModal } from "./components/DeleteConfirmModal";
 import { AccountPagination } from "./components/AccountPagination";
 import { UploadBulkModal } from "../../components/UploadBulkModal";
-import { Dropdown } from "../../components/Dropdown";
+
 
 const ROLE_TABS = ["All", "Managers", "Agents", "Sub-agents", "Admin"];
 
@@ -24,10 +24,8 @@ export const AccountPage = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("All");
-  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [activeStatusTab, setActiveStatusTab] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [copiedId, setCopiedId] = useState(null);
-  const [showFilters, setShowFilters] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -35,6 +33,21 @@ export const AccountPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const itemsPerPage = 5;
+  const [sortField, setSortField] = useState("username");
+  const [sortDirection, setSortDirection] = useState("asc");
+
+  const handleSort = (field) => {
+    setSortDirection((prev) => (sortField === field && prev === "asc" ? "desc" : "asc"));
+    setSortField(field);
+    setCurrentPage(1);
+  };
+
+  const SortIcon = ({ field }) => {
+    if (sortField !== field) return <ArrowUpDown size={12} className="inline ml-1 text-gray-300" />;
+    return sortDirection === "asc"
+      ? <ArrowUp size={12} className="inline ml-1 text-primary-600" />
+      : <ArrowDown size={12} className="inline ml-1 text-primary-600" />;
+  };
 
   const roleFilterMap = {
     All: "all",
@@ -67,13 +80,21 @@ export const AccountPage = () => {
   }, [fetchData]);
 
   const totalUsers = users.length;
-  const totalManagers = users.filter((u) => u.role === "MANAGER").length;
-  const totalAgents = users.filter((u) => u.role === "AGENT").length;
-  const totalSubAgents = users.filter((u) => u.role === "SUBAGENT").length;
+  const totalActive = users.filter((u) => u.status === "ACTIVE").length;
+  const totalInactive = users.filter((u) => u.status !== "ACTIVE").length;
 
   const filteredUsers = users.filter((user) => {
+    const combinedDisplay = [
+      user.username,
+      user.branchCompanyName,
+      user.branchName,
+      user.managerBranchCompanyName,
+      user.managerBranchName,
+    ].filter(Boolean).join(" ").toLowerCase();
+
     const matchesSearch =
       searchTerm === "" ||
+      combinedDisplay.includes(searchTerm.toLowerCase()) ||
       user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.firstName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.lastName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -83,25 +104,32 @@ export const AccountPage = () => {
       activeTab === "All" || user.role === roleFilterMap[activeTab];
 
     const matchesStatus =
-      selectedStatus === "all" ||
-      (selectedStatus === "Active" && user.isactive) ||
-      (selectedStatus === "Inactive" && !user.isactive);
+      activeStatusTab === "all" ||
+      (activeStatusTab === "active" && user.status === "ACTIVE") ||
+      (activeStatusTab === "inactive" && user.status !== "ACTIVE");
 
     return matchesSearch && matchesRole && matchesStatus;
   });
 
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  const getSortValue = (user, field) => {
+    if (field === "branchName") {
+      if (user.role === "ADMIN") return "head company, head branch";
+      if (["AGENT", "SUBAGENT"].includes(user.role)) return ((user.managerBranchCompanyName ? user.managerBranchCompanyName + " / " : "") + (user.managerBranchName || "") || "N/A").toLowerCase();
+      return ((user.branchCompanyName ? user.branchCompanyName + " / " : "") + (user.branchName || "") || "N/A").toLowerCase();
+    }
+    return (user[field] ?? "").toString().toLowerCase();
+  };
+
+  const sortedUsers = [...filteredUsers].sort((a, b) => {
+    const cmp = getSortValue(a, sortField).localeCompare(getSortValue(b, sortField));
+    return sortDirection === "asc" ? cmp : -cmp;
+  });
+  const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedUsers = filteredUsers.slice(
     startIndex,
     startIndex + itemsPerPage,
   );
-
-  const copyToClipboard = (text, id) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
 
   const handleAddUser = () => {
     setSelectedUser(null);
@@ -140,7 +168,7 @@ export const AccountPage = () => {
     try {
       const response = await userService.update(user.id, {
         ...user,
-        isactive: !user.isactive,
+        status: user.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
       });
       setUsers(
         users.map((u) => (u.id === user.id ? { ...u, ...response.data } : u)),
@@ -160,7 +188,7 @@ export const AccountPage = () => {
         role: userData.role,
         branchId: userData.branchId ? parseInt(userData.branchId) : null,
         managerId: userData.managerId ? parseInt(userData.managerId) : null,
-        isactive: userData.isactive,
+        status: userData.status,
       };
 
       if (!isEditing) {
@@ -187,30 +215,21 @@ export const AccountPage = () => {
 
   const handleBulkUpload = async (records) => {
     const payload = records.map((r) => ({
-      ...r,
-      isactive: true,
+      firstName: r.first_name,
+      lastName: r.last_name,
+      middleInitial: r.middle_initial || "",
+      extName: r.ext_name || "",
+      username: r.username,
       password: r.password || "password123",
+      email: r.email || "",
+      mobile: r.mobile || "",
+      role: r.role,
+      status: "ACTIVE",
     }));
     return userService.bulkCreate(payload);
   };
 
-  const userTemplateHeaders = [
-    "username",
-    "password",
-    "firstName",
-    "lastName",
-    "email",
-    "role",
-  ];
-
-  const statusOptions = [
-    { value: "all", label: "All Status" },
-    { value: "Active", label: "Active" },
-    { value: "Inactive", label: "Inactive" },
-  ];
-
-  const isAgentOrSubagent = (user) => ["AGENT", "SUBAGENT"].includes(user.role);
-  const showManagerColumn = paginatedUsers.some(isAgentOrSubagent);
+  const userTemplateHeaders = ["first_name", "last_name", "middle_initial", "ext_name", "username", "password", "email", "mobile", "role"];
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -243,30 +262,30 @@ export const AccountPage = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <StatCard
           title="Total Users"
           value={totalUsers}
           icon={Users}
           color="gray"
+          onClick={() => { setActiveStatusTab("all"); setCurrentPage(1); }}
+          active={activeStatusTab === "all"}
         />
         <StatCard
-          title="Managers"
-          value={totalManagers}
-          icon={Users}
-          color="blue"
-        />
-        <StatCard
-          title="Agents"
-          value={totalAgents}
+          title="Active"
+          value={totalActive}
           icon={Users}
           color="green"
+          onClick={() => { setActiveStatusTab("active"); setCurrentPage(1); }}
+          active={activeStatusTab === "active"}
         />
         <StatCard
-          title="Sub Agents"
-          value={totalSubAgents}
+          title="Inactive"
+          value={totalInactive}
           icon={Users}
-          color="purple"
+          color="red"
+          onClick={() => { setActiveStatusTab("inactive"); setCurrentPage(1); }}
+          active={activeStatusTab === "inactive"}
         />
       </div>
 
@@ -292,64 +311,24 @@ export const AccountPage = () => {
         </div>
       </div>
 
-      {/* Search and Filters */}
+      {/* Search */}
       <Card className="p-4 mb-5">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1 relative">
-            <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-            />
-            <input
-              type="text"
-              placeholder="Search by name, username, or email..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            />
-          </div>
-          <Button
-            variant="secondary"
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2"
-          >
-            <Filter size={16} />
-            Filters
-            {selectedStatus !== "all" && (
-              <span className="ml-1 w-2 h-2 bg-primary-500 rounded-full"></span>
-            )}
-          </Button>
+        <div className="flex-1 relative">
+          <Search
+            size={18}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          />
+          <input
+            type="text"
+            placeholder="Search by name, username, or email..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          />
         </div>
-
-        {showFilters && (
-          <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-gray-200">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-gray-700">Status:</span>
-              <Dropdown
-                options={statusOptions}
-                value={selectedStatus}
-                onChange={(value) => {
-                  setSelectedStatus(value);
-                  setCurrentPage(1);
-                }}
-              />
-            </div>
-            {selectedStatus !== "all" && (
-              <button
-                onClick={() => {
-                  setSelectedStatus("all");
-                  setCurrentPage(1);
-                }}
-                className="text-xs text-primary-600 hover:text-primary-700"
-              >
-                Clear Filters
-              </button>
-            )}
-          </div>
-        )}
       </Card>
 
       {/* Users Table */}
@@ -358,53 +337,44 @@ export const AccountPage = () => {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Role
-                </th>
-                {showManagerColumn && (
-                  <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                    Manager
-                  </th>
-                )}
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Updated
-                </th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Actions
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("username")}>
+                  Name <SortIcon field="username" />
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("role")}>
+                  Role <SortIcon field="role" />
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("managerName")}>
+                  Manager <SortIcon field="managerName" />
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("branchName")}>
+                  Branch <SortIcon field="branchName" />
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("status")}>
+                  Status <SortIcon field="status" />
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("dateCreated")}>
+                  Date Created <SortIcon field="dateCreated" />
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td
-                    colSpan={showManagerColumn ? 6 : 5}
-                    className="px-4 py-8 text-center text-gray-500"
-                  >
+                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
                     Loading users...
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td
-                    colSpan={showManagerColumn ? 6 : 5}
-                    className="px-4 py-8 text-center text-red-500"
-                  >
+                  <td colSpan={7} className="px-4 py-8 text-center text-red-500">
                     {error}
                   </td>
                 </tr>
               ) : paginatedUsers.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan={showManagerColumn ? 6 : 5}
-                    className="px-4 py-8 text-center text-gray-500"
-                  >
+                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
                     No users found
                   </td>
                 </tr>
@@ -413,8 +383,6 @@ export const AccountPage = () => {
                   <UserTableRow
                     key={user.id}
                     user={user}
-                    copiedId={copiedId}
-                    onCopy={copyToClipboard}
                     onView={handleViewUser}
                     onEdit={handleEditUser}
                     onDelete={handleDeleteUser}
@@ -461,13 +429,7 @@ export const AccountPage = () => {
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={confirmDelete}
-        userName={
-          selectedUser
-            ? [selectedUser.firstName, selectedUser.lastName]
-                .filter(Boolean)
-                .join(" ") || selectedUser.username
-            : ""
-        }
+        userName={selectedUser ? selectedUser.username : ""}
       />
 
       <UploadBulkModal

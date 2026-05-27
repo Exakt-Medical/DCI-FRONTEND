@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
 export const AccountPagination = ({
   currentPage,
@@ -16,7 +16,15 @@ export const AccountPagination = ({
         Showing {startIndex + 1} to {startIndex + currentItems} of {totalItems}{" "}
         users
       </p>
-      <div className="flex gap-1">
+      <div className="flex gap-1 items-center">
+        <button
+          onClick={() => onPageChange(1)}
+          disabled={currentPage === 1}
+          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          title="First Page"
+        >
+          <ChevronsLeft size={16} />
+        </button>
         <button
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage === 1}
@@ -53,6 +61,14 @@ export const AccountPagination = ({
           className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <ChevronRight size={16} />
+        </button>
+        <button
+          onClick={() => onPageChange(totalPages)}
+          disabled={currentPage === totalPages}
+          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Last Page"
+        >
+          <ChevronsRight size={16} />
         </button>
       </div>
     </div>

@@ -5,8 +5,13 @@ import {
   Building2,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Plus,
   Upload,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { companyService } from "../../services/companyService";
 import { CompanyStatCard } from "./components/CompanyStatCard";
@@ -15,7 +20,6 @@ import { CompanyFormModal } from "./components/CompanyFormModal";
 import { CompanyViewModal } from "./components/CompanyViewModal";
 import { CompanyDeleteModal } from "./components/CompanyDeleteModal";
 import { UploadBulkModal } from "../../components/UploadBulkModal";
-import { Dropdown } from "../../components/Dropdown";
 
 export const CompanyPage = () => {
   const role = localStorage.getItem("role");
@@ -24,9 +28,8 @@ export const CompanyPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [activeStatusTab, setActiveStatusTab] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [copiedId, setCopiedId] = useState(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -34,12 +37,27 @@ export const CompanyPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const itemsPerPage = 5;
+  const [sortField, setSortField] = useState("companyName");
+  const [sortDirection, setSortDirection] = useState("asc");
+
+  const handleSort = (field) => {
+    setSortDirection((prev) => (sortField === field && prev === "asc" ? "desc" : "asc"));
+    setSortField(field);
+    setCurrentPage(1);
+  };
+
+  const SortIcon = ({ field }) => {
+    if (sortField !== field) return <ArrowUpDown size={12} className="inline ml-1 text-gray-300" />;
+    return sortDirection === "asc"
+      ? <ArrowUp size={12} className="inline ml-1 text-primary-600" />
+      : <ArrowDown size={12} className="inline ml-1 text-primary-600" />;
+  };
 
   const fetchCompanies = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await companyService.getAll();
-      setCompanies(response.data);
+      const res = await companyService.getAll();
+      setCompanies(res.data);
       setError(null);
     } catch (err) {
       setError("Failed to load companies");
@@ -54,38 +72,34 @@ export const CompanyPage = () => {
   }, [fetchCompanies]);
 
   const totalCompanies = companies.length;
-  const totalActive = companies.filter((c) => c.isactive).length;
-  const totalInactive = companies.filter((c) => !c.isactive && c.approvalStatus !== "REJECTED").length;
-  const totalDeactivated = companies.filter((c) => c.approvalStatus === "REJECTED").length;
+  const totalActive = companies.filter((c) => c.status === "ACTIVE").length;
+  const totalInactive = companies.filter((c) => c.status !== "ACTIVE").length;
 
   const filteredCompanies = companies.filter((company) => {
     const matchesSearch =
       searchTerm === "" ||
-      company.companyId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      company.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (company.companyShortname || "").toLowerCase().includes(searchTerm.toLowerCase());
+      company.companyName.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesStatus =
-      selectedStatus === "all" || company.approvalStatus === selectedStatus || 
-      (selectedStatus === "Active" && company.isactive) ||
-      (selectedStatus === "Inactive" && !company.isactive && company.approvalStatus !== "REJECTED") ||
-      (selectedStatus === "Deactivated" && company.approvalStatus === "REJECTED");
+      activeStatusTab === "all" ||
+      (activeStatusTab === "active" && company.status === "ACTIVE") ||
+      (activeStatusTab === "inactive" && (company.status === "INACTIVE" || company.status === "DEACTIVATED"));
 
     return matchesSearch && matchesStatus;
   });
 
-  const totalPages = Math.ceil(filteredCompanies.length / itemsPerPage);
+  const sortedCompanies = [...filteredCompanies].sort((a, b) => {
+    const aVal = (a[sortField] ?? "").toString().toLowerCase();
+    const bVal = (b[sortField] ?? "").toString().toLowerCase();
+    const cmp = aVal.localeCompare(bVal);
+    return sortDirection === "asc" ? cmp : -cmp;
+  });
+  const totalPages = Math.ceil(sortedCompanies.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedCompanies = filteredCompanies.slice(
+  const paginatedCompanies = sortedCompanies.slice(
     startIndex,
     startIndex + itemsPerPage,
   );
-
-  const copyToClipboard = (text, id) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
 
   const handleAddCompany = () => {
     setSelectedCompany(null);
@@ -109,22 +123,12 @@ export const CompanyPage = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = async () => {
-    try {
-      await companyService.delete(selectedCompany.id);
-      setCompanies(companies.filter((c) => c.id !== selectedCompany.id));
-      setIsDeleteModalOpen(false);
-      setSelectedCompany(null);
-    } catch (err) {
-      console.error("Delete failed", err);
-    }
-  };
-
   const handleToggleActive = async (company) => {
     try {
+      const newStatus = company.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
       const response = await companyService.update(company.id, {
-        ...company,
-        isactive: !company.isactive,
+        companyName: company.companyName,
+        status: newStatus,
       });
       setCompanies(
         companies.map((c) =>
@@ -133,6 +137,17 @@ export const CompanyPage = () => {
       );
     } catch (err) {
       console.error("Toggle active failed", err);
+    }
+  };
+
+  const confirmDelete = async () => {
+    try {
+      await companyService.delete(selectedCompany.id);
+      setCompanies(companies.filter((c) => c.id !== selectedCompany.id));
+      setIsDeleteModalOpen(false);
+      setSelectedCompany(null);
+    } catch (err) {
+      console.error("Delete failed", err);
     }
   };
 
@@ -157,21 +172,20 @@ export const CompanyPage = () => {
   };
 
   const handleBulkUpload = async (records) => {
-    return companyService.bulkCreate(records);
+    const payload = records.map((r) => ({
+      companyName: r.company_name,
+      code: r.code,
+      address: r.address,
+      status: "ACTIVE",
+      approvalStatus: "APPROVED",
+    }));
+    return companyService.bulkCreate(payload);
   };
 
-  const companyTemplateHeaders = ["companyId", "companyName", "companyShortname"];
-
-  const statusOptions = [
-    { value: "all", label: "All Status" },
-    { value: "Active", label: "Active" },
-    { value: "Inactive", label: "Inactive" },
-    { value: "Deactivated", label: "Deactivated" },
-  ];
+  const companyTemplateHeaders = ["provider", "code", "company_name", "address"];
 
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Header */}
       <div className="mb-6 flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">
@@ -197,123 +211,86 @@ export const CompanyPage = () => {
         )}
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <CompanyStatCard
           title="Total Companies"
           value={totalCompanies}
           icon={Building2}
           color="gray"
+          onClick={() => { setActiveStatusTab("all"); setCurrentPage(1); }}
+          active={activeStatusTab === "all"}
         />
         <CompanyStatCard
           title="Active"
           value={totalActive}
           icon={Building2}
           color="green"
+          onClick={() => { setActiveStatusTab("active"); setCurrentPage(1); }}
+          active={activeStatusTab === "active"}
         />
         <CompanyStatCard
           title="Inactive"
           value={totalInactive}
           icon={Building2}
           color="yellow"
-        />
-        <CompanyStatCard
-          title="Deactivated"
-          value={totalDeactivated}
-          icon={Building2}
-          color="red"
+          onClick={() => { setActiveStatusTab("inactive"); setCurrentPage(1); }}
+          active={activeStatusTab === "inactive"}
         />
       </div>
 
-      {/* Search and Filters */}
       <Card className="p-4 mb-5">
-        <div className="flex flex-col sm:flex-row gap-3 items-center">
-          <div className="flex-1 relative">
-            <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-            />
-            <input
-              type="text"
-              placeholder="Search by ID, name, or short name..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            />
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 flex-shrink-0">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-gray-700">Status:</span>
-              <Dropdown
-                options={statusOptions}
-                value={selectedStatus}
-                onChange={(value) => {
-                  setSelectedStatus(value);
-                  setCurrentPage(1);
-                }}
-              />
-            </div>
-            {selectedStatus !== "all" && (
-              <button
-                onClick={() => {
-                  setSelectedStatus("all");
-                  setCurrentPage(1);
-                }}
-                className="text-xs text-primary-600 hover:text-primary-700 whitespace-nowrap"
-              >
-                Clear Filters
-              </button>
-            )}
-          </div>
+        <div className="flex-1 relative">
+          <Search
+            size={18}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          />
+          <input
+            type="text"
+            placeholder="Search by name..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          />
         </div>
       </Card>
 
-      {/* Companies Table */}
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Code
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Short Name
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Active
-                </th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Actions
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("companyName")}>
+                  Name <SortIcon field="companyName" />
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("status")}>
+                  Status <SortIcon field="status" />
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("dateCreated")}>
+                  Date Created <SortIcon field="dateCreated" />
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
                     Loading companies...
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-red-500">
+                  <td colSpan={4} className="px-4 py-8 text-center text-red-500">
                     {error}
                   </td>
                 </tr>
               ) : paginatedCompanies.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
                     No companies found
                   </td>
                 </tr>
@@ -322,8 +299,6 @@ export const CompanyPage = () => {
                   <CompanyTableRow
                     key={company.id}
                     company={company}
-                    copiedId={copiedId}
-                    onCopy={copyToClipboard}
                     onView={handleViewCompany}
                     onEdit={handleEditCompany}
                     onDelete={handleDeleteCompany}
@@ -336,7 +311,6 @@ export const CompanyPage = () => {
           </table>
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
             <p className="text-xs text-gray-500">
@@ -344,7 +318,15 @@ export const CompanyPage = () => {
               {Math.min(startIndex + itemsPerPage, filteredCompanies.length)} of{" "}
               {filteredCompanies.length} companies
             </p>
-            <div className="flex gap-1">
+            <div className="flex gap-1 items-center">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                className="p-1 text-gray-500 hover:text-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="First Page"
+              >
+                <ChevronsLeft size={18} />
+              </button>
               <button
                 onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                 disabled={currentPage === 1}
@@ -384,12 +366,19 @@ export const CompanyPage = () => {
               >
                 <ChevronRight size={18} />
               </button>
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+                className="p-1 text-gray-500 hover:text-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Last Page"
+              >
+                <ChevronsRight size={18} />
+              </button>
             </div>
           </div>
         )}
       </Card>
 
-      {/* Modals */}
       <CompanyFormModal
         isOpen={isFormModalOpen}
         onClose={() => setIsFormModalOpen(false)}

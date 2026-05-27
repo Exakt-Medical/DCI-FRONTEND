@@ -5,8 +5,15 @@ export const CompanyStatCard = ({
   value,
   icon: Icon,
   color = "primary",
+  onClick,
+  active,
 }) => (
-  <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-100 shadow-lg p-5 hover:shadow-xl transition-all group">
+  <div
+    onClick={onClick}
+    className={`bg-gradient-to-br from-white to-gray-50 rounded-2xl border shadow-lg p-5 transition-all group cursor-pointer ${
+      active ? "border-primary-500 ring-2 ring-primary-200" : "border-gray-100"
+    } hover:shadow-xl`}
+  >
     <div className="flex items-start justify-between">
       <div>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
