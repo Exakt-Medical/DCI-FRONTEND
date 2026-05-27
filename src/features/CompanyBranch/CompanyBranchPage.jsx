@@ -42,7 +42,7 @@ export const CompanyBranchPage = () => {
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortField, setSortField] = useState("name");
   const [sortDirection, setSortDirection] = useState("asc");
 
@@ -95,12 +95,14 @@ export const CompanyBranchPage = () => {
 
   const filteredBranches = branches.filter((branch) => {
     const combinedName = getCombinedName(branch).toLowerCase();
+    const term = searchTerm.toLowerCase();
     const matchesSearch =
       searchTerm === "" ||
-      branch.branchId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      branch.branchName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      branch.companyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      combinedName.includes(searchTerm.toLowerCase());
+      branch.branchId?.toLowerCase().includes(term) ||
+      branch.branchName?.toLowerCase().includes(term) ||
+      branch.companyName?.toLowerCase().includes(term) ||
+      (branch.companyProvider && branch.companyProvider.toLowerCase().includes(term)) ||
+      combinedName.includes(term);
 
     const matchesStatus =
       activeStatusTab === "all" ||
@@ -126,7 +128,7 @@ export const CompanyBranchPage = () => {
 
   const totalPages = Math.ceil(sortedBranches.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedBranches = filteredBranches.slice(
+  const paginatedBranches = sortedBranches.slice(
     startIndex,
     startIndex + itemsPerPage,
   );
@@ -228,7 +230,7 @@ export const CompanyBranchPage = () => {
       <div className="mb-6 flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">
-            Company & Branch Management
+            Branch Management
           </h1>
           <p className="text-sm text-gray-500">
             Manage insurance companies and their branches
@@ -305,6 +307,9 @@ export const CompanyBranchPage = () => {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("name")}>
                   Name <SortIcon field="name" />
                 </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("companyProvider")}>
+                  Provider <SortIcon field="companyProvider" />
+                </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("status")}>
                   Status <SortIcon field="status" />
                 </th>
@@ -316,19 +321,19 @@ export const CompanyBranchPage = () => {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
                     Loading branches...
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-red-500">
+                  <td colSpan={5} className="px-4 py-8 text-center text-red-500">
                     {error}
                   </td>
                 </tr>
               ) : paginatedBranches.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
                     No branches found
                   </td>
                 </tr>
@@ -349,13 +354,24 @@ export const CompanyBranchPage = () => {
           </table>
         </div>
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+          <div className="flex items-center gap-3">
             <p className="text-xs text-gray-500">
               Showing {startIndex + 1} to{" "}
               {Math.min(startIndex + itemsPerPage, filteredBranches.length)} of{" "}
               {filteredBranches.length} branches
             </p>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+              className="text-xs border border-gray-300 rounded px-2 py-1 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500"
+            >
+              <option value={10}>10</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+          {totalPages > 1 && (
             <div className="flex gap-1 items-center">
               <button
                 onClick={() => setCurrentPage(1)}
@@ -413,8 +429,8 @@ export const CompanyBranchPage = () => {
                 <ChevronsRight size={18} />
               </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </Card>
 
       <BranchFormModal

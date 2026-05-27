@@ -58,6 +58,9 @@ export const CompanyTableRow = ({
         <p className="font-medium text-gray-900">{company.companyName}</p>
       </td>
       <td className="px-4 py-3">
+        <span className="text-sm text-gray-600">{company.provider || "—"}</span>
+      </td>
+      <td className="px-4 py-3">
         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
           company.status === "ACTIVE"
             ? "bg-green-100 text-green-800"
