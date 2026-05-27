@@ -1,4 +1,4 @@
-import { Eye, Edit } from "lucide-react";
+import { Eye, Edit, Power } from "lucide-react";
 import { formatDateTime } from "../../../utils/formatDate";
 
 export const CompanyTableRow = ({
@@ -6,6 +6,7 @@ export const CompanyTableRow = ({
   onView,
   onEdit,
   onDelete,
+  onToggleActive,
   isViewer,
 }) => {
   return (
@@ -36,6 +37,19 @@ export const CompanyTableRow = ({
               >
                 <Edit size={14} />
               </button>
+              {onToggleActive && (
+                <button
+                  onClick={() => onToggleActive(company)}
+                  className={`p-1 transition-colors ${
+                    company.status === "ACTIVE"
+                      ? "text-gray-400 hover:text-red-600"
+                      : "text-gray-400 hover:text-green-600"
+                  }`}
+                  title={company.status === "ACTIVE" ? "Deactivate" : "Activate"}
+                >
+                  <Power size={14} />
+                </button>
+              )}
             </>
           )}
         </div>

@@ -9,6 +9,9 @@ import {
   ChevronsRight,
   Plus,
   Upload,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { companyService } from "../../services/companyService";
 import { CompanyStatCard } from "./components/CompanyStatCard";
@@ -34,6 +37,21 @@ export const CompanyPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const itemsPerPage = 5;
+  const [sortField, setSortField] = useState("companyName");
+  const [sortDirection, setSortDirection] = useState("asc");
+
+  const handleSort = (field) => {
+    setSortDirection((prev) => (sortField === field && prev === "asc" ? "desc" : "asc"));
+    setSortField(field);
+    setCurrentPage(1);
+  };
+
+  const SortIcon = ({ field }) => {
+    if (sortField !== field) return <ArrowUpDown size={12} className="inline ml-1 text-gray-300" />;
+    return sortDirection === "asc"
+      ? <ArrowUp size={12} className="inline ml-1 text-primary-600" />
+      : <ArrowDown size={12} className="inline ml-1 text-primary-600" />;
+  };
 
   const fetchCompanies = useCallback(async () => {
     try {
@@ -70,9 +88,15 @@ export const CompanyPage = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const totalPages = Math.ceil(filteredCompanies.length / itemsPerPage);
+  const sortedCompanies = [...filteredCompanies].sort((a, b) => {
+    const aVal = (a[sortField] ?? "").toString().toLowerCase();
+    const bVal = (b[sortField] ?? "").toString().toLowerCase();
+    const cmp = aVal.localeCompare(bVal);
+    return sortDirection === "asc" ? cmp : -cmp;
+  });
+  const totalPages = Math.ceil(sortedCompanies.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedCompanies = filteredCompanies.slice(
+  const paginatedCompanies = sortedCompanies.slice(
     startIndex,
     startIndex + itemsPerPage,
   );
@@ -97,6 +121,23 @@ export const CompanyPage = () => {
   const handleDeleteCompany = (company) => {
     setSelectedCompany(company);
     setIsDeleteModalOpen(true);
+  };
+
+  const handleToggleActive = async (company) => {
+    try {
+      const newStatus = company.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+      const response = await companyService.update(company.id, {
+        companyName: company.companyName,
+        status: newStatus,
+      });
+      setCompanies(
+        companies.map((c) =>
+          c.id === company.id ? { ...c, ...response.data } : c,
+        ),
+      );
+    } catch (err) {
+      console.error("Toggle active failed", err);
+    }
   };
 
   const confirmDelete = async () => {
@@ -221,35 +262,16 @@ export const CompanyPage = () => {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-<<<<<<< HEAD
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-=======
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Code
->>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Name
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("companyName")}>
+                  Name <SortIcon field="companyName" />
                 </th>
-<<<<<<< HEAD
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("status")}>
                   Status <SortIcon field="status" />
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("dateCreated")}>
                   Date Created <SortIcon field="dateCreated" />
-=======
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Short Name
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Active
-                </th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Actions
->>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
                 </th>
               </tr>
             </thead>
@@ -280,6 +302,7 @@ export const CompanyPage = () => {
                     onView={handleViewCompany}
                     onEdit={handleEditCompany}
                     onDelete={handleDeleteCompany}
+                    onToggleActive={handleToggleActive}
                     isViewer={isViewer}
                   />
                 ))

@@ -22,12 +22,8 @@ export const UserFormModal = ({
     role: "AGENT",
     branchId: "",
     managerId: "",
-<<<<<<< HEAD
     status: "ACTIVE",
-=======
-    isactive: true,
     allowedToBuyVoucher: false,
->>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
   });
 
   useEffect(() => {
@@ -41,12 +37,8 @@ export const UserFormModal = ({
         role: user.role || "AGENT",
         branchId: user.branchId ? String(user.branchId) : "",
         managerId: user.managerId ? String(user.managerId) : "",
-<<<<<<< HEAD
         status: user.status || "ACTIVE",
-=======
-        isactive: user.isactive !== undefined ? user.isactive : true,
         allowedToBuyVoucher: user.allowedToBuyVoucher ?? false,
->>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
       });
     } else {
       setFormData({
@@ -58,12 +50,8 @@ export const UserFormModal = ({
         role: "AGENT",
         branchId: "",
         managerId: "",
-<<<<<<< HEAD
         status: "ACTIVE",
-=======
-        isactive: true,
         allowedToBuyVoucher: false,
->>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
       });
     }
   }, [user, isEditing, isOpen]);
@@ -75,53 +63,9 @@ export const UserFormModal = ({
 
   const isAgentOrSubagent = formData.role === "AGENT" || formData.role === "SUBAGENT";
 
-<<<<<<< HEAD
-  const filteredBranches = formData.companyId
-    ? branches.filter((b) => String(b.companyId) === formData.companyId)
-    : [];
-
-  const filteredManagers = formData.branchId
-    ? allUsers.filter((u) => u.role === "MANAGER" && u.status === "ACTIVE" && String(u.branchId) === formData.branchId)
-    : [];
-
-  const hasNoBranches = formData.companyId && filteredBranches.length === 0;
-  const hasNoManagers = formData.branchId && filteredManagers.length === 0;
-
-  const handleCompanyChange = (newCompanyId) => {
-    const companyBranches = branches.filter((b) => String(b.companyId) === newCompanyId);
-    if (companyBranches.length > 0) {
-      const firstBranchId = String(companyBranches[0].id);
-      const branchManagers = allUsers.filter(
-        (u) => u.role === "MANAGER" && u.status === "ACTIVE" && String(u.branchId) === firstBranchId,
-      );
-      setFormData({
-        ...formData,
-        companyId: newCompanyId,
-        branchId: firstBranchId,
-        managerId: branchManagers.length > 0 ? String(branchManagers[0].id) : "",
-      });
-    } else {
-      setFormData({ ...formData, companyId: newCompanyId, branchId: "", managerId: "" });
-    }
-  };
-
-  const handleBranchChange = (newBranchId) => {
-    const branchManagers = allUsers.filter(
-      (u) => u.role === "MANAGER" && u.status === "ACTIVE" && String(u.branchId) === newBranchId,
-    );
-    setFormData({
-      ...formData,
-      branchId: newBranchId,
-      managerId: branchManagers.length > 0 ? String(branchManagers[0].id) : "",
-    });
-  };
-
-  const managerCreatesAgent = (isAgentOrSubagent && currentUserRole === "MANAGER");
-=======
   const filteredManagers = allUsers.filter(
-    (u) => u.role === "MANAGER" && u.isactive && String(u.branchId) === formData.branchId,
+    (u) => u.role === "MANAGER" && u.status === "ACTIVE" && String(u.branchId) === formData.branchId,
   );
->>>>>>> 23689a67bc35dbf1e4eeb6c718098a65ca8f0abe
 
   if (!isOpen) return null;
 
