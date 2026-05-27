@@ -44,10 +44,11 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
     setError("");
     try {
       const response = await authService.login(form.username, form.password);
-      const { token, role } = response.data;
+      const { token, role, allowedToBuyVoucher } = response.data;
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
       localStorage.setItem("username", form.username);
+      localStorage.setItem("authAllowedToBuyVoucher", String(!!allowedToBuyVoucher));
 
       if (rememberMe) {
         localStorage.setItem("rememberedUsername", form.username);
@@ -59,7 +60,7 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
         localStorage.setItem("rememberMe", "false");
       }
 
-      onLogin(role.toLowerCase());
+      onLogin(role.toLowerCase(), { allowedToBuyVoucher });
     } catch (err) {
       const msg = err.response?.data?.error || "Invalid username or password";
       setError(msg);
