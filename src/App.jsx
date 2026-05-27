@@ -13,6 +13,7 @@ import PaymentPage from "./features/payment/PaymentPage";
 import { AccountPage } from "./features/accounts/AccountPage";
 import { TransactionLogsPage } from "./features/TransactionLogs/TransactionLogsPage";
 import { ActivityLogsPage } from "./features/ActivityLogs/ActivityLogsPage";
+import { AccessLogsPage } from "./features/AccessLogs/AccessLogsPage";
 import { PlaceholderPage } from "./features/placeholder/PlaceholderPage";
 import { ProfilePage } from "./features/Profile/ProfilePage";
 import { TransactionLedger } from "./features/TransactionLedger/TransactionLedger";
@@ -398,6 +399,20 @@ function App() {
         );
       }
       return <ActivityLogsPage />;
+    }
+
+    // Access Logs Page - Accessible by Admin anda Admin view only
+    if (page === "accesslogs") {
+      if (role === "agent" || role === "subagent" || role === "manager") {
+        return (
+          <PlaceholderPage
+            title="Access Denied"
+            icon="🔒"
+            description="You don't have permission to view access logs. Only administrators and managers can access this page."
+          />
+        );
+      }
+      return <AccessLogsPage />;
     }
 
     // Transaction Logs Page - Accessible by Admin and Manager only
