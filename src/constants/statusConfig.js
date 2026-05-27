@@ -7,4 +7,7 @@ export const statusConfig = {
   APPROVED: { bg: "bg-emerald-500/15", text: "text-emerald-400", dot: "bg-emerald-400" },
   PENDING: { bg: "bg-amber-500/15", text: "text-amber-400", dot: "bg-amber-400" },
   REJECTED: { bg: "bg-red-500/15", text: "text-red-400", dot: "bg-red-400" },
+  ACTIVE: { bg: "bg-emerald-500/15", text: "text-emerald-400", dot: "bg-emerald-400" },
+  INACTIVE: { bg: "bg-amber-500/15", text: "text-amber-400", dot: "bg-amber-400" },
+  DEACTIVATED: { bg: "bg-red-500/15", text: "text-red-400", dot: "bg-red-400" },
 };

@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Button } from "../../../components/Button";
-import { Input } from "../../../components/Input";
 import { X, Building2, Edit2 } from "lucide-react";
 
 export const CompanyFormModal = ({
@@ -11,26 +10,23 @@ export const CompanyFormModal = ({
   isEditing,
 }) => {
   const [formData, setFormData] = useState({
-    companyId: "",
+    code: "",
     companyName: "",
-    companyShortname: "",
-    isactive: true,
+    status: "ACTIVE",
   });
 
   useEffect(() => {
     if (company && isEditing) {
       setFormData({
-        companyId: company.companyId || "",
+        code: company.code || "",
         companyName: company.companyName || "",
-        companyShortname: company.companyShortname || "",
-        isactive: company.isactive !== undefined ? company.isactive : true,
+        status: company.status || "ACTIVE",
       });
     } else {
       setFormData({
-        companyId: "",
+        code: "",
         companyName: "",
-        companyShortname: "",
-        isactive: true,
+        status: "ACTIVE",
       });
     }
   }, [company, isEditing, isOpen]);
@@ -82,37 +78,35 @@ export const CompanyFormModal = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-gray-700">
-                Company ID <span className="text-red-500">*</span>
+                Code <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                value={formData.companyId}
+                value={formData.code}
                 onChange={(e) =>
-                  setFormData({ ...formData, companyId: e.target.value })
+                  setFormData({ ...formData, code: e.target.value })
                 }
-                placeholder="PIC-001"
+                placeholder="PIC"
                 required
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all font-mono"
               />
-              <p className="text-xs text-gray-400">Unique company identifier</p>
+              <p className="text-xs text-gray-400">Company code (e.g. PIC)</p>
             </div>
 
             {isEditing && (
               <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700">Active</label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.isactive}
-                    onChange={(e) =>
-                      setFormData({ ...formData, isactive: e.target.checked })
-                    }
-                    className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                  />
-                  <span className="text-sm text-gray-700">
-                    {formData.isactive ? "Active" : "Inactive"}
-                  </span>
-                </label>
+                <label className="block text-sm font-semibold text-gray-700">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) =>
+                    setFormData({ ...formData, status: e.target.value })
+                  }
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                >
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                  <option value="DEACTIVATED">Deactivated</option>
+                </select>
               </div>
             )}
 
@@ -129,22 +123,6 @@ export const CompanyFormModal = ({
                 required
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                 placeholder="Enter company name"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                Short Name <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.companyShortname}
-                onChange={(e) =>
-                  setFormData({ ...formData, companyShortname: e.target.value })
-                }
-                required
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-                placeholder="Enter short name"
               />
             </div>
           </div>

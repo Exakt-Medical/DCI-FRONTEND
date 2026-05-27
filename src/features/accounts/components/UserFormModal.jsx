@@ -23,7 +23,7 @@ export const UserFormModal = ({
     companyId: "",
     branchId: "",
     managerId: "",
-    isactive: true,
+    status: "ACTIVE",
   });
 
   const currentUser = useMemo(
@@ -44,7 +44,7 @@ export const UserFormModal = ({
         companyId: branch ? String(branch.companyId) : "",
         branchId: user.branchId ? String(user.branchId) : "",
         managerId: user.managerId ? String(user.managerId) : "",
-        isactive: user.isactive !== undefined ? user.isactive : true,
+        status: user.status || "ACTIVE",
       });
     } else {
       setFormData({
@@ -57,7 +57,7 @@ export const UserFormModal = ({
         companyId: "",
         branchId: "",
         managerId: "",
-        isactive: true,
+        status: "ACTIVE",
       });
     }
   }, [user, isEditing, isOpen, branches]);
@@ -88,7 +88,7 @@ export const UserFormModal = ({
     : [];
 
   const filteredManagers = formData.branchId
-    ? allUsers.filter((u) => u.role === "MANAGER" && u.isactive && String(u.branchId) === formData.branchId)
+    ? allUsers.filter((u) => u.role === "MANAGER" && u.status === "ACTIVE" && String(u.branchId) === formData.branchId)
     : [];
 
   const hasNoBranches = formData.companyId && filteredBranches.length === 0;
@@ -99,7 +99,7 @@ export const UserFormModal = ({
     if (companyBranches.length > 0) {
       const firstBranchId = String(companyBranches[0].id);
       const branchManagers = allUsers.filter(
-        (u) => u.role === "MANAGER" && u.isactive && String(u.branchId) === firstBranchId,
+        (u) => u.role === "MANAGER" && u.status === "ACTIVE" && String(u.branchId) === firstBranchId,
       );
       setFormData({
         ...formData,
@@ -114,7 +114,7 @@ export const UserFormModal = ({
 
   const handleBranchChange = (newBranchId) => {
     const branchManagers = allUsers.filter(
-      (u) => u.role === "MANAGER" && u.isactive && String(u.branchId) === newBranchId,
+      (u) => u.role === "MANAGER" && u.status === "ACTIVE" && String(u.branchId) === newBranchId,
     );
     setFormData({
       ...formData,
@@ -238,19 +238,19 @@ export const UserFormModal = ({
           </div>
 
           {isEditing && (
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="user-active"
-                checked={formData.isactive}
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">Status</label>
+              <select
+                value={formData.status}
                 onChange={(e) =>
-                  setFormData({ ...formData, isactive: e.target.checked })
+                  setFormData({ ...formData, status: e.target.value })
                 }
-                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
-              <label htmlFor="user-active" className="text-sm font-semibold text-gray-700 cursor-pointer">
-                Active — {formData.isactive ? "Account is active" : "Account is inactive"}
-              </label>
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+              >
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
+                <option value="DEACTIVATED">Deactivated</option>
+              </select>
             </div>
           )}
 
