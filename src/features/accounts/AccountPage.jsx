@@ -32,7 +32,7 @@ export const AccountPage = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const itemsPerPage = 5;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortField, setSortField] = useState("username");
   const [sortDirection, setSortDirection] = useState("asc");
 
@@ -396,16 +396,16 @@ export const AccountPage = () => {
         </div>
 
         {/* Pagination */}
-        {filteredUsers.length > itemsPerPage && (
-          <AccountPagination
+        <AccountPagination
             currentPage={currentPage}
             totalPages={totalPages}
             onPageChange={setCurrentPage}
             totalItems={filteredUsers.length}
             currentItems={paginatedUsers.length}
             startIndex={startIndex}
+            itemsPerPage={itemsPerPage}
+            onItemsPerPageChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}
           />
-        )}
       </Card>
 
       {/* Modals */}

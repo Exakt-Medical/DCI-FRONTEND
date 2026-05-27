@@ -7,16 +7,28 @@ export const AccountPagination = ({
   totalItems,
   currentItems,
   startIndex,
+  itemsPerPage,
+  onItemsPerPageChange,
 }) => {
-  if (totalPages <= 1) return null;
-
   return (
     <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
-      <p className="text-sm text-gray-500">
-        Showing {startIndex + 1} to {startIndex + currentItems} of {totalItems}{" "}
-        users
-      </p>
-      <div className="flex gap-1 items-center">
+      <div className="flex items-center gap-3">
+        <p className="text-sm text-gray-500">
+          Showing {startIndex + 1} to {startIndex + currentItems} of {totalItems}{" "}
+          users
+        </p>
+        <select
+          value={itemsPerPage}
+          onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
+          className="text-xs border border-gray-300 rounded px-2 py-1 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500"
+        >
+          <option value={10}>10</option>
+          <option value={50}>50</option>
+          <option value={100}>100</option>
+        </select>
+      </div>
+      {totalPages > 1 && (
+        <div className="flex gap-1 items-center">
         <button
           onClick={() => onPageChange(1)}
           disabled={currentPage === 1}
@@ -70,7 +82,8 @@ export const AccountPagination = ({
         >
           <ChevronsRight size={16} />
         </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 };

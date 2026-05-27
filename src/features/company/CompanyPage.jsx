@@ -36,7 +36,7 @@ export const CompanyPage = () => {
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const itemsPerPage = 5;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [sortField, setSortField] = useState("companyName");
   const [sortDirection, setSortDirection] = useState("asc");
 
@@ -76,9 +76,11 @@ export const CompanyPage = () => {
   const totalInactive = companies.filter((c) => c.status !== "ACTIVE").length;
 
   const filteredCompanies = companies.filter((company) => {
+    const term = searchTerm.toLowerCase();
     const matchesSearch =
       searchTerm === "" ||
-      company.companyName.toLowerCase().includes(searchTerm.toLowerCase());
+      (company.companyName && company.companyName.toLowerCase().includes(term)) ||
+      (company.provider && company.provider.toLowerCase().includes(term));
 
     const matchesStatus =
       activeStatusTab === "all" ||
@@ -175,6 +177,7 @@ export const CompanyPage = () => {
     const payload = records.map((r) => ({
       companyName: r.company_name,
       code: r.code,
+      provider: r.provider,
       address: r.address,
       status: "ACTIVE",
       approvalStatus: "APPROVED",
@@ -267,6 +270,9 @@ export const CompanyPage = () => {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("companyName")}>
                   Name <SortIcon field="companyName" />
                 </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("provider")}>
+                  Provider <SortIcon field="provider" />
+                </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("status")}>
                   Status <SortIcon field="status" />
                 </th>
@@ -278,19 +284,19 @@ export const CompanyPage = () => {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
                     Loading companies...
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-red-500">
+                  <td colSpan={5} className="px-4 py-8 text-center text-red-500">
                     {error}
                   </td>
                 </tr>
               ) : paginatedCompanies.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
                     No companies found
                   </td>
                 </tr>
@@ -311,13 +317,24 @@ export const CompanyPage = () => {
           </table>
         </div>
 
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+          <div className="flex items-center gap-3">
             <p className="text-xs text-gray-500">
               Showing {startIndex + 1} to{" "}
               {Math.min(startIndex + itemsPerPage, filteredCompanies.length)} of{" "}
               {filteredCompanies.length} companies
             </p>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+              className="text-xs border border-gray-300 rounded px-2 py-1 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500"
+            >
+              <option value={10}>10</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+          {totalPages > 1 && (
             <div className="flex gap-1 items-center">
               <button
                 onClick={() => setCurrentPage(1)}
@@ -375,8 +392,8 @@ export const CompanyPage = () => {
                 <ChevronsRight size={18} />
               </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </Card>
 
       <CompanyFormModal

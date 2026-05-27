@@ -1,5 +1,5 @@
 import { Button } from "../../../components/Button";
-import { X } from "lucide-react";
+import { X, MapPin, Building2, Hash, Calendar, Briefcase } from "lucide-react";
 import { formatDateTime } from "../../../utils/formatDate";
 
 export const CompanyViewModal = ({ isOpen, onClose, company }) => {
@@ -10,10 +10,7 @@ export const CompanyViewModal = ({ isOpen, onClose, company }) => {
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h2 className="text-lg font-bold text-gray-900">Company Details</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X size={20} />
           </button>
         </div>
@@ -29,28 +26,51 @@ export const CompanyViewModal = ({ isOpen, onClose, company }) => {
           </div>
 
           <div className="border-t border-gray-200 pt-4 space-y-3">
-            <div className="flex items-center justify-between gap-3 bg-gray-50 rounded-lg p-3">
-              <span className="text-sm text-gray-600">Code</span>
-              <span className="text-sm font-medium text-gray-900">{company.code || "—"}</span>
+            <div className="flex items-center gap-3">
+              <Hash size={16} className="text-gray-400" />
+              <div>
+                <p className="text-xs text-gray-500">Code</p>
+                <p className="text-sm font-medium text-gray-900">{company.code || "—"}</p>
+              </div>
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-3 flex justify-between">
-              <span className="text-sm text-gray-600">Status</span>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                company.status === "ACTIVE"
-                  ? "bg-green-100 text-green-800"
-                  : company.status === "INACTIVE"
-                  ? "bg-yellow-100 text-yellow-800"
-                  : "bg-red-100 text-red-800"
-              }`}>
-                {company.status}
-              </span>
+            <div className="flex items-center gap-3">
+              <Briefcase size={16} className="text-gray-400" />
+              <div>
+                <p className="text-xs text-gray-500">Provider</p>
+                <p className="text-sm text-gray-900">{company.provider || "—"}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <MapPin size={16} className="text-gray-400" />
+              <div>
+                <p className="text-xs text-gray-500">Address</p>
+                <p className="text-sm text-gray-900">{company.address || "—"}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Building2 size={16} className="text-gray-400" />
+              <div>
+                <p className="text-xs text-gray-500">Status</p>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-0.5 ${
+                  company.status === "ACTIVE"
+                    ? "bg-green-100 text-green-800"
+                    : company.status === "INACTIVE"
+                    ? "bg-yellow-100 text-yellow-800"
+                    : "bg-red-100 text-red-800"
+                }`}>
+                  {company.status}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Calendar size={16} className="text-gray-400 shrink-0" />
+              <p className="text-sm text-gray-700">This company was created at <span className="font-medium text-gray-900">{formatDateTime(company.dateCreated)}</span></p>
             </div>
           </div>
-
-          <p className="text-xs text-gray-400 text-center">
-            This organization was created at {formatDateTime(company.dateCreated)}
-          </p>
         </div>
 
         <div className="flex justify-end p-4 border-t border-gray-200">

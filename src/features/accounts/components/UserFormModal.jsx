@@ -17,8 +17,11 @@ export const UserFormModal = ({
     username: "",
     password: "",
     firstName: "",
+    middleInitial: "",
     lastName: "",
+    extName: "",
     email: "",
+    mobile: "",
     role: "AGENT",
     branchId: "",
     managerId: "",
@@ -32,8 +35,11 @@ export const UserFormModal = ({
         username: user.username || "",
         password: "",
         firstName: user.firstName || "",
+        middleInitial: user.middleInitial || "",
         lastName: user.lastName || "",
+        extName: user.extName || "",
         email: user.email || "",
+        mobile: user.mobile || "",
         role: user.role || "AGENT",
         branchId: user.branchId ? String(user.branchId) : "",
         managerId: user.managerId ? String(user.managerId) : "",
@@ -45,8 +51,11 @@ export const UserFormModal = ({
         username: "",
         password: "",
         firstName: "",
+        middleInitial: "",
         lastName: "",
+        extName: "",
         email: "",
+        mobile: "",
         role: "AGENT",
         branchId: "",
         managerId: "",
@@ -131,8 +140,8 @@ export const UserFormModal = ({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
+          <div className="grid grid-cols-4 gap-3">
+            <div className="space-y-2 col-span-2">
               <label className="block text-sm font-semibold text-gray-700">
                 First Name <span className="text-red-500">*</span>
               </label>
@@ -149,6 +158,34 @@ export const UserFormModal = ({
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-gray-700">
+                M.I.
+              </label>
+              <input
+                type="text"
+                value={formData.middleInitial}
+                onChange={(e) =>
+                  setFormData({ ...formData, middleInitial: e.target.value })
+                }
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                placeholder="M.I."
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Ext.
+              </label>
+              <input
+                type="text"
+                value={formData.extName}
+                onChange={(e) =>
+                  setFormData({ ...formData, extName: e.target.value })
+                }
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                placeholder="Jr., III"
+              />
+            </div>
+            <div className="space-y-2 col-span-2">
+              <label className="block text-sm font-semibold text-gray-700">
                 Last Name <span className="text-red-500">*</span>
               </label>
               <input
@@ -164,19 +201,35 @@ export const UserFormModal = ({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="block text-sm font-semibold text-gray-700">
-              Email
-            </label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-              placeholder="Enter email address"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Email
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                placeholder="Enter email address"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Mobile
+              </label>
+              <input
+                type="text"
+                value={formData.mobile}
+                onChange={(e) =>
+                  setFormData({ ...formData, mobile: e.target.value })
+                }
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                placeholder="Enter mobile number"
+              />
+            </div>
           </div>
 
           {isEditing && (

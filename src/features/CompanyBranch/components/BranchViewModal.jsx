@@ -1,5 +1,5 @@
 import { Button } from "../../../components/Button";
-import { X, MapPin } from "lucide-react";
+import { X, Hash, Building2, MapPin, Calendar, Briefcase } from "lucide-react";
 import { formatDateTime } from "../../../utils/formatDate";
 
 export const BranchViewModal = ({ isOpen, onClose, branch }) => {
@@ -10,10 +10,7 @@ export const BranchViewModal = ({ isOpen, onClose, branch }) => {
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h2 className="text-lg font-bold text-gray-900">Branch Details</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-          >
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X size={20} />
           </button>
         </div>
@@ -30,6 +27,30 @@ export const BranchViewModal = ({ isOpen, onClose, branch }) => {
 
           <div className="border-t border-gray-200 pt-4 space-y-3">
             <div className="flex items-center gap-3">
+              <Hash size={16} className="text-gray-400" />
+              <div>
+                <p className="text-xs text-gray-500">Branch ID</p>
+                <p className="text-sm font-medium text-gray-900">{branch.branchId || "—"}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Building2 size={16} className="text-gray-400" />
+              <div>
+                <p className="text-xs text-gray-500">Company</p>
+                <p className="text-sm text-gray-900">{branch.companyName || "—"}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Briefcase size={16} className="text-gray-400" />
+              <div>
+                <p className="text-xs text-gray-500">Provider</p>
+                <p className="text-sm text-gray-900">{branch.companyProvider || "—"}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
               <MapPin size={16} className="text-gray-400" />
               <div>
                 <p className="text-xs text-gray-500">Address</p>
@@ -38,8 +59,9 @@ export const BranchViewModal = ({ isOpen, onClose, branch }) => {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="w-4 flex justify-center">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+              <div>
+                <p className="text-xs text-gray-500">Status</p>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-0.5 ${
                   branch.status === "ACTIVE"
                     ? "bg-green-100 text-green-800"
                     : branch.status === "INACTIVE"
@@ -49,17 +71,16 @@ export const BranchViewModal = ({ isOpen, onClose, branch }) => {
                   {branch.status}
                 </span>
               </div>
-              <div>
-                <p className="text-xs text-gray-500">Status</p>
-              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Calendar size={16} className="text-gray-400 shrink-0" />
+              <p className="text-sm text-gray-700">This branch was created at <span className="font-medium text-gray-900">{formatDateTime(branch.dateCreated)}</span></p>
             </div>
           </div>
         </div>
 
-        <div className="flex justify-between items-center p-4 border-t border-gray-200">
-          <p className="text-xs text-gray-400">
-            This branch was opened at {formatDateTime(branch.dateCreated)}
-          </p>
+        <div className="flex justify-end p-4 border-t border-gray-200">
           <Button onClick={onClose}>Close</Button>
         </div>
       </div>
