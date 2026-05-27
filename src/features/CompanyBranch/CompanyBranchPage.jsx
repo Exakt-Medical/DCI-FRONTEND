@@ -12,6 +12,9 @@ import {
   CheckSquare,
   XSquare,
   AlertTriangle,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { branchService } from "../../services/branchService";
 import { companyService } from "../../services/companyService";
@@ -41,6 +44,21 @@ export const CompanyBranchPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const itemsPerPage = 10;
+  const [sortField, setSortField] = useState("branchName");
+  const [sortDirection, setSortDirection] = useState("asc");
+
+  const handleSort = (field) => {
+    setSortDirection((prev) => (sortField === field && prev === "asc" ? "desc" : "asc"));
+    setSortField(field);
+    setCurrentPage(1);
+  };
+
+  const SortIcon = ({ field }) => {
+    if (sortField !== field) return <ArrowUpDown size={12} className="inline ml-1 text-gray-300" />;
+    return sortDirection === "asc"
+      ? <ArrowUp size={12} className="inline ml-1 text-primary-600" />
+      : <ArrowDown size={12} className="inline ml-1 text-primary-600" />;
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -84,9 +102,15 @@ export const CompanyBranchPage = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const totalPages = Math.ceil(filteredBranches.length / itemsPerPage);
+  const sortedBranches = [...filteredBranches].sort((a, b) => {
+    const aVal = (a[sortField] ?? "").toString().toLowerCase();
+    const bVal = (b[sortField] ?? "").toString().toLowerCase();
+    const cmp = aVal.localeCompare(bVal);
+    return sortDirection === "asc" ? cmp : -cmp;
+  });
+  const totalPages = Math.ceil(sortedBranches.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedBranches = filteredBranches.slice(
+  const paginatedBranches = sortedBranches.slice(
     startIndex,
     startIndex + itemsPerPage,
   );
@@ -175,9 +199,14 @@ export const CompanyBranchPage = () => {
   };
 
   const handleBulkUpload = async (records) => {
+    const invalid = records.find((r) => !r.companyId);
+    if (invalid) {
+      throw new Error(`Row with branchId "${invalid.branchId}" has a missing companyId. Please check your CSV.`);
+    }
     const payload = records.map((r) => ({
       ...r,
-      companyId: parseInt(r.companyId),
+      companyCode: r.companyId,
+      companyId: null,
       isactive: true,
     }));
     return branchService.bulkCreate(payload);
@@ -303,20 +332,20 @@ export const CompanyBranchPage = () => {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Code
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("branchId")}>
+                  Code <SortIcon field="branchId" />
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Company
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("companyName")}>
+                  Company <SortIcon field="companyName" />
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Branch
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("branchName")}>
+                  Branch <SortIcon field="branchName" />
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Status
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("isactive")}>
+                  Status <SortIcon field="isactive" />
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Updated
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("timestamp")}>
+                  Updated <SortIcon field="timestamp" />
                 </th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Actions
@@ -366,8 +395,8 @@ export const CompanyBranchPage = () => {
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
             <p className="text-xs text-gray-500">
               Showing {startIndex + 1} to{" "}
-              {Math.min(startIndex + itemsPerPage, filteredBranches.length)} of{" "}
-              {filteredBranches.length} branches
+              {Math.min(startIndex + itemsPerPage, sortedBranches.length)} of{" "}
+              {sortedBranches.length} branches
             </p>
             <div className="flex gap-1">
               <button

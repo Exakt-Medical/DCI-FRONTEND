@@ -7,6 +7,9 @@ import {
   ChevronRight,
   Plus,
   Upload,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { companyService } from "../../services/companyService";
 import { CompanyStatCard } from "./components/CompanyStatCard";
@@ -34,6 +37,21 @@ export const CompanyPage = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const itemsPerPage = 5;
+  const [sortField, setSortField] = useState("companyName");
+  const [sortDirection, setSortDirection] = useState("asc");
+
+  const handleSort = (field) => {
+    setSortDirection((prev) => (sortField === field && prev === "asc" ? "desc" : "asc"));
+    setSortField(field);
+    setCurrentPage(1);
+  };
+
+  const SortIcon = ({ field }) => {
+    if (sortField !== field) return <ArrowUpDown size={12} className="inline ml-1 text-gray-300" />;
+    return sortDirection === "asc"
+      ? <ArrowUp size={12} className="inline ml-1 text-primary-600" />
+      : <ArrowDown size={12} className="inline ml-1 text-primary-600" />;
+  };
 
   const fetchCompanies = useCallback(async () => {
     try {
@@ -74,9 +92,15 @@ export const CompanyPage = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const totalPages = Math.ceil(filteredCompanies.length / itemsPerPage);
+  const sortedCompanies = [...filteredCompanies].sort((a, b) => {
+    const aVal = (a[sortField] ?? "").toString().toLowerCase();
+    const bVal = (b[sortField] ?? "").toString().toLowerCase();
+    const cmp = aVal.localeCompare(bVal);
+    return sortDirection === "asc" ? cmp : -cmp;
+  });
+  const totalPages = Math.ceil(sortedCompanies.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedCompanies = filteredCompanies.slice(
+  const paginatedCompanies = sortedCompanies.slice(
     startIndex,
     startIndex + itemsPerPage,
   );
@@ -278,20 +302,20 @@ export const CompanyPage = () => {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Code
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("companyId")}>
+                  Code <SortIcon field="companyId" />
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Name
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("companyName")}>
+                  Name <SortIcon field="companyName" />
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Short Name
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("companyShortname")}>
+                  Short Name <SortIcon field="companyShortname" />
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Status
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("approvalStatus")}>
+                  Status <SortIcon field="approvalStatus" />
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Active
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("isactive")}>
+                  Active <SortIcon field="isactive" />
                 </th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Actions
@@ -341,8 +365,8 @@ export const CompanyPage = () => {
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
             <p className="text-xs text-gray-500">
               Showing {startIndex + 1} to{" "}
-              {Math.min(startIndex + itemsPerPage, filteredCompanies.length)} of{" "}
-              {filteredCompanies.length} companies
+              {Math.min(startIndex + itemsPerPage, sortedCompanies.length)} of{" "}
+              {sortedCompanies.length} companies
             </p>
             <div className="flex gap-1">
               <button
