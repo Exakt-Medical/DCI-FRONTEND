@@ -4,8 +4,8 @@ export const MOCK_ASSIGNED_VOUCHERS = [
   {
     id: 1,
     voucherCode: "VCH-ABC123XYZ",
-    productName: "Basic CTPL",
-    premium: 560.0,
+    productName: "BASIC CTPL",
+    premium: 60.0, // Changed from 560 to 60
     assignedBy: "Juan Dela Cruz",
     assignedDate: "May 15, 2026",
     expiryDate: "May 15, 2027",
@@ -14,8 +14,8 @@ export const MOCK_ASSIGNED_VOUCHERS = [
   {
     id: 2,
     voucherCode: "VCH-DEF456UVW",
-    productName: "Premium CTPL",
-    premium: 850.0,
+    productName: "BASIC CTPL",
+    premium: 60.0, // Changed from 850 to 60
     assignedBy: "Maria Santos",
     assignedDate: "May 10, 2026",
     expiryDate: "May 10, 2027",
@@ -24,8 +24,8 @@ export const MOCK_ASSIGNED_VOUCHERS = [
   {
     id: 3,
     voucherCode: "VCH-GHI789RST",
-    productName: "Motorcycle CTPL",
-    premium: 350.0,
+    productName: "BASIC CTPL",
+    premium: 60.0, // Changed from 350 to 60
     assignedBy: "Pedro Reyes",
     assignedDate: "May 5, 2026",
     expiryDate: "Nov 5, 2026",
@@ -34,8 +34,8 @@ export const MOCK_ASSIGNED_VOUCHERS = [
   {
     id: 4,
     voucherCode: "VCH-JKL012MNO",
-    productName: "Commercial Vehicle CTPL",
-    premium: 1200.0,
+    productName: "BASIC CTPL",
+    premium: 60.0, // Changed from 1200 to 60
     assignedBy: "Juan Dela Cruz",
     assignedDate: "Apr 28, 2026",
     expiryDate: "Apr 28, 2027",
@@ -44,8 +44,8 @@ export const MOCK_ASSIGNED_VOUCHERS = [
   {
     id: 5,
     voucherCode: "VCH-PQR345STU",
-    productName: "Heavy Equipment CTPL",
-    premium: 1800.0,
+    productName: "BASIC CTPL",
+    premium: 60.0, // Changed from 1800 to 60
     assignedBy: "Maria Santos",
     assignedDate: "Apr 20, 2026",
     expiryDate: "Apr 20, 2027",
@@ -58,62 +58,10 @@ export const MOCK_PRODUCTS = [
     id: 1,
     productName: "Basic CTPL",
     coverage: "Third Party Liability",
-    price: 560.0,
+    price: 60.0, // Changed from 560.00 to 60.00
     description: "Basic coverage for third party liability as required by LTO",
     validityDays: 365,
     insuranceCode: "PRIVATE CARS (INCLUDING JEEPS AND AUVS)",
-    isActive: true,
-  },
-  {
-    id: 2,
-    productName: "Premium CTPL",
-    coverage: "Third Party Liability + Personal Accident",
-    price: 850.0,
-    description:
-      "Enhanced coverage with personal accident insurance for driver",
-    validityDays: 365,
-    insuranceCode: "PRIVATE CARS (INCLUDING JEEPS AND AUVS)",
-    isActive: true,
-  },
-  {
-    id: 3,
-    productName: "Motorcycle CTPL",
-    coverage: "Third Party Liability for Motorcycles",
-    price: 350.0,
-    description: "Affordable CTPL coverage for motorcycles",
-    validityDays: 365,
-    insuranceCode: "MOTORCYCLES",
-    isActive: true,
-  },
-  {
-    id: 4,
-    productName: "Commercial Vehicle CTPL",
-    coverage: "Third Party Liability for Commercial Vehicles",
-    price: 1200.0,
-    description: "Comprehensive CTPL for commercial vehicles and fleets",
-    validityDays: 365,
-    insuranceCode: "COMMERCIAL VEHICLES",
-    isActive: true,
-  },
-  {
-    id: 5,
-    productName: "Heavy Equipment CTPL",
-    coverage: "Third Party Liability for Heavy Equipment",
-    price: 1800.0,
-    description: "Specialized coverage for heavy equipment and machinery",
-    validityDays: 365,
-    insuranceCode: "HEAVY EQUIPMENT",
-    isActive: true,
-  },
-  {
-    id: 6,
-    productName: "Public Utility CTPL",
-    coverage: "Third Party Liability for PUVs",
-    price: 1450.0,
-    description:
-      "CTPL coverage for public utility vehicles, taxis, and jeepneys",
-    validityDays: 365,
-    insuranceCode: "TAXI/PUBLIC UTILITY VEHICLES",
     isActive: true,
   },
 ];
