@@ -25,3 +25,7 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+
+# Java / Spring Boot build files
+target/
+*.class

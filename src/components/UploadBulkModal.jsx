@@ -3,6 +3,7 @@ import { X, Upload, Download, FileSpreadsheet, CheckCircle, AlertCircle } from "
 
 export const UploadBulkModal = ({ isOpen, onClose, onUpload, templateHeaders, moduleName }) => {
   const [file, setFile] = useState(null);
+  const [allData, setAllData] = useState([]);
   const [preview, setPreview] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState(null);
@@ -19,12 +20,31 @@ export const UploadBulkModal = ({ isOpen, onClose, onUpload, templateHeaders, mo
     URL.revokeObjectURL(url);
   };
 
+  const parseCSVLine = (line) => {
+    const result = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        inQuotes = !inQuotes;
+      } else if (ch === "," && !inQuotes) {
+        result.push(current.trim());
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+    result.push(current.trim());
+    return result;
+  };
+
   const parseCSV = (text) => {
     const lines = text.split("\n").filter((l) => l.trim());
     if (lines.length < 2) return [];
-    const headers = lines[0].split(",").map((h) => h.trim());
+    const headers = parseCSVLine(lines[0]);
     return lines.slice(1).map((line) => {
-      const values = line.split(",").map((v) => v.trim());
+      const values = parseCSVLine(line);
       const obj = {};
       headers.forEach((h, i) => {
         obj[h] = values[i] || "";
@@ -41,19 +61,21 @@ export const UploadBulkModal = ({ isOpen, onClose, onUpload, templateHeaders, mo
     const reader = new FileReader();
     reader.onload = (ev) => {
       const data = parseCSV(ev.target.result);
+      setAllData(data);
       setPreview(data.slice(0, 5));
     };
     reader.readAsText(f);
   };
 
   const handleUpload = async () => {
-    if (!file || preview.length === 0) return;
+    if (!file || allData.length === 0) return;
     setUploading(true);
     setResult(null);
     try {
-      const response = await onUpload(preview);
-      setResult({ type: "success", message: `Successfully uploaded ${response.data?.length || preview.length} records.` });
+      const response = await onUpload(allData);
+      setResult({ type: "success", message: `Successfully uploaded ${response.data?.length || allData.length} records.` });
       setFile(null);
+      setAllData([]);
       setPreview([]);
       if (fileRef.current) fileRef.current.value = "";
     } catch (err) {
@@ -138,7 +160,7 @@ export const UploadBulkModal = ({ isOpen, onClose, onUpload, templateHeaders, mo
                   </tbody>
                 </table>
               </div>
-              <p className="text-xs text-gray-400 mt-1">Total parsed: {preview.length} rows</p>
+              <p className="text-xs text-gray-400 mt-1">Total parsed: {allData.length} rows</p>
             </div>
           )}
 
@@ -161,10 +183,10 @@ export const UploadBulkModal = ({ isOpen, onClose, onUpload, templateHeaders, mo
             </button>
             <button
               onClick={handleUpload}
-              disabled={!file || preview.length === 0 || uploading}
+              disabled={!file || allData.length === 0 || uploading}
               className="px-5 py-2.5 text-sm font-medium text-white bg-primary-500 rounded-xl hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              {uploading ? "Uploading..." : `Upload ${preview.length} Records`}
+              {uploading ? "Uploading..." : `Upload ${allData.length} Records`}
             </button>
           </div>
         </div>
