@@ -123,9 +123,16 @@ export const AdminLayout = ({
       },
       {
         id: "tickets",
-        label: "Support Tickets",
+        label: "Tickets",
         icon: HelpCircle,
         section: "MAIN",
+        disabled: false,
+      },
+      {
+        id: "accounts",
+        label: "Accounts",
+        icon: Users,
+        section: "ADMINISTRATION",
         disabled: false,
       },
       {
@@ -140,13 +147,6 @@ export const AdminLayout = ({
         label: "Branches",
         icon: MapPin,
         section: "ADMINISTRATION",
-        disabled: false,
-      },
-      {
-        id: "vouchers",
-        label: "Vouchers",
-        icon: Ticket,
-        section: "VOUCHERS",
         disabled: false,
       },
       {
@@ -168,14 +168,28 @@ export const AdminLayout = ({
         label: "Activity Logs",
         icon: History,
         section: "LOGS",
-        disabled: true, // Viewers cannot access logs
+        disabled: false,
       },
       {
         id: "transactions",
         label: "Transaction Logs",
         icon: ListTodo,
         section: "LOGS",
-        disabled: true, // Viewers cannot access logs
+        disabled: false,
+      },
+      {
+        id: "accesslogs",
+        label: "Access Logs",
+        icon: LogIn,
+        section: "LOGS",
+        disabled: false,
+      },
+      {
+        id: "ledger",
+        label: "Ledger",
+        icon: BookOpen,
+        section: "REPORTS",
+        disabled: false,
       },
     ],
     manager: [
@@ -258,6 +272,7 @@ export const AdminLayout = ({
       },
       {
         id: "ledger",
+        label: "Ledger",
         icon: LogIn,
         icon: BookOpen,
         section: "REPORTS",
@@ -292,6 +307,13 @@ export const AdminLayout = ({
         icon: History,
         section: "LOGS",
         disabled: true, // Agents cannot access logs
+      },
+      {
+        id: "accesslogs",
+        label: "Access Logs",
+        icon: LogIn,
+        section: "LOGS",
+        disabled: true,
       },
       {
         id: "transactions",
@@ -337,6 +359,13 @@ export const AdminLayout = ({
         section: "LOGS",
         disabled: true, // Sub-agents cannot access logs
       },
+      {
+        id: "accesslogs",
+        label: "Access Logs",
+        icon: LogIn,
+        section: "LOGS",
+        disabled: true,
+      }
     ],
   };
 

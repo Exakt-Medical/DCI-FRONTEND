@@ -11,6 +11,7 @@ export const AccessLogsPage = () => {
   const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortOrder, setSortOrder] = useState("desc");
   const [currentPage, setCurrentPage] = useState(1);
 
   const itemsPerPage = 10;
@@ -39,8 +40,14 @@ export const AccessLogsPage = () => {
     fetchLogs();
   }, []);
 
+  const sortedLogs = [...logs].sort((a, b) => {
+    const aTime = new Date(a.timestamp).getTime() || 0;
+    const bTime = new Date(b.timestamp).getTime() || 0;
+    return sortOrder === "asc" ? aTime - bTime : bTime - aTime;
+  });
+
   // Filter logs
-  const filteredLogs = logs.filter((log) => {
+  const filteredLogs = sortedLogs.filter((log) => {
     return log.user.toLowerCase().includes(searchTerm.toLowerCase());
   });
 
@@ -75,7 +82,12 @@ export const AccessLogsPage = () => {
       <Card className="overflow-hidden">
         <AccessLogsFilters
           searchTerm={searchTerm}
+          sortOrder={sortOrder}
           onSearchChange={handleSearch}
+          onSortChange={(value) => {
+            setSortOrder(value);
+            setCurrentPage(1);
+          }}
           onRefresh={handleRefresh}
           onExport={handleExport}
         />
