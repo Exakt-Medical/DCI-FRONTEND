@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "../../components/Card";
 import { StatCard } from "./components/StatCard";
 import { TicketTabs } from "./components/TicketTabs";
@@ -8,11 +8,8 @@ import { TicketPagination } from "./components/TicketPagination";
 import { TicketDetailModal } from "./components/TicketDetailModal";
 import { CreateTicketModal } from "./CreateTicketModal";
 import { useTicketFilters } from "./hooks/useTicketFilters";
-import {
-  MOCK_TICKETS,
-  statusOptions,
-  typeOptions,
-} from "../../constants/ticketMockData";
+import { ticketService } from "../../services/ticketService"; // ← service layer
+import { statusOptions, typeOptions } from "../../constants/ticketMockData";
 import {
   Ticket,
   Clock,
@@ -29,8 +26,31 @@ export const TicketPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [activeStat, setActiveStat] = useState("total");
-  const [tickets, setTickets] = useState(MOCK_TICKETS);
 
+  // ── Data & loading state ──────────────────────────────────────────────────
+  const [tickets, setTickets] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // ── Fetch all tickets ─────────────────────────────────────────────────────
+  const fetchTickets = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await ticketService.getAll();
+      setTickets(data);
+    } catch (err) {
+      setError(err.message ?? "Failed to load tickets.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTickets();
+  }, [fetchTickets]);
+
+  // ── Filters / pagination (unchanged hook) ────────────────────────────────
   const {
     searchTerm,
     selectedStatus,
@@ -97,13 +117,23 @@ export const TicketPage = () => {
     },
   ];
 
-  const handleRefresh = () => window.location.reload();
+  // ── Handlers ─────────────────────────────────────────────────────────────
+  const handleRefresh = () => fetchTickets();
 
-  const handleExport = () => console.log("Exporting tickets...");
+  const handleExport = () => {
+    console.log("Exporting tickets…");
+  };
 
   const handleViewDetails = (ticket) => {
     setSelectedTicket(ticket);
     setIsModalOpen(true);
+  };
+
+  const handleTicketUpdated = (updatedTicket) => {
+    setTickets((prev) =>
+      prev.map((t) => (t.id === updatedTicket.id ? updatedTicket : t)),
+    );
+    setSelectedTicket(updatedTicket);
   };
 
   const handleCloseModal = () => {
@@ -116,32 +146,61 @@ export const TicketPage = () => {
   };
 
   const handleCreateTicket = async (formData) => {
-    await new Promise((r) => setTimeout(r, 1000));
+    // Map the modal's nested shape → flat TicketRequest DTO
+    const typeLabel =
+      formData.vehicleSubType === "dataMismatch"
+        ? "Data Mismatch"
+        : formData.vehicleSubType === "vehicleNotFound"
+          ? "Vehicle Not Found"
+          : formData.concernType === "other"
+            ? "Other"
+            : formData.concernType
+              ? formData.concernType.charAt(0).toUpperCase() +
+                formData.concernType.slice(1)
+              : "General";
 
-    const newTicket = {
-      id: `TKT-${String(tickets.length + 1).padStart(4, "0")}`,
-      customer: "New Customer",
-      type: formData.type,
-      subject: formData.subject,
-      description: formData.description,
-      status: "pending",
-      priority: formData.priority,
-      date: new Date().toISOString().split("T")[0],
-      lastUpdated: new Date().toISOString().split("T")[0],
-      vehicleInfo: {
-        plateNo: "N/A",
-        make: "N/A",
-        model: "N/A",
-        year: "N/A",
-      },
+    // Generate reference number: REF-YYYYMMDD-XXXX
+    const pad = (n) => String(n).padStart(4, "0");
+    const now = new Date();
+    const datePart = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+    const randPart = pad(Math.floor(Math.random() * 9000) + 1000);
+    const referenceNumber = `REF-${datePart}-${randPart}`;
+
+    const payload = {
+      referenceNumber,
+      requestedBy: formData.requestedBy?.name ?? "",
+      type: typeLabel,
+      status: "PENDING",
+      address: formData.description ?? "",
+      name: formData.requestedBy?.name ?? "",
+      processedBy: localStorage.getItem("username") ?? null,
+      dateRequested: new Date().toISOString(),
+      dateUpdated: new Date().toISOString(),
+      escalated: "NO",
+      roleBased: localStorage.getItem("role")?.toUpperCase() ?? null,
+      // Vehicle fields
+      plateNo: formData.vehicleInfo?.plateNo ?? null,
+      mvFileNo: formData.vehicleInfo?.mvFileNo ?? null,
+      make: formData.vehicleInfo?.make ?? null,
+      series: formData.vehicleInfo?.model ?? null,
+      engineNo: formData.vehicleInfo?.engineNo ?? null,
+      chassisNo: formData.vehicleInfo?.chassisNo ?? null,
     };
-
-    setTickets([newTicket, ...tickets]);
+    const created = await ticketService.create(payload);
+    setTickets((prev) => [created, ...prev]);
   };
 
+  // ── Tab counts ────────────────────────────────────────────────────────────
+  const tabCounts = {
+    all: stats.total,
+    dataMismatch: stats.dataMismatch,
+    vehicleNotFound: stats.vehicleNotFound,
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
-      {/* HEADER */}
+      {/* Header */}
       <div className="border-b border-gray-200 pb-4">
         <div className="flex items-center justify-between">
           <div>
@@ -163,7 +222,20 @@ export const TicketPage = () => {
         </div>
       </div>
 
-      {/* STATS */}
+      {/* Error banner */}
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+          <button
+            onClick={fetchTickets}
+            className="ml-3 underline hover:no-underline"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {statConfig.map((stat) => (
           <StatCard
@@ -180,7 +252,14 @@ export const TicketPage = () => {
         ))}
       </div>
 
-      {/* SEARCH */}
+      {/* Tabs */}
+      <TicketTabs
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        counts={tabCounts}
+      />
+
+      {/* Search & Filters */}
       <Card className="p-4">
         <TicketSearchBar
           searchTerm={searchTerm}
@@ -199,31 +278,41 @@ export const TicketPage = () => {
         />
       </Card>
 
-      {/* TABLE */}
+      {/* Table */}
       <Card className="overflow-hidden">
-        <TicketTable
-          tickets={filteredByStat}
-          onViewDetails={handleViewDetails}
-          onAddNote={handleAddNote}
-        />
-
-        <TicketPagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          startIndex={startIndex}
-          itemsPerPage={itemsPerPage}
-          totalItems={filteredByStat.length}
-          onPageChange={setCurrentPage}
-        />
+        {loading ? (
+          <div className="flex items-center justify-center py-16 text-sm text-gray-400">
+            <RefreshCw size={16} className="animate-spin mr-2" />
+            Loading tickets…
+          </div>
+        ) : (
+          <>
+            <TicketTable
+              tickets={paginatedTickets}
+              onViewDetails={handleViewDetails}
+              onAddNote={handleAddNote}
+            />
+            <TicketPagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              startIndex={startIndex}
+              itemsPerPage={itemsPerPage}
+              totalItems={filteredTickets.length}
+              onPageChange={setCurrentPage}
+            />
+          </>
+        )}
       </Card>
 
-      {/* MODALS */}
+      {/* Detail Modal */}
       <TicketDetailModal
         ticket={selectedTicket}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
+        onTicketUpdated={handleTicketUpdated}
       />
 
+      {/* Create Modal */}
       <CreateTicketModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}

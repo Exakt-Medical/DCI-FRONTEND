@@ -7,15 +7,21 @@ export const useTicketFilters = (tickets, itemsPerPage = 10) => {
   const [activeTab, setActiveTab] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Calculate stats
+  // Calculate stats — compare lowercase since mapTicket lowercases status
   const stats = useMemo(
     () => ({
       total: tickets.length,
-      pending: tickets.filter((t) => t.status === "Pending").length,
-      processing: tickets.filter((t) => t.status === "Processing").length,
-      resolved: tickets.filter((t) => t.status === "Resolved").length,
-      declined: tickets.filter((t) => t.status === "Declined").length,
-      cancelled: tickets.filter((t) => t.status === "Cancelled").length,
+      pending: tickets.filter((t) => t.status?.toLowerCase() === "pending")
+        .length,
+      processing: tickets.filter(
+        (t) => t.status?.toLowerCase() === "processing",
+      ).length,
+      resolved: tickets.filter((t) => t.status?.toLowerCase() === "resolved")
+        .length,
+      declined: tickets.filter((t) => t.status?.toLowerCase() === "declined")
+        .length,
+      cancelled: tickets.filter((t) => t.status?.toLowerCase() === "cancelled")
+        .length,
       dataMismatch: tickets.filter((t) => t.type === "Data Mismatch").length,
       vehicleNotFound: tickets.filter((t) => t.type === "Vehicle Not Found")
         .length,
@@ -26,22 +32,27 @@ export const useTicketFilters = (tickets, itemsPerPage = 10) => {
   // Filter tickets
   const filteredTickets = useMemo(() => {
     return tickets.filter((ticket) => {
+      // requestedBy is a plain string from the API, not an object
+      const requestedBy =
+        typeof ticket.requestedBy === "string"
+          ? ticket.requestedBy
+          : (ticket.requestedBy?.name ?? "");
+
       const matchesSearch =
         searchTerm === "" ||
         ticket.referenceNumber
-          .toLowerCase()
+          ?.toLowerCase()
           .includes(searchTerm.toLowerCase()) ||
-        ticket.requestedBy.name
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase()) ||
-        ticket.requestedBy.company
-          .toLowerCase()
-          .includes(searchTerm.toLowerCase());
+        requestedBy.toLowerCase().includes(searchTerm.toLowerCase());
 
+      // Compare lowercase so "PENDING", "pending", "Pending" all match
       const matchesStatus =
-        selectedStatus === "all" || ticket.status === selectedStatus;
+        selectedStatus === "all" ||
+        ticket.status?.toLowerCase() === selectedStatus.toLowerCase();
+
       const matchesType =
         selectedType === "all" || ticket.type === selectedType;
+
       const matchesTab = activeTab === "all" || ticket.type === activeTab;
 
       return matchesSearch && matchesStatus && matchesType && matchesTab;
@@ -66,7 +77,6 @@ export const useTicketFilters = (tickets, itemsPerPage = 10) => {
   };
 
   return {
-    // State
     searchTerm,
     selectedStatus,
     selectedType,
@@ -78,8 +88,6 @@ export const useTicketFilters = (tickets, itemsPerPage = 10) => {
     totalPages,
     startIndex,
     itemsPerPage,
-
-    // Setters
     setSearchTerm,
     setSelectedStatus,
     setSelectedType,
