@@ -7,6 +7,7 @@ import {
   Info,
   ChevronDown,
   Save,
+  AlertTriangle,
 } from "lucide-react";
 import { Card } from "../../../components/Card";
 import { ticketService } from "../../../services/ticketService";
@@ -45,9 +46,7 @@ const getStatusMeta = (status) =>
 
 const formatDate = (raw) => {
   if (!raw) return "—";
-
   const d = new Date(raw);
-
   return isNaN(d.getTime())
     ? raw
     : d.toLocaleDateString("en-US", {
@@ -71,11 +70,9 @@ const CompareRow = ({
     <div className="py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 border-b border-gray-100 flex items-center">
       {label}
     </div>
-
     <div className="py-2.5 px-3 text-sm text-gray-700 border-b border-gray-100 bg-white flex items-center">
       {original || "—"}
     </div>
-
     <div className="py-2.5 px-3 border-b border-gray-100 bg-green-50 flex items-center">
       {editable ? (
         <input
@@ -106,10 +103,9 @@ export const TicketDetailModal = ({
   const [currentTicket, setCurrentTicket] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSavingCorrection, setIsSavingCorrection] = useState(false);
+  const [isEscalating, setIsEscalating] = useState(false);
   const [updateError, setUpdateError] = useState(null);
-
   const [corrected, setCorrected] = useState({});
-
   const [chatMessage, setChatMessage] = useState("");
   const [comments, setComments] = useState([
     {
@@ -120,26 +116,10 @@ export const TicketDetailModal = ({
     },
   ]);
 
-  const handleSendComment = () => {
-    if (!chatMessage.trim()) return;
-
-    const newComment = {
-      id: Date.now(),
-      sender: localStorage.getItem("username") || "You",
-      message: chatMessage,
-      createdAt: new Date(),
-    };
-
-    setComments((prev) => [...prev, newComment]);
-    setChatMessage("");
-  };
-
   useEffect(() => {
     if (ticket) {
       setCurrentTicket(ticket);
-
       const v = ticket.vehicleInfo ?? {};
-
       setCorrected({
         mvFileNo: v.mvFileNo === "N/A" ? "" : (v.mvFileNo ?? ""),
         plateNo: v.plateNo === "N/A" ? "" : (v.plateNo ?? ""),
@@ -161,106 +141,62 @@ export const TicketDetailModal = ({
   if (!isOpen || !currentTicket) return null;
 
   const isMismatch = currentTicket.type === "Data Mismatch";
-
   const isVehicleNotFound = currentTicket.type === "Vehicle Not Found";
-
-  const isOtherType = !isMismatch && !isVehicleNotFound;
+  const isLTOType = isMismatch || isVehicleNotFound;
+  const isEscalated = currentTicket.roleBased === "LTO";
 
   const copy = async (key, text) => {
     await navigator.clipboard.writeText(text);
-
-    setCopied((prev) => ({
-      ...prev,
-      [key]: true,
-    }));
-
-    setTimeout(() => {
-      setCopied((prev) => ({
-        ...prev,
-        [key]: false,
-      }));
-    }, 2000);
+    setCopied((prev) => ({ ...prev, [key]: true }));
+    setTimeout(() => setCopied((prev) => ({ ...prev, [key]: false })), 2000);
   };
 
-  const handleCorrectedChange = (key, value) => {
-    setCorrected((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
-  };
+  const handleCorrectedChange = (key, value) =>
+    setCorrected((prev) => ({ ...prev, [key]: value }));
 
   const nvl = (v) => (v === "N/A" || v === undefined ? null : (v ?? null));
 
   const buildPayload = (overrides = {}) => ({
     referenceNumber: currentTicket.referenceNumber,
     status: currentTicket.status?.toUpperCase(),
-
     requestedBy:
       typeof currentTicket.requestedBy === "string"
         ? currentTicket.requestedBy
         : (currentTicket.requestedBy?.name ?? null),
-
     type: currentTicket.type,
-
     processedBy: localStorage.getItem("username") ?? currentTicket.processedBy,
-
     dateRequested: currentTicket.dateRequested,
-
     dateUpdated: new Date().toISOString(),
-
     escalated: currentTicket.escalated ?? "NO",
-
     roleBased: currentTicket.roleBased ?? null,
-
     name: currentTicket.customer,
-
     address: currentTicket.description,
-
     plateNo: nvl(currentTicket.vehicleInfo?.plateNo),
-
     mvFileNo: nvl(currentTicket.vehicleInfo?.mvFileNo),
-
     make: nvl(currentTicket.vehicleInfo?.make),
-
     series: nvl(currentTicket.vehicleInfo?.model),
-
     engineNo: nvl(currentTicket.vehicleInfo?.engineNo),
-
     chassisNo: nvl(currentTicket.vehicleInfo?.chassisNo),
-
     vehicleColor: nvl(currentTicket.vehicleInfo?.color),
-
     vehicleTypeDenomination: nvl(currentTicket.vehicleInfo?.vehicleType),
-
     classification: nvl(currentTicket.vehicleInfo?.classification),
-
     certificateOfRegistration: currentTicket.certificateOfRegistration ?? null,
-
     plateCertification: currentTicket.plateCertification ?? null,
-
     actualPlate: currentTicket.actualPlate ?? null,
-
     ...overrides,
   });
 
   const handleStatusChange = async (newStatus) => {
     setStatusDropdown(false);
-
     if (newStatus === currentTicket.status?.toUpperCase()) return;
-
     setIsUpdating(true);
     setUpdateError(null);
-
     try {
       const updated = await ticketService.update(
         currentTicket.id,
-        buildPayload({
-          status: newStatus,
-        }),
+        buildPayload({ status: newStatus }),
       );
-
       setCurrentTicket(updated);
-
       onTicketUpdated?.(updated);
     } catch (err) {
       setUpdateError(err.message ?? "Failed to update status.");
@@ -272,37 +208,24 @@ export const TicketDetailModal = ({
   const handleSaveCorrection = async () => {
     setIsSavingCorrection(true);
     setUpdateError(null);
-
     try {
       const updated = await ticketService.update(
         currentTicket.id,
         buildPayload({
           name: corrected.ownerName || currentTicket.customer,
-
           address: corrected.ownerAddress || currentTicket.description,
-
           plateNo: corrected.plateNo || null,
-
           mvFileNo: corrected.mvFileNo || null,
-
           make: corrected.make || null,
-
           series: corrected.model || null,
-
           engineNo: corrected.engineNo || null,
-
           chassisNo: corrected.chassisNo || null,
-
           vehicleColor: corrected.color || null,
-
           vehicleTypeDenomination: corrected.vehicleType || null,
-
           classification: corrected.classification || null,
         }),
       );
-
       setCurrentTicket(updated);
-
       onTicketUpdated?.(updated);
     } catch (err) {
       setUpdateError(err.message ?? "Failed to save corrections.");
@@ -311,25 +234,49 @@ export const TicketDetailModal = ({
     }
   };
 
+  // ── Escalate to LTO ────────────────────────────────────────────────────────
+  const handleEscalate = async () => {
+    if (isEscalated) return;
+    setIsEscalating(true);
+    setUpdateError(null);
+    try {
+      const updated = await ticketService.update(
+        currentTicket.id,
+        buildPayload({
+          roleBased: "LTO",
+          escalated: "YES",
+        }),
+      );
+      setCurrentTicket(updated);
+      onTicketUpdated?.(updated);
+    } catch (err) {
+      setUpdateError(err.message ?? "Failed to escalate ticket.");
+    } finally {
+      setIsEscalating(false);
+    }
+  };
+
+  const handleSendComment = () => {
+    if (!chatMessage.trim()) return;
+    setComments((prev) => [
+      ...prev,
+      {
+        id: Date.now(),
+        sender: localStorage.getItem("username") || "You",
+        message: chatMessage,
+        createdAt: new Date(),
+      },
+    ]);
+    setChatMessage("");
+  };
+
   const v = currentTicket.vehicleInfo ?? {};
 
   const vehicleCompareRows = isVehicleNotFound
     ? [
-        {
-          label: "MV File No.",
-          originalKey: "mvFileNo",
-          original: v.mvFileNo,
-        },
-        {
-          label: "Plate No.",
-          originalKey: "plateNo",
-          original: v.plateNo,
-        },
-        {
-          label: "Engine No.",
-          originalKey: "engineNo",
-          original: v.engineNo,
-        },
+        { label: "MV File No.", originalKey: "mvFileNo", original: v.mvFileNo },
+        { label: "Plate No.", originalKey: "plateNo", original: v.plateNo },
+        { label: "Engine No.", originalKey: "engineNo", original: v.engineNo },
         {
           label: "Chassis No.",
           originalKey: "chassisNo",
@@ -337,51 +284,23 @@ export const TicketDetailModal = ({
         },
       ]
     : [
-        {
-          label: "MV File No.",
-          originalKey: "mvFileNo",
-          original: v.mvFileNo,
-        },
-        {
-          label: "Plate No.",
-          originalKey: "plateNo",
-          original: v.plateNo,
-        },
-        {
-          label: "Engine No.",
-          originalKey: "engineNo",
-          original: v.engineNo,
-        },
+        { label: "MV File No.", originalKey: "mvFileNo", original: v.mvFileNo },
+        { label: "Plate No.", originalKey: "plateNo", original: v.plateNo },
+        { label: "Engine No.", originalKey: "engineNo", original: v.engineNo },
         {
           label: "Chassis No.",
           originalKey: "chassisNo",
           original: v.chassisNo,
         },
-        {
-          label: "Make",
-          originalKey: "make",
-          original: v.make,
-        },
-        {
-          label: "Series / Model",
-          originalKey: "model",
-          original: v.model,
-        },
-        {
-          label: "Vehicle Color",
-          originalKey: "color",
-          original: v.color,
-        },
+        { label: "Make", originalKey: "make", original: v.make },
+        { label: "Series / Model", originalKey: "model", original: v.model },
+        { label: "Vehicle Color", originalKey: "color", original: v.color },
         {
           label: "Vehicle Type/Denomination",
           originalKey: "vehicleType",
           original: v.vehicleType,
         },
-        {
-          label: "Year Model",
-          originalKey: "year",
-          original: v.year,
-        },
+        { label: "Year Model", originalKey: "year", original: v.year },
         {
           label: "Classification",
           originalKey: "classification",
@@ -396,14 +315,12 @@ export const TicketDetailModal = ({
       name: currentTicket.certificateOfRegistration,
       url: currentTicket.certificateOfRegistration,
     },
-
     currentTicket.plateCertification && {
       id: 2,
       type: "Plate Certification",
       name: currentTicket.plateCertification,
       url: currentTicket.plateCertification,
     },
-
     currentTicket.actualPlate && {
       id: 3,
       type: "Actual Plate",
@@ -420,16 +337,8 @@ export const TicketDetailModal = ({
   const statusMeta = getStatusMeta(currentTicket.status);
 
   const tabs = [
-    {
-      id: "ticket",
-      label: "Ticket",
-      icon: Info,
-    },
-    {
-      id: "livechat",
-      label: "Live Chat",
-      icon: MessageCircle,
-    },
+    { id: "ticket", label: "Ticket", icon: Info },
+    { id: "livechat", label: "Live Chat", icon: MessageCircle },
   ];
 
   return (
@@ -441,9 +350,7 @@ export const TicketDetailModal = ({
 
       <div className="relative min-h-screen flex items-center justify-center p-4">
         <div
-          className={`relative bg-white rounded-xl shadow-xl w-full max-h-[90vh] flex flex-col ${
-            isMismatch || isVehicleNotFound ? "max-w-5xl" : "max-w-4xl"
-          }`}
+          className={`relative bg-white rounded-xl shadow-xl w-full max-h-[90vh] flex flex-col ${isLTOType ? "max-w-5xl" : "max-w-4xl"}`}
         >
           {/* Header */}
           <div className="flex-shrink-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-xl">
@@ -452,12 +359,10 @@ export const TicketDetailModal = ({
                 <h2 className="text-lg font-semibold text-gray-900">
                   Ticket Details
                 </h2>
-
                 <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-lg">
                   <code className="text-sm font-mono font-medium text-gray-700">
                     {currentTicket.referenceNumber}
                   </code>
-
                   <button
                     onClick={() =>
                       copy("ticketNumber", currentTicket.referenceNumber)
@@ -471,8 +376,14 @@ export const TicketDetailModal = ({
                     )}
                   </button>
                 </div>
+                {/* Escalated badge */}
+                {isEscalated && (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-200">
+                    <AlertTriangle size={11} />
+                    Escalated to LTO
+                  </span>
+                )}
               </div>
-
               <button
                 onClick={onClose}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -487,21 +398,14 @@ export const TicketDetailModal = ({
             <div className="flex gap-6">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
-
                 return (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 py-3 text-sm font-medium transition-colors relative ${
-                      activeTab === tab.id
-                        ? "text-primary-600"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
+                    className={`flex items-center gap-2 py-3 text-sm font-medium transition-colors relative ${activeTab === tab.id ? "text-primary-600" : "text-gray-500 hover:text-gray-700"}`}
                   >
                     <Icon size={16} />
-
                     {tab.label}
-
                     {activeTab === tab.id && (
                       <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500 rounded-full" />
                     )}
@@ -521,67 +425,63 @@ export const TicketDetailModal = ({
                   </div>
                 )}
 
-                {/* Status & Type */}
+                {/* Escalated notice banner */}
+                {isEscalated && (
+                  <div className="flex items-start gap-3 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
+                    <AlertTriangle
+                      size={16}
+                      className="text-orange-500 mt-0.5 flex-shrink-0"
+                    />
+                    <div>
+                      <p className="text-sm font-semibold text-orange-700">
+                        Ticket Escalated to LTO
+                      </p>
+                      <p className="text-xs text-orange-600 mt-0.5">
+                        This ticket has been forwarded to the Land
+                        Transportation Office for further action.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Status & Type row */}
                 <div className="flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-gray-500">
                       Status:
                     </span>
-
                     <div className="relative">
                       <button
                         onClick={() => setStatusDropdown((p) => !p)}
                         disabled={isUpdating}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                          statusMeta.style
-                        } ${
-                          isUpdating
-                            ? "opacity-50 cursor-not-allowed"
-                            : "hover:opacity-80 cursor-pointer"
-                        }`}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${statusMeta.style} ${isUpdating ? "opacity-50 cursor-not-allowed" : "hover:opacity-80 cursor-pointer"}`}
                       >
                         {isUpdating && (
                           <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
                         )}
-
                         {statusMeta.label}
-
                         <ChevronDown
                           size={12}
-                          className={`transition-transform ${
-                            statusDropdown ? "rotate-180" : ""
-                          }`}
+                          className={`transition-transform ${statusDropdown ? "rotate-180" : ""}`}
                         />
                       </button>
-
                       {statusDropdown && (
-                        <div className="absolute top-full left-0 mt-2 w-56 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                        <div className="absolute top-full left-0 mt-2 w-56 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 overflow-hidden">
                           <div className="p-2">
-                            {STATUS_FLOW.map((status) => {
+                            {STATUS_FLOW.map((s) => {
                               const isActive =
-                                currentTicket.status?.toUpperCase() ===
-                                status.value;
-
+                                currentTicket.status?.toUpperCase() === s.value;
                               return (
                                 <button
-                                  key={status.value}
-                                  onClick={() =>
-                                    handleStatusChange(status.value)
-                                  }
-                                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all ${
-                                    isActive
-                                      ? "bg-gray-100"
-                                      : "hover:bg-gray-50"
-                                  }`}
+                                  key={s.value}
+                                  onClick={() => handleStatusChange(s.value)}
+                                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm transition-all ${isActive ? "bg-gray-100" : "hover:bg-gray-50"}`}
                                 >
-                                  <div className="flex items-center gap-2">
-                                    <span
-                                      className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${status.style}`}
-                                    >
-                                      {status.label}
-                                    </span>
-                                  </div>
-
+                                  <span
+                                    className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${s.style}`}
+                                  >
+                                    {s.label}
+                                  </span>
                                   {isActive && (
                                     <Check
                                       size={15}
@@ -597,32 +497,56 @@ export const TicketDetailModal = ({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-500">
-                      Type:
-                    </span>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-500">
+                        Type:
+                      </span>
+                      <span
+                        className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${isMismatch ? "bg-purple-100 text-purple-700" : "bg-orange-100 text-orange-700"}`}
+                      >
+                        {currentTicket.type ?? "—"}
+                      </span>
+                    </div>
 
-                    <span
-                      className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                        isMismatch
-                          ? "bg-purple-100 text-purple-700"
-                          : "bg-orange-100 text-orange-700"
-                      }`}
-                    >
-                      {currentTicket.type ?? "—"}
-                    </span>
+                    {/* Escalate button — only for Data Mismatch / Vehicle Not Found */}
+                    {isLTOType && (
+                      <button
+                        onClick={handleEscalate}
+                        disabled={isEscalated || isEscalating}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+                          isEscalated
+                            ? "bg-orange-50 text-orange-500 border-orange-200 cursor-default"
+                            : "bg-white text-orange-600 border-orange-300 hover:bg-orange-50 hover:border-orange-400"
+                        } disabled:opacity-60`}
+                      >
+                        {isEscalating ? (
+                          <>
+                            <span className="w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />{" "}
+                            Escalating…
+                          </>
+                        ) : isEscalated ? (
+                          <>
+                            <Check size={12} /> Escalated to LTO
+                          </>
+                        ) : (
+                          <>
+                            <AlertTriangle size={12} /> Escalate to LTO
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                {isMismatch || isVehicleNotFound ? (
+                {/* ── Data Mismatch / Vehicle Not Found: two-column comparison ── */}
+                {isLTOType ? (
                   <>
-                    {/* Vehicle Information */}
                     <Card className="p-0 overflow-hidden">
                       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                         <h3 className="text-base font-semibold text-gray-900">
                           Vehicle Information
                         </h3>
-
                         <button
                           onClick={handleSaveCorrection}
                           disabled={isSavingCorrection}
@@ -630,30 +554,25 @@ export const TicketDetailModal = ({
                         >
                           {isSavingCorrection ? (
                             <>
-                              <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />{" "}
                               Saving…
                             </>
                           ) : (
                             <>
-                              <Save size={14} />
-                              Save Corrections
+                              <Save size={14} /> Save Corrections
                             </>
                           )}
                         </button>
                       </div>
-
                       <div className="grid grid-cols-[180px_1fr_1fr]">
                         <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase bg-gray-50 border-b border-gray-200" />
-
                         <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase bg-gray-50 border-b border-l border-gray-200">
                           Submitted
                         </div>
-
                         <div className="px-3 py-2 text-xs font-semibold text-green-600 uppercase bg-green-50 border-b border-l border-gray-200">
                           Corrected
                         </div>
                       </div>
-
                       <div className="grid grid-cols-[180px_1fr_1fr]">
                         {vehicleCompareRows.map((row) => (
                           <CompareRow
@@ -669,7 +588,6 @@ export const TicketDetailModal = ({
                       </div>
                     </Card>
 
-                    {/* Owner Details */}
                     {!isVehicleNotFound && (
                       <Card className="p-0 overflow-hidden">
                         <div className="px-4 py-3 border-b border-gray-100">
@@ -677,19 +595,15 @@ export const TicketDetailModal = ({
                             Owner Details
                           </h3>
                         </div>
-
                         <div className="grid grid-cols-[180px_1fr_1fr]">
                           <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase bg-gray-50 border-b border-gray-200" />
-
                           <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase bg-gray-50 border-b border-l border-gray-200">
                             Submitted
                           </div>
-
                           <div className="px-3 py-2 text-xs font-semibold text-green-600 uppercase bg-green-50 border-b border-l border-gray-200">
                             Corrected
                           </div>
                         </div>
-
                         <div className="grid grid-cols-[180px_1fr_1fr]">
                           <CompareRow
                             label="Name"
@@ -699,7 +613,6 @@ export const TicketDetailModal = ({
                             onChange={handleCorrectedChange}
                             editable
                           />
-
                           <CompareRow
                             label="Address"
                             original={currentTicket.description}
@@ -712,13 +625,11 @@ export const TicketDetailModal = ({
                       </Card>
                     )}
 
-                    {/* Attachments */}
                     {!isVehicleNotFound && (
                       <Card className="p-4">
                         <h3 className="text-base font-semibold text-gray-900 mb-4">
                           Attachment(s)
                         </h3>
-
                         {attachments.length === 0 ? (
                           <p className="text-sm text-gray-400">
                             No attachments.
@@ -734,12 +645,10 @@ export const TicketDetailModal = ({
                                   <p className="text-sm font-medium text-gray-900">
                                     {a.type}
                                   </p>
-
                                   <p className="text-xs text-gray-500 break-all">
                                     {a.name}
                                   </p>
                                 </div>
-
                                 <a
                                   href={a.url}
                                   target="_blank"
@@ -756,67 +665,47 @@ export const TicketDetailModal = ({
                     )}
                   </>
                 ) : (
+                  /* ── Other types: normal view ── */
                   <>
-                    {/* Ticket Details */}
                     <Card className="p-4">
                       <h3 className="text-base font-semibold text-gray-900 mb-4">
                         Ticket Details
                       </h3>
-
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="text-xs font-medium text-gray-500">
                             Reference Number
                           </label>
-
                           <p className="text-sm text-gray-900 mt-1">
                             {currentTicket.referenceNumber}
                           </p>
                         </div>
-
-                        <div>
-                          <label className="text-xs font-medium text-gray-500">
-                            Status
-                          </label>
-
-                          <p className="text-sm text-gray-900 mt-1">
-                            {statusMeta.label}
-                          </p>
-                        </div>
-
                         <div>
                           <label className="text-xs font-medium text-gray-500">
                             Type
                           </label>
-
                           <p className="text-sm text-gray-900 mt-1">
                             {currentTicket.type || "—"}
                           </p>
                         </div>
-
                         <div>
                           <label className="text-xs font-medium text-gray-500">
                             Requested By
                           </label>
-
                           <p className="text-sm text-gray-900 mt-1">
                             {requestedBy}
                           </p>
                         </div>
                       </div>
                     </Card>
-
-                    {/* Concern Details */}
                     <Card className="p-4">
                       <h3 className="text-base font-semibold text-gray-900 mb-4">
                         Concern Details
                       </h3>
-
                       <div>
                         <label className="text-xs font-medium text-gray-500">
                           Concern
                         </label>
-
                         <p className="text-sm text-gray-900 mt-1 break-words">
                           {currentTicket.description || "—"}
                         </p>
@@ -825,52 +714,54 @@ export const TicketDetailModal = ({
                   </>
                 )}
 
-                {/* Request Details */}
+                {/* Request Details — always shown */}
                 <Card className="p-4">
                   <h3 className="text-base font-semibold text-gray-900 mb-4">
                     Request Details
                   </h3>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="text-xs font-medium text-gray-500">
                         Requested By
                       </label>
-
                       <p className="text-sm text-gray-900 mt-1">
                         {requestedBy}
                       </p>
                     </div>
-
                     <div>
                       <label className="text-xs font-medium text-gray-500">
                         Processed By
                       </label>
-
                       <p className="text-sm text-gray-900 mt-1">
                         {currentTicket.processedBy || "Not assigned yet"}
                       </p>
                     </div>
-
                     <div>
                       <label className="text-xs font-medium text-gray-500">
                         Date Requested
                       </label>
-
                       <p className="text-sm text-gray-900 mt-1">
                         {formatDate(currentTicket.dateRequested)}
                       </p>
                     </div>
-
                     <div>
                       <label className="text-xs font-medium text-gray-500">
                         Last Updated
                       </label>
-
                       <p className="text-sm text-gray-900 mt-1">
                         {formatDate(currentTicket.dateUpdated)}
                       </p>
                     </div>
+                    {isEscalated && (
+                      <div>
+                        <label className="text-xs font-medium text-gray-500">
+                          Escalated To
+                        </label>
+                        <p className="text-sm font-semibold text-orange-600 mt-1">
+                          LTO
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </Card>
               </div>
@@ -879,47 +770,33 @@ export const TicketDetailModal = ({
             {activeTab === "livechat" && (
               <div className="pt-6">
                 <Card className="p-0 overflow-hidden flex flex-col h-[600px]">
-                  {/* Header */}
                   <div className="border-b border-gray-200 px-4 py-3">
                     <h3 className="text-base font-semibold text-gray-900">
                       Live Chat
                     </h3>
-
                     <p className="text-xs text-gray-500 mt-1">
                       Add comments regarding this ticket.
                     </p>
                   </div>
-
-                  {/* Messages */}
                   <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-                    {comments.length === 0 ? (
-                      <div className="text-center text-sm text-gray-400 py-10">
-                        No comments yet.
-                      </div>
-                    ) : (
-                      comments.map((comment) => (
-                        <div key={comment.id} className="flex flex-col">
-                          <div className="bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-sm font-semibold text-gray-900">
-                                {comment.sender}
-                              </span>
-
-                              <span className="text-xs text-gray-400">
-                                {formatDate(comment.createdAt)}
-                              </span>
-                            </div>
-
-                            <p className="text-sm text-gray-700 break-words">
-                              {comment.message}
-                            </p>
+                    {comments.map((comment) => (
+                      <div key={comment.id} className="flex flex-col">
+                        <div className="bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-semibold text-gray-900">
+                              {comment.sender}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              {formatDate(comment.createdAt)}
+                            </span>
                           </div>
+                          <p className="text-sm text-gray-700 break-words">
+                            {comment.message}
+                          </p>
                         </div>
-                      ))
-                    )}
+                      </div>
+                    ))}
                   </div>
-
-                  {/* Input */}
                   <div className="border-t border-gray-200 p-4 bg-white">
                     <div className="flex items-end gap-3">
                       <textarea
@@ -929,7 +806,6 @@ export const TicketDetailModal = ({
                         rows={2}
                         className="flex-1 resize-none rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                       />
-
                       <button
                         onClick={handleSendComment}
                         className="px-4 py-3 bg-primary-500 hover:bg-primary-600 text-white rounded-xl text-sm font-medium transition-colors"
