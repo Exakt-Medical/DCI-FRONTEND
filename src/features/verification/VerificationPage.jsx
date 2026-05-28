@@ -578,11 +578,6 @@ export const VerificationPage = ({ onCertificate }) => {
       {/* Vehicle found — info cards + Report Data Mismatch */}
       {isRecordFound && (
         <>
-          <VehicleInfoCard
-            vehicleData={vehicleData}
-            mismatchedFields={mismatchedFields}
-          />
-
           <div className="flex justify-end mt-4">
             <Button
               variant="secondary"
@@ -593,6 +588,10 @@ export const VerificationPage = ({ onCertificate }) => {
               Report Data Mismatch
             </Button>
           </div>
+          <VehicleInfoCard
+            vehicleData={vehicleData}
+            mismatchedFields={mismatchedFields}
+          />
 
           <OwnerInfoCard ownerData={ownerData} />
 
