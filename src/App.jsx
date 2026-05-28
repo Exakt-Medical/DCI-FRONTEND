@@ -311,7 +311,7 @@ function AppContent() {
           />
         );
       case "transfer-vouchers":
-        if (role !== "admin") {
+        if (role !== "admin" && role !== "manager") {
           return (
             <PlaceholderPage
               title="Access Denied"

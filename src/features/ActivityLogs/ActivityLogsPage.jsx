@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card } from "../../components/Card";
 import { auditTrailService } from "../../services/auditTrailService";
+import { exportService } from "../../services/exportService"; // ADD THIS
 import { ActivityLogsHeader } from "./components/ActivityLogsHeader";
 import { ActivityLogsFilters } from "./components/ActivityLogsFilters";
 import { ActivityLogsTable } from "./components/ActivityLogsTable";
@@ -14,6 +15,8 @@ export const ActivityLogsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [actionFilter, setActionFilter] = useState("");
   const [userFilter, setUserFilter] = useState("");
+  const [uniqueActions, setUniqueActions] = useState([]);
+  const [uniqueUsers, setUniqueUsers] = useState([]);
   const [sortConfig, setSortConfig] = useState({
     key: "timestamp",
     direction: "desc",
@@ -39,23 +42,51 @@ export const ActivityLogsPage = () => {
     setLoading(true);
     auditTrailService
       .getAll()
-      .then((res) => {
-        setLogs(res.data.map(mapLog));
+      .then((data) => {
+        setLogs(data.map(mapLog));
         setLoading(false);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("Failed to fetch logs:", err);
         setLogs([]);
         setLoading(false);
       });
   };
 
+  // Fetch unique actions using the service
+  const fetchUniqueActions = () => {
+    auditTrailService
+      .getUniqueActions()
+      .then((data) => {
+        setUniqueActions(data || []);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch actions:", err);
+        setUniqueActions([]);
+      });
+  };
+
+  // Fetch unique users using the service
+  const fetchUniqueUsers = () => {
+    auditTrailService
+      .getUniqueUsers()
+      .then((data) => {
+        setUniqueUsers(data || []);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch users:", err);
+        setUniqueUsers([]);
+      });
+  };
+
   useEffect(() => {
     fetchLogs();
+    fetchUniqueActions();
+    fetchUniqueUsers();
   }, []);
 
   // Filter logs with null safety
   const filteredLogs = logs.filter((log) => {
-    // Safely get string values (handle null/undefined)
     const user = safeToString(log.user);
     const action = safeToString(log.action);
     const details = safeToString(log.details);
@@ -73,7 +104,7 @@ export const ActivityLogsPage = () => {
     return matchesSearch && matchesAction && matchesUser;
   });
 
-  // SORTED logs (AFTER filteredLogs)
+  // SORTED logs
   const sortedLogs = [...filteredLogs].sort((a, b) => {
     if (!sortConfig.key) return 0;
 
@@ -111,7 +142,6 @@ export const ActivityLogsPage = () => {
           direction: prev.direction === "asc" ? "desc" : "asc",
         };
       }
-
       return {
         key,
         direction: "asc",
@@ -119,18 +149,19 @@ export const ActivityLogsPage = () => {
     });
   };
 
-  // Get unique filter options with null safety
-  const uniqueActions = [
-    ...new Set(logs.map((log) => log.action).filter(Boolean)),
-  ];
-  const uniqueUsers = [...new Set(logs.map((log) => log.user).filter(Boolean))];
-
+  // UPDATED: Export function using the service
   const handleExport = () => {
-    console.log("Exporting logs...");
+    if (filteredLogs.length === 0) {
+      alert("No logs to export");
+      return;
+    }
+    exportService.exportLogs(filteredLogs, "activity_logs");
   };
 
   const handleRefresh = () => {
     fetchLogs();
+    fetchUniqueActions();
+    fetchUniqueUsers();
   };
 
   const handleSearch = (term) => {
@@ -156,7 +187,7 @@ export const ActivityLogsPage = () => {
     <div className="space-y-6">
       <ActivityLogsHeader />
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-visible">
         <ActivityLogsFilters
           searchTerm={searchTerm}
           onSearchChange={handleSearch}
@@ -169,13 +200,11 @@ export const ActivityLogsPage = () => {
           onRefresh={handleRefresh}
           onExport={handleExport}
         />
-
         <ActivityLogsTable
           logs={paginatedLogs}
           onSort={handleSort}
           sortConfig={sortConfig}
         />
-
         <ActivityLogsPagination
           currentPage={currentPage}
           totalPages={totalPages}
