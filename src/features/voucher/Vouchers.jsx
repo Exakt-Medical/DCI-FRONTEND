@@ -37,6 +37,10 @@ export default function Vouchers({
   const [generatedVouchers, setGeneratedVouchers] = useState([]);
   const [paymentError, setPaymentError] = useState(null);
 
+  const email = localStorage.getItem("email");
+  const firstname = localStorage.getItem("firstname");
+  const lastname = localStorage.getItem("lastname");
+
   // Primary color constant
   const primaryColor = "#1a3a6b";
 
@@ -108,28 +112,28 @@ export default function Vouchers({
     setIsProcessing(true);
 
     try {
-      const callbackUrl = `${window.location.origin}/thankyou`;
+      const callbackUrl = `${window.location.origin}/thankyoupage`;
 
       const paymentRequest = {
         customer: {
           contact: {
-            email: "johndoe@domain.com",
-            mobile: "+639123456789",
+            email: email ?? "",
+            mobile: "",
           },
-          first_name: "John",
-          last_name: "Doe",
+          first_name: firstname ?? "",
+          last_name: lastname ?? "",
           billing_address: {
-            line1: "Vicente Madrigal Building",
-            line2: "Ayala Avenue",
-            zip: "1234",
-            city_municipality: "Makati City",
-            state_province_region: "Metro Manila",
+            line1: "",
+            line2: "",
+            zip: "",
+            city_municipality: "",
+            state_province_region: "",
             country_code: "PH",
           },
         },
         payment: {
           description: selectedProduct
-            ? `Payment for ${selectedProduct.name}`
+            ? `Payment for ${selectedProduct.productName}`
             : "Payment for a product",
           amount: selectedProduct
             ? String(selectedProduct.price * quantity)
