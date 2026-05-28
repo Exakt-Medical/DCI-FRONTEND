@@ -98,9 +98,12 @@ export const TicketTable = ({ tickets = [], onViewDetails }) => {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
-        {/* HEADER */}
+        {/* HEADER - Actions column FIRST */}
         <thead className="bg-gray-50 border-b border-gray-200">
           <tr>
+            <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Actions
+            </th>
             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
               Reference Number
             </th>
@@ -122,13 +125,10 @@ export const TicketTable = ({ tickets = [], onViewDetails }) => {
             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
               Date Requested
             </th>
-            <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Actions
-            </th>
           </tr>
         </thead>
 
-        {/* BODY */}
+        {/* BODY - Actions column FIRST */}
         <tbody className="divide-y divide-gray-100">
           {tickets.length === 0 ? (
             <tr>
@@ -147,6 +147,17 @@ export const TicketTable = ({ tickets = [], onViewDetails }) => {
                   key={ticket.id}
                   className="hover:bg-gray-50 transition-colors"
                 >
+                  {/* Actions - FIRST COLUMN */}
+                  <td className="px-4 py-3 text-center">
+                    <button
+                      onClick={() => onViewDetails(ticket)}
+                      className="p-1 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                      title="View Details"
+                    >
+                      <Eye size={16} />
+                    </button>
+                  </td>
+
                   {/* Reference Number */}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
@@ -208,17 +219,6 @@ export const TicketTable = ({ tickets = [], onViewDetails }) => {
                     <span className="text-sm text-gray-500">
                       {formatDate(ticket.dateRequested)}
                     </span>
-                  </td>
-
-                  {/* Actions */}
-                  <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => onViewDetails(ticket)}
-                      className="p-1 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                      title="View Details"
-                    >
-                      <Eye size={16} />
-                    </button>
                   </td>
                 </tr>
               );
