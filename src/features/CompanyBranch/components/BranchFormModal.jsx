@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Button } from "../../../components/Button";
-import { Input } from "../../../components/Input";
 import { X, MapPin, Edit2, Building2 } from "lucide-react";
 
 export const BranchFormModal = ({
@@ -14,10 +13,9 @@ export const BranchFormModal = ({
   const [formData, setFormData] = useState({
     branchId: "",
     branchName: "",
-    branchShortname: "",
     companyId: "",
     companyName: "",
-    isactive: true,
+    status: "ACTIVE",
   });
 
   useEffect(() => {
@@ -25,19 +23,17 @@ export const BranchFormModal = ({
       setFormData({
         branchId: branch.branchId || "",
         branchName: branch.branchName || "",
-        branchShortname: branch.branchShortname || "",
         companyId: branch.companyId ? String(branch.companyId) : "",
         companyName: branch.companyName || "",
-        isactive: branch.isactive !== undefined ? branch.isactive : true,
+        status: branch.status || "ACTIVE",
       });
     } else {
       setFormData({
         branchId: "",
         branchName: "",
-        branchShortname: "",
         companyId: "",
         companyName: "",
-        isactive: true,
+        status: "ACTIVE",
       });
     }
   }, [branch, isEditing, isOpen]);
@@ -113,7 +109,7 @@ export const BranchFormModal = ({
                   <option value="">Select Company</option>
                   {companies.map((company) => (
                     <option key={company.id} value={company.id}>
-                      {company.companyId} - {company.companyName}
+                      {company.companyName}
                     </option>
                   ))}
                 </select>
@@ -172,37 +168,20 @@ export const BranchFormModal = ({
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                Short Name
-              </label>
-              <input
-                type="text"
-                value={formData.branchShortname}
-                onChange={(e) =>
-                  setFormData({ ...formData, branchShortname: e.target.value })
-                }
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-                placeholder="Optional short name"
-              />
-            </div>
-
             {isEditing && (
               <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700">Active</label>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={formData.isactive}
-                    onChange={(e) =>
-                      setFormData({ ...formData, isactive: e.target.checked })
-                    }
-                    className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                  />
-                  <span className="text-sm text-gray-700">
-                    {formData.isactive ? "Active" : "Inactive"}
-                  </span>
-                </label>
+                <label className="block text-sm font-semibold text-gray-700">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) =>
+                    setFormData({ ...formData, status: e.target.value })
+                  }
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                >
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                  <option value="DEACTIVATED">Deactivated</option>
+                </select>
               </div>
             )}
           </div>

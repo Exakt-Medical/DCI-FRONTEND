@@ -1,42 +1,20 @@
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
-export const AccountPagination = ({
+export const AccessLogsPagination = ({
   currentPage,
   totalPages,
   onPageChange,
   totalItems,
   currentItems,
-  startIndex,
-  itemsPerPage,
-  onItemsPerPageChange,
 }) => {
+  if (totalPages <= 1) return null;
+
   return (
     <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
-      <div className="flex items-center gap-3">
-        <p className="text-sm text-gray-500">
-          Showing {startIndex + 1} to {startIndex + currentItems} of {totalItems}{" "}
-          users
-        </p>
-        <select
-          value={itemsPerPage}
-          onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-          className="text-xs border border-gray-300 rounded px-2 py-1 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500"
-        >
-          <option value={10}>10</option>
-          <option value={50}>50</option>
-          <option value={100}>100</option>
-        </select>
-      </div>
-      {totalPages > 1 && (
-        <div className="flex gap-1 items-center">
-        <button
-          onClick={() => onPageChange(1)}
-          disabled={currentPage === 1}
-          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          title="First Page"
-        >
-          <ChevronsLeft size={16} />
-        </button>
+      <p className="text-sm text-gray-500">
+        Showing {currentItems} of {totalItems} accesses
+      </p>
+      <div className="flex gap-1">
         <button
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage === 1}
@@ -74,16 +52,7 @@ export const AccountPagination = ({
         >
           <ChevronRight size={16} />
         </button>
-        <button
-          onClick={() => onPageChange(totalPages)}
-          disabled={currentPage === totalPages}
-          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Last Page"
-        >
-          <ChevronsRight size={16} />
-        </button>
-        </div>
-      )}
+      </div>
     </div>
   );
 };

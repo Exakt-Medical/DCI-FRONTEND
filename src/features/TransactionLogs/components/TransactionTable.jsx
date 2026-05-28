@@ -8,9 +8,18 @@ export const TransactionTable = ({
   currentPage,
   totalPages,
   onPageChange,
+  loading = false,
 }) => {
   const itemsPerPage = 10;
   const startIndex = (currentPage - 1) * itemsPerPage;
+
+  if (!loading && transactions.length === 0) {
+    return (
+      <Card className="p-8 text-center">
+        <p className="text-gray-500">No transactions found.</p>
+      </Card>
+    );
+  }
 
   return (
     <Card className="overflow-hidden">

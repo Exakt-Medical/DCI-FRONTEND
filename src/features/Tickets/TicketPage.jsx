@@ -8,7 +8,7 @@ import { TicketPagination } from "./components/TicketPagination";
 import { TicketDetailModal } from "./components/TicketDetailModal";
 import { CreateTicketModal } from "./CreateTicketModal";
 import { useTicketFilters } from "./hooks/useTicketFilters";
-import { ticketService } from "../../services/ticketService"; // ← service layer
+import { ticketService } from "../../services/ticketService";
 import { statusOptions, typeOptions } from "../../constants/ticketMockData";
 import {
   Ticket,
@@ -29,6 +29,7 @@ export const TicketPage = () => {
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [activeStat, setActiveStat] = useState("total");
 
   // ── Data & loading state ──────────────────────────────────────────────────
   const [tickets, setTickets] = useState([]);
@@ -76,6 +77,63 @@ export const TicketPage = () => {
     clearFilters,
   } = useTicketFilters(tickets);
 
+  // 🔥 NORMALIZER (fixes ALL case issues)
+  const normalize = (str) => (str || "").toLowerCase().replace(/\s+/g, "");
+
+  // 🔥 STAT FILTER - Frontend only, no backend calls
+  const filteredByStat = filteredTickets.filter((ticket) => {
+    const status = normalize(ticket.status);
+
+    if (activeStat === "total") return true;
+    if (activeStat === "pending") return status === "pending";
+    if (activeStat === "processing") return status === "processing";
+    if (activeStat === "resolved") return status === "resolved";
+    if (activeStat === "declined") return status === "declined";
+    if (activeStat === "cancelled") return status === "cancelled";
+
+    return true;
+  });
+
+  // 🔥 PAGINATE THE STAT-FILTERED RESULTS (frontend only)
+  const getPaginatedByStat = () => {
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    return filteredByStat.slice(start, end);
+  };
+
+  const paginatedByStat = getPaginatedByStat();
+  const totalStatFilteredItems = filteredByStat.length;
+  const statTotalPages = Math.ceil(totalStatFilteredItems / itemsPerPage);
+
+  const statConfig = [
+    { key: "total", title: "Total", value: stats.total, icon: Ticket },
+    { key: "pending", title: "Pending", value: stats.pending, icon: Clock },
+    {
+      key: "processing",
+      title: "Processing",
+      value: stats.processing,
+      icon: RefreshCw,
+    },
+    {
+      key: "resolved",
+      title: "Resolved",
+      value: stats.resolved,
+      icon: CheckCircle,
+    },
+    {
+      key: "declined",
+      title: "Declined",
+      value: stats.declined,
+      icon: XCircle,
+    },
+    {
+      key: "cancelled",
+      title: "Cancelled",
+      value: stats.cancelled,
+      icon: AlertCircle,
+    },
+  ];
+
   // ── Handlers ─────────────────────────────────────────────────────────────
   const handleRefresh = () => fetchTickets();
 
@@ -105,7 +163,6 @@ export const TicketPage = () => {
   };
 
   const handleCreateTicket = async (formData) => {
-    // Map the modal's nested shape → flat TicketRequest DTO
     const typeLabel =
       formData.vehicleSubType === "dataMismatch"
         ? "Data Mismatch"
@@ -118,7 +175,6 @@ export const TicketPage = () => {
                 formData.concernType.slice(1)
               : "General";
 
-    // Generate reference number: REF-YYYYMMDD-XXXX
     const pad = (n) => String(n).padStart(4, "0");
     const now = new Date();
     const datePart = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
@@ -137,7 +193,6 @@ export const TicketPage = () => {
       dateUpdated: new Date().toISOString(),
       escalated: "NO",
       roleBased: localStorage.getItem("role")?.toUpperCase() ?? null,
-      // Vehicle fields
       plateNo: formData.vehicleInfo?.plateNo ?? null,
       mvFileNo: formData.vehicleInfo?.mvFileNo ?? null,
       make: formData.vehicleInfo?.make ?? null,
@@ -170,6 +225,7 @@ export const TicketPage = () => {
               Manage and track customer support tickets and inquiries
             </p>
           </div>
+
           {!isLTO && (
             <button
               onClick={() => setIsCreateModalOpen(true)}
@@ -195,22 +251,21 @@ export const TicketPage = () => {
         </div>
       )}
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Click to filter (frontend only) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <StatCard title="Total" value={stats.total} icon={Ticket} />
-        <StatCard title="Pending" value={stats.pending} icon={Clock} />
-        <StatCard
-          title="Processing"
-          value={stats.processing}
-          icon={RefreshCw}
-        />
-        <StatCard title="Resolved" value={stats.resolved} icon={CheckCircle} />
-        <StatCard title="Declined" value={stats.declined} icon={XCircle} />
-        <StatCard
-          title="Cancelled"
-          value={stats.cancelled}
-          icon={AlertCircle}
-        />
+        {statConfig.map((stat) => (
+          <StatCard
+            key={stat.key}
+            title={stat.title}
+            value={stat.value}
+            icon={stat.icon}
+            isActive={activeStat === stat.key}
+            onClick={() => {
+              setActiveStat(stat.key);
+              setCurrentPage(1); // Reset to page 1 when changing filter
+            }}
+          />
+        ))}
       </div>
 
       {/* Tabs */}
@@ -239,7 +294,7 @@ export const TicketPage = () => {
         />
       </Card>
 
-      {/* Table */}
+      {/* Table - Shows filtered results based on stat card click */}
       <Card className="overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center py-16 text-sm text-gray-400">
@@ -249,16 +304,16 @@ export const TicketPage = () => {
         ) : (
           <>
             <TicketTable
-              tickets={paginatedTickets}
+              tickets={paginatedByStat}
               onViewDetails={handleViewDetails}
               onAddNote={handleAddNote}
             />
             <TicketPagination
               currentPage={currentPage}
-              totalPages={totalPages}
-              startIndex={startIndex}
+              totalPages={statTotalPages}
+              startIndex={(currentPage - 1) * itemsPerPage + 1}
               itemsPerPage={itemsPerPage}
-              totalItems={filteredTickets.length}
+              totalItems={totalStatFilteredItems}
               onPageChange={setCurrentPage}
             />
           </>

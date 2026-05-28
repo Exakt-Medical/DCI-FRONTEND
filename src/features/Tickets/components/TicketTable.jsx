@@ -9,11 +9,15 @@ import {
   Copy,
 } from "lucide-react";
 
-// Normalise to Title Case for badge lookup: "OPEN" → "Open", "pending" → "Pending"
-const normaliseStatus = (status) =>
-  status ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase() : "—";
+// Normalise to Title Case for badge lookup
+const normalizeStatus = (status) => {
+  if (!status) return "Pending";
+  return status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+};
 
 const getStatusBadge = (status) => {
+  const s = normalizeStatus(status);
+
   const styles = {
     Open: "bg-blue-100 text-blue-700",
     Pending: "bg-yellow-100 text-yellow-700",
@@ -22,11 +26,14 @@ const getStatusBadge = (status) => {
     Declined: "bg-red-100 text-red-700",
     Cancelled: "bg-gray-100 text-gray-700",
   };
-  return styles[status] || "bg-gray-100 text-gray-700";
+
+  return styles[s] || "bg-gray-100 text-gray-700";
 };
 
 const getStatusIcon = (status) => {
-  switch (status) {
+  const s = normalizeStatus(status);
+
+  switch (s) {
     case "Open":
       return <Ticket size={12} />;
     case "Pending":
@@ -71,7 +78,7 @@ const handleCopyTicketNumber = async (referenceNumber) => {
   }
 };
 
-// Safely render requestedBy whether it's a string ("Lester") or an object ({ name, company })
+// Safely render requestedBy whether it's a string or an object
 const renderRequestedBy = (requestedBy) => {
   if (!requestedBy) return <span className="text-gray-400">—</span>;
   if (typeof requestedBy === "string") {
@@ -87,12 +94,16 @@ const renderRequestedBy = (requestedBy) => {
   );
 };
 
-export const TicketTable = ({ tickets, onViewDetails }) => {
+export const TicketTable = ({ tickets = [], onViewDetails }) => {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
+        {/* HEADER - Actions column FIRST */}
         <thead className="bg-gray-50 border-b border-gray-200">
           <tr>
+            <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Actions
+            </th>
             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
               Reference Number
             </th>
@@ -114,11 +125,10 @@ export const TicketTable = ({ tickets, onViewDetails }) => {
             <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
               Date Requested
             </th>
-            <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Actions
-            </th>
           </tr>
         </thead>
+
+        {/* BODY - Actions column FIRST */}
         <tbody className="divide-y divide-gray-100">
           {tickets.length === 0 ? (
             <tr>
@@ -131,12 +141,24 @@ export const TicketTable = ({ tickets, onViewDetails }) => {
             </tr>
           ) : (
             tickets.map((ticket) => {
-              const displayStatus = normaliseStatus(ticket.status);
+              const status = normalizeStatus(ticket.status);
               return (
                 <tr
                   key={ticket.id}
                   className="hover:bg-gray-50 transition-colors"
                 >
+                  {/* Actions - FIRST COLUMN */}
+                  <td className="px-4 py-3 text-center">
+                    <button
+                      onClick={() => onViewDetails(ticket)}
+                      className="p-1 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                      title="View Details"
+                    >
+                      <Eye size={16} />
+                    </button>
+                  </td>
+
+                  {/* Reference Number */}
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-mono font-medium text-gray-900">
@@ -153,17 +175,23 @@ export const TicketTable = ({ tickets, onViewDetails }) => {
                       </button>
                     </div>
                   </td>
+
+                  {/* Status */}
                   <td className="px-4 py-3">
                     <span
-                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(displayStatus)}`}
+                      className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusBadge(status)}`}
                     >
-                      {getStatusIcon(displayStatus)}
-                      {displayStatus}
+                      {getStatusIcon(status)}
+                      {status}
                     </span>
                   </td>
+
+                  {/* Requested By */}
                   <td className="px-4 py-3">
                     {renderRequestedBy(ticket.requestedBy)}
                   </td>
+
+                  {/* Type */}
                   <td className="px-4 py-3">
                     <span
                       className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${getTypeBadge(ticket.type)}`}
@@ -171,29 +199,26 @@ export const TicketTable = ({ tickets, onViewDetails }) => {
                       {ticket.type}
                     </span>
                   </td>
+
+                  {/* Processed By */}
                   <td className="px-4 py-3">
                     <span className="text-sm text-gray-600">
                       {ticket.processedBy || "—"}
                     </span>
                   </td>
+
+                  {/* Date Updated */}
                   <td className="px-4 py-3">
                     <span className="text-sm text-gray-500">
                       {formatDate(ticket.dateUpdated)}
                     </span>
                   </td>
+
+                  {/* Date Requested */}
                   <td className="px-4 py-3">
                     <span className="text-sm text-gray-500">
                       {formatDate(ticket.dateRequested)}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <button
-                      onClick={() => onViewDetails(ticket)}
-                      className="p-1 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                      title="View Details"
-                    >
-                      <Eye size={16} />
-                    </button>
                   </td>
                 </tr>
               );

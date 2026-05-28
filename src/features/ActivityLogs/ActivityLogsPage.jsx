@@ -14,16 +14,25 @@ export const ActivityLogsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [actionFilter, setActionFilter] = useState("");
   const [userFilter, setUserFilter] = useState("");
-
+  const [sortConfig, setSortConfig] = useState({
+    key: "timestamp",
+    direction: "desc",
+  });
   const itemsPerPage = 10;
+
+  // Helper function to safely get string values
+  const safeToString = (value) => {
+    if (value === null || value === undefined) return "";
+    return String(value);
+  };
 
   const mapLog = (record) => ({
     id: record.id,
-    user: record.userstamp,
-    role: record.userrole,
-    action: record.actionMade,
-    details: record.details,
-    timestamp: record.timestamp,
+    user: record.userstamp || "Unknown",
+    role: record.userrole || "Unknown",
+    action: record.actionMade || "Unknown",
+    details: record.details || "",
+    timestamp: record.timestamp || new Date().toISOString(),
   });
 
   const fetchLogs = () => {
@@ -44,29 +53,77 @@ export const ActivityLogsPage = () => {
     fetchLogs();
   }, []);
 
-  // Filter logs
+  // Filter logs with null safety
   const filteredLogs = logs.filter((log) => {
-    const matchesSearch =
-      log.user.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.details.toLowerCase().includes(searchTerm.toLowerCase());
+    // Safely get string values (handle null/undefined)
+    const user = safeToString(log.user);
+    const action = safeToString(log.action);
+    const details = safeToString(log.details);
+    const search = safeToString(searchTerm);
 
-    const matchesAction = actionFilter ? log.action === actionFilter : true;
-    const matchesUser = userFilter ? log.user === userFilter : true;
+    const matchesSearch =
+      search === "" ||
+      user.toLowerCase().includes(search.toLowerCase()) ||
+      action.toLowerCase().includes(search.toLowerCase()) ||
+      details.toLowerCase().includes(search.toLowerCase());
+
+    const matchesAction = actionFilter ? action === actionFilter : true;
+    const matchesUser = userFilter ? user === userFilter : true;
 
     return matchesSearch && matchesAction && matchesUser;
   });
 
-  // Pagination
-  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
-  const paginatedLogs = filteredLogs.slice(
+  // SORTED logs (AFTER filteredLogs)
+  const sortedLogs = [...filteredLogs].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+
+    const aValue = a[sortConfig.key];
+    const bValue = b[sortConfig.key];
+
+    if (!aValue || !bValue) return 0;
+
+    const isDate = sortConfig.key === "timestamp";
+
+    const aComp = isDate
+      ? new Date(aValue)
+      : safeToString(aValue).toLowerCase();
+    const bComp = isDate
+      ? new Date(bValue)
+      : safeToString(bValue).toLowerCase();
+
+    if (aComp < bComp) return sortConfig.direction === "asc" ? -1 : 1;
+    if (aComp > bComp) return sortConfig.direction === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  const totalPages = Math.ceil(sortedLogs.length / itemsPerPage);
+
+  const paginatedLogs = sortedLogs.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage,
   );
 
-  // Get unique filter options
-  const uniqueActions = [...new Set(logs.map((log) => log.action))];
-  const uniqueUsers = [...new Set(logs.map((log) => log.user))];
+  const handleSort = (key) => {
+    setSortConfig((prev) => {
+      if (prev.key === key) {
+        return {
+          key,
+          direction: prev.direction === "asc" ? "desc" : "asc",
+        };
+      }
+
+      return {
+        key,
+        direction: "asc",
+      };
+    });
+  };
+
+  // Get unique filter options with null safety
+  const uniqueActions = [
+    ...new Set(logs.map((log) => log.action).filter(Boolean)),
+  ];
+  const uniqueUsers = [...new Set(logs.map((log) => log.user).filter(Boolean))];
 
   const handleExport = () => {
     console.log("Exporting logs...");
@@ -113,7 +170,11 @@ export const ActivityLogsPage = () => {
           onExport={handleExport}
         />
 
-        <ActivityLogsTable logs={paginatedLogs} />
+        <ActivityLogsTable
+          logs={paginatedLogs}
+          onSort={handleSort}
+          sortConfig={sortConfig}
+        />
 
         <ActivityLogsPagination
           currentPage={currentPage}
