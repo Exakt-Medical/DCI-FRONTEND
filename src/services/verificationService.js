@@ -11,14 +11,17 @@ export const verificationService = {
     }),
 
   // STEP 2 — POST /api/v1/vvip/{verificationId}/confirm
-  confirm: (verificationId) => api.post(`/v1/vvip/${verificationId}/confirm`),
-
-  // Optional preview — no record saved
-  lookup: (payload) =>
-    api.post("/api/v1/vvip/lookup", {
-      mvFileNumber: payload.mvFileNumber || payload.mvFileNo,
-      plateNumber: payload.plateNumber || payload.plateNo,
-      engineNumber: payload.engineNumber || payload.engineNo,
-      chassisNumber: payload.chassisNumber || payload.chassisNo,
+  confirm: (verificationId, { insuranceData, voucherCode }) =>
+    api.post(`/v1/vvip/${verificationId}/confirm`, {
+      insuranceCode: insuranceData.selectedCode,
+      policyNumber: insuranceData.policyNumber,
+      premiumType: insuranceData.premiumType,
+      prescribedPremiumFee: insuranceData.prescribedPremiumFee,
+      dst: insuranceData.dst,
+      vat: insuranceData.vat,
+      lgt: insuranceData.lgt,
+      validationFee: insuranceData.validationFee,
+      totalAmount: insuranceData.totalAmount,
+      voucherCode: voucherCode ?? null,
     }),
 };
