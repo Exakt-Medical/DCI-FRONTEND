@@ -58,6 +58,77 @@ const formatDate = (raw) => {
       });
 };
 
+// ---------------------------------------------------------------------------
+// Parse corrections encoded in the address field
+// Format: "CORRECTIONS:[{field, label, actual, expected}]"
+// ---------------------------------------------------------------------------
+const parseCorrections = (crAttachment) => {
+  if (!crAttachment) {
+    console.log("No crAttachment provided");
+    return {};
+  }
+
+  console.log("crAttachment RAW:", crAttachment);
+  console.log("crAttachment type:", typeof crAttachment);
+
+  try {
+    let data =
+      typeof crAttachment === "string"
+        ? JSON.parse(crAttachment)
+        : crAttachment;
+
+    console.log("Parsed data:", data);
+    console.log("Is array:", Array.isArray(data));
+
+    const FIELD_KEY_MAP = {
+      mv_file_number: "mvFileNo",
+      plate_number: "plateNo",
+      engine_number: "engineNo",
+      chassis_number: "chassisNo",
+      make: "make",
+      series: "series",
+      model: "series", // alias for series
+      color: "vehicleColor",
+      vehicle_color: "vehicleColor",
+      denomination: "vehicleTypeDenomination",
+      vehicle_type: "vehicleTypeDenomination",
+      year_model: "yearModel",
+      year: "yearModel",
+      classification: "classification",
+      owner_name: "ownerName",
+      owner_address: "ownerAddress",
+    };
+
+    const result = {};
+
+    // Handle array format: [{field, expected}]
+    if (Array.isArray(data)) {
+      data.forEach(({ field, expected, actual }) => {
+        const key = FIELD_KEY_MAP[field] ?? field;
+        if (expected) result[key] = expected;
+        console.log(`Mapping ${field} -> ${key} = ${expected}`);
+      });
+    }
+    // Handle object format: {field: value}
+    else if (typeof data === "object" && data !== null) {
+      Object.entries(data).forEach(([field, expected]) => {
+        const key = FIELD_KEY_MAP[field] ?? field;
+        if (expected) result[key] = expected;
+        console.log(`Mapping ${field} -> ${key} = ${expected}`);
+      });
+    }
+
+    console.log("Final parsed corrections:", result);
+    return result;
+  } catch (e) {
+    console.error("Failed to parse crAttachment:", e);
+    return {};
+  }
+};
+
+// ---------------------------------------------------------------------------
+// CompareRow — simple two-column row, no mismatch highlighting needed
+// ---------------------------------------------------------------------------
 const CompareRow = ({
   label,
   original,
@@ -117,23 +188,41 @@ export const TicketDetailModal = ({
   ]);
 
   useEffect(() => {
+    console.log("🔥 useEffect fired", ticket);
     if (ticket) {
       setCurrentTicket(ticket);
+
       const v = ticket.vehicleInfo ?? {};
+
+      // Debug: Log all fields that might contain corrections
+      console.log("Full ticket object keys:", Object.keys(ticket));
+      console.log("crAttachment value:", ticket.crAttachment);
+      console.log("crAttachment type:", typeof ticket.crAttachment);
+      console.log("vehicleInfo:", ticket.vehicleInfo);
+
+      // Check if corrections might be stored elsewhere
+      if (ticket.corrections)
+        console.log("corrections field:", ticket.corrections);
+      if (ticket.correctionData)
+        console.log("correctionData field:", ticket.correctionData);
+      if (ticket.metadata) console.log("metadata field:", ticket.metadata);
+
+      const parsedCorrections = parseCorrections(ticket.crAttachment);
+      console.log("Parsed corrections result:", parsedCorrections);
+
       setCorrected({
-        mvFileNo: v.mvFileNo === "N/A" ? "" : (v.mvFileNo ?? ""),
-        plateNo: v.plateNo === "N/A" ? "" : (v.plateNo ?? ""),
-        engineNo: v.engineNo === "N/A" ? "" : (v.engineNo ?? ""),
-        chassisNo: v.chassisNo === "N/A" ? "" : (v.chassisNo ?? ""),
-        make: v.make === "N/A" ? "" : (v.make ?? ""),
-        model: v.model === "N/A" ? "" : (v.model ?? ""),
-        color: v.color === "N/A" ? "" : (v.color ?? ""),
-        vehicleType: v.vehicleType === "N/A" ? "" : (v.vehicleType ?? ""),
-        year: String(v.year === "N/A" ? "" : (v.year ?? "")),
-        classification:
-          v.classification === "N/A" ? "" : (v.classification ?? ""),
-        ownerName: ticket.customer ?? "",
-        ownerAddress: ticket.description ?? "",
+        mvFileNo: parsedCorrections.mvFileNo ?? "",
+        plateNo: parsedCorrections.plateNo ?? "",
+        engineNo: parsedCorrections.engineNo ?? "",
+        chassisNo: parsedCorrections.chassisNo ?? "",
+        make: parsedCorrections.make ?? "",
+        model: parsedCorrections.series ?? "",
+        color: parsedCorrections.vehicleColor ?? "",
+        vehicleType: parsedCorrections.vehicleTypeDenomination ?? "",
+        yearModel: parsedCorrections.yearModel ?? "",
+        classification: parsedCorrections.classification ?? "",
+        ownerName: parsedCorrections.ownerName ?? "",
+        ownerAddress: parsedCorrections.ownerAddress ?? "",
       });
     }
   }, [ticket]);
@@ -183,6 +272,7 @@ export const TicketDetailModal = ({
     certificateOfRegistration: currentTicket.certificateOfRegistration ?? null,
     plateCertification: currentTicket.plateCertification ?? null,
     actualPlate: currentTicket.actualPlate ?? null,
+    crAttachment: currentTicket.crAttachment ?? null,
     ...overrides,
   });
 
@@ -209,6 +299,101 @@ export const TicketDetailModal = ({
     setIsSavingCorrection(true);
     setUpdateError(null);
     try {
+      // Build corrections array from the corrected state
+      const correctionsArray = [];
+      const originalVehicle = currentTicket.vehicleInfo ?? {};
+
+      // Track vehicle field changes
+      if (corrected.plateNo && corrected.plateNo !== originalVehicle.plateNo) {
+        correctionsArray.push({
+          field: "plate_number",
+          expected: corrected.plateNo,
+        });
+      }
+      if (
+        corrected.mvFileNo &&
+        corrected.mvFileNo !== originalVehicle.mvFileNo
+      ) {
+        correctionsArray.push({
+          field: "mv_file_number",
+          expected: corrected.mvFileNo,
+        });
+      }
+      if (
+        corrected.engineNo &&
+        corrected.engineNo !== originalVehicle.engineNo
+      ) {
+        correctionsArray.push({
+          field: "engine_number",
+          expected: corrected.engineNo,
+        });
+      }
+      if (
+        corrected.chassisNo &&
+        corrected.chassisNo !== originalVehicle.chassisNo
+      ) {
+        correctionsArray.push({
+          field: "chassis_number",
+          expected: corrected.chassisNo,
+        });
+      }
+      if (corrected.make && corrected.make !== originalVehicle.make) {
+        correctionsArray.push({ field: "make", expected: corrected.make });
+      }
+      if (corrected.model && corrected.model !== originalVehicle.series) {
+        correctionsArray.push({ field: "series", expected: corrected.model });
+      }
+      if (corrected.color && corrected.color !== originalVehicle.color) {
+        correctionsArray.push({ field: "color", expected: corrected.color });
+      }
+      if (
+        corrected.vehicleType &&
+        corrected.vehicleType !== originalVehicle.vehicleType
+      ) {
+        correctionsArray.push({
+          field: "denomination",
+          expected: corrected.vehicleType,
+        });
+      }
+      if (
+        corrected.yearModel &&
+        corrected.yearModel !== originalVehicle.yearModel
+      ) {
+        correctionsArray.push({
+          field: "year_model",
+          expected: corrected.yearModel,
+        });
+      }
+      if (
+        corrected.classification &&
+        corrected.classification !== originalVehicle.classification
+      ) {
+        correctionsArray.push({
+          field: "classification",
+          expected: corrected.classification,
+        });
+      }
+
+      // Track owner changes
+      if (
+        corrected.ownerName &&
+        corrected.ownerName !== currentTicket.customer
+      ) {
+        correctionsArray.push({
+          field: "owner_name",
+          expected: corrected.ownerName,
+        });
+      }
+      if (
+        corrected.ownerAddress &&
+        corrected.ownerAddress !== currentTicket.description
+      ) {
+        correctionsArray.push({
+          field: "owner_address",
+          expected: corrected.ownerAddress,
+        });
+      }
+
       const updated = await ticketService.update(
         currentTicket.id,
         buildPayload({
@@ -223,6 +408,11 @@ export const TicketDetailModal = ({
           vehicleColor: corrected.color || null,
           vehicleTypeDenomination: corrected.vehicleType || null,
           classification: corrected.classification || null,
+          yearModel: corrected.yearModel || null,
+          crAttachment:
+            correctionsArray.length > 0
+              ? JSON.stringify(correctionsArray)
+              : currentTicket.crAttachment,
         }),
       );
       setCurrentTicket(updated);
@@ -234,7 +424,6 @@ export const TicketDetailModal = ({
     }
   };
 
-  // ── Escalate to LTO ────────────────────────────────────────────────────────
   const handleEscalate = async () => {
     if (isEscalated) return;
     setIsEscalating(true);
@@ -293,14 +482,14 @@ export const TicketDetailModal = ({
           original: v.chassisNo,
         },
         { label: "Make", originalKey: "make", original: v.make },
-        { label: "Series / Model", originalKey: "model", original: v.model },
+        { label: "Series / Model", originalKey: "model", original: v.series },
         { label: "Vehicle Color", originalKey: "color", original: v.color },
         {
           label: "Vehicle Type/Denomination",
           originalKey: "vehicleType",
           original: v.vehicleType,
         },
-        { label: "Year Model", originalKey: "year", original: v.year },
+        { label: "Year Model", originalKey: "year", original: v.yearModel },
         {
           label: "Classification",
           originalKey: "classification",
@@ -335,7 +524,6 @@ export const TicketDetailModal = ({
       : (currentTicket.requestedBy?.name ?? "—");
 
   const statusMeta = getStatusMeta(currentTicket.status);
-
   const tabs = [
     { id: "ticket", label: "Ticket", icon: Info },
     { id: "livechat", label: "Live Chat", icon: MessageCircle },
@@ -376,11 +564,9 @@ export const TicketDetailModal = ({
                     )}
                   </button>
                 </div>
-                {/* Escalated badge */}
                 {isEscalated && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-200">
-                    <AlertTriangle size={11} />
-                    Escalated to LTO
+                    <AlertTriangle size={11} /> Escalated to LTO
                   </span>
                 )}
               </div>
@@ -425,7 +611,7 @@ export const TicketDetailModal = ({
                   </div>
                 )}
 
-                {/* Escalated notice banner */}
+                {/* Escalated banner */}
                 {isEscalated && (
                   <div className="flex items-start gap-3 bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
                     <AlertTriangle
@@ -444,7 +630,7 @@ export const TicketDetailModal = ({
                   </div>
                 )}
 
-                {/* Status & Type row */}
+                {/* Status & Type */}
                 <div className="flex items-center justify-between flex-wrap gap-3">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-gray-500">
@@ -508,8 +694,6 @@ export const TicketDetailModal = ({
                         {currentTicket.type ?? "—"}
                       </span>
                     </div>
-
-                    {/* Escalate button — only for Data Mismatch / Vehicle Not Found */}
                     {isLTOType && (
                       <button
                         onClick={handleEscalate}
@@ -539,7 +723,7 @@ export const TicketDetailModal = ({
                   </div>
                 </div>
 
-                {/* ── Data Mismatch / Vehicle Not Found: two-column comparison ── */}
+                {/* ── LTO types: two-column comparison ── */}
                 {isLTOType ? (
                   <>
                     <Card className="p-0 overflow-hidden">
@@ -665,7 +849,7 @@ export const TicketDetailModal = ({
                     )}
                   </>
                 ) : (
-                  /* ── Other types: normal view ── */
+                  /* ── Other types ── */
                   <>
                     <Card className="p-4">
                       <h3 className="text-base font-semibold text-gray-900 mb-4">
@@ -714,7 +898,7 @@ export const TicketDetailModal = ({
                   </>
                 )}
 
-                {/* Request Details — always shown */}
+                {/* Request Details */}
                 <Card className="p-4">
                   <h3 className="text-base font-semibold text-gray-900 mb-4">
                     Request Details
