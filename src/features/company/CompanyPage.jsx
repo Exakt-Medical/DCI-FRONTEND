@@ -131,7 +131,7 @@ export const CompanyPage = () => {
     try {
       const newStatus = company.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
       await companyService.update(company.id, {
-        companyName: company.companyName,
+        ...company,
         status: newStatus,
       });
       await alert.success("Status Updated", `Company has been set to ${newStatus}.`);
