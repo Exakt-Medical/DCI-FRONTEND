@@ -17,12 +17,15 @@ export const UserFormModal = ({
     username: "",
     password: "",
     firstName: "",
+    middleInitial: "",
     lastName: "",
+    extName: "",
     email: "",
+    mobile: "",
     role: "AGENT",
     branchId: "",
     managerId: "",
-    isactive: true,
+    status: "ACTIVE",
     allowedToBuyVoucher: false,
   });
 
@@ -32,12 +35,15 @@ export const UserFormModal = ({
         username: user.username || "",
         password: "",
         firstName: user.firstName || "",
+        middleInitial: user.middleInitial || "",
         lastName: user.lastName || "",
+        extName: user.extName || "",
         email: user.email || "",
+        mobile: user.mobile || "",
         role: user.role || "AGENT",
         branchId: user.branchId ? String(user.branchId) : "",
         managerId: user.managerId ? String(user.managerId) : "",
-        isactive: user.isactive !== undefined ? user.isactive : true,
+        status: user.status || "ACTIVE",
         allowedToBuyVoucher: user.allowedToBuyVoucher ?? false,
       });
     } else {
@@ -45,12 +51,15 @@ export const UserFormModal = ({
         username: "",
         password: "",
         firstName: "",
+        middleInitial: "",
         lastName: "",
+        extName: "",
         email: "",
+        mobile: "",
         role: "AGENT",
         branchId: "",
         managerId: "",
-        isactive: true,
+        status: "ACTIVE",
         allowedToBuyVoucher: false,
       });
     }
@@ -64,7 +73,7 @@ export const UserFormModal = ({
   const isAgentOrSubagent = formData.role === "AGENT" || formData.role === "SUBAGENT";
 
   const filteredManagers = allUsers.filter(
-    (u) => u.role === "MANAGER" && u.isactive && String(u.branchId) === formData.branchId,
+    (u) => u.role === "MANAGER" && u.status === "ACTIVE" && String(u.branchId) === formData.branchId,
   );
 
   if (!isOpen) return null;
@@ -131,8 +140,8 @@ export const UserFormModal = ({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
+          <div className="grid grid-cols-4 gap-3">
+            <div className="space-y-2 col-span-2">
               <label className="block text-sm font-semibold text-gray-700">
                 First Name <span className="text-red-500">*</span>
               </label>
@@ -149,6 +158,34 @@ export const UserFormModal = ({
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-gray-700">
+                M.I.
+              </label>
+              <input
+                type="text"
+                value={formData.middleInitial}
+                onChange={(e) =>
+                  setFormData({ ...formData, middleInitial: e.target.value })
+                }
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                placeholder="M.I."
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Ext.
+              </label>
+              <input
+                type="text"
+                value={formData.extName}
+                onChange={(e) =>
+                  setFormData({ ...formData, extName: e.target.value })
+                }
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                placeholder="Jr., III"
+              />
+            </div>
+            <div className="space-y-2 col-span-2">
+              <label className="block text-sm font-semibold text-gray-700">
                 Last Name <span className="text-red-500">*</span>
               </label>
               <input
@@ -164,35 +201,51 @@ export const UserFormModal = ({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="block text-sm font-semibold text-gray-700">
-              Email
-            </label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-              placeholder="Enter email address"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Email
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                placeholder="Enter email address"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Mobile
+              </label>
+              <input
+                type="text"
+                value={formData.mobile}
+                onChange={(e) =>
+                  setFormData({ ...formData, mobile: e.target.value })
+                }
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                placeholder="Enter mobile number"
+              />
+            </div>
           </div>
 
           {isEditing && (
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="user-active"
-                checked={formData.isactive}
+            <div className="space-y-2">
+              <label className="block text-sm font-semibold text-gray-700">Status</label>
+              <select
+                value={formData.status}
                 onChange={(e) =>
-                  setFormData({ ...formData, isactive: e.target.checked })
+                  setFormData({ ...formData, status: e.target.value })
                 }
-                className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-              />
-              <label htmlFor="user-active" className="text-sm font-semibold text-gray-700 cursor-pointer">
-                Active — {formData.isactive ? "Account is active" : "Account is inactive"}
-              </label>
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+              >
+                <option value="ACTIVE">Active</option>
+                <option value="INACTIVE">Inactive</option>
+                <option value="DEACTIVATED">Deactivated</option>
+              </select>
             </div>
           )}
 
