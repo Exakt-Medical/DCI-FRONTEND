@@ -182,7 +182,7 @@ function AppContent() {
     // Navigate to root-level thankyoupage with state
     navigate("/thankyoupage", {
       state: { selectedProduct, quantity },
-    });
+    }); 
   };
 
   // SHOW MAINTENANCE PAGE AS DEFAULT
@@ -451,6 +451,9 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Merchant callback Thank You route (merchant redirects here) */}
+        <Route path="/thankyou" element={<ThankYouPageWrapper />} />
+
         {/* Root-level Thank You page route */}
         <Route path="/thankyoupage" element={<ThankYouPageWrapper />} />
 
