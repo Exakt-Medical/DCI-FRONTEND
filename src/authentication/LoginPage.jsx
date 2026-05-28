@@ -51,7 +51,10 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
       localStorage.setItem("username", form.username);
-      localStorage.setItem("authAllowedToBuyVoucher", String(!!allowedToBuyVoucher));
+      localStorage.setItem(
+        "authAllowedToBuyVoucher",
+        String(!!allowedToBuyVoucher),
+      );
 
       if (rememberMe) {
         localStorage.setItem("rememberedUsername", form.username);
@@ -90,17 +93,19 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
 
             <div className="p-8">
               {/* Logo & Title */}
+              {/* Logo & Title */}
               <div className="text-center mb-6">
                 <div className="inline-flex items-center justify-center mb-4">
                   <img
                     src={DciLogo}
                     alt="DCI Logo"
-                    className="h-16 w-auto object-contain"
+                    className="h-60 w-auto object-contain" // Changed from h-16 to h-24
                   />
                 </div>
                 <h1 className="text-xl font-bold text-gray-900">
                   Vehicle Verification Insurance Program
                 </h1>
+                <h1 className="text-xl font-bold text-gray-900">Mindanao </h1>
               </div>
 
               {/* Sign In Title */}
