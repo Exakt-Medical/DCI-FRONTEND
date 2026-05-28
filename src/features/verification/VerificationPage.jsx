@@ -2,13 +2,15 @@ import { useState } from "react";
 import { generateCertificatePDF } from "../../utils/generateCertificatePDF";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
-import { RefreshCw, Shield, AlertCircle } from "lucide-react";
+import { RefreshCw, Shield, AlertCircle, Ticket } from "lucide-react";
 import { FinalReviewModal } from "./components/Finalreviewmodal";
+import { DataMismatchModal } from "./components/Datamismatchmodal";
 import { VehicleSearchSection } from "./components/VehicleSearchSection";
 import { VehicleInfoCard } from "./components/VehicleInfoCard";
 import { OwnerInfoCard } from "./components/OwnerInfoCard";
 import { VoucherRedemption } from "./components/VoucherRedemption";
 import { verificationService } from "../../services/verificationService";
+import { ticketService } from "../../services/ticketService";
 import { useAlert } from "../../hooks/useAlert";
 
 // ---------------------------------------------------------------------------
@@ -59,7 +61,7 @@ const insuranceFeeMap = {
 };
 
 // ---------------------------------------------------------------------------
-// Initial state
+// Initial States
 // ---------------------------------------------------------------------------
 
 const initialVehicleData = {
@@ -104,26 +106,33 @@ const initialInsuranceData = {
 // ---------------------------------------------------------------------------
 
 export const VerificationPage = ({ onCertificate }) => {
-  // --- Step 1: verify state ---
+  // ── Verification state ────────────────────────────────────────────────────
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState(null);
   const [isRecordFound, setIsRecordFound] = useState(false);
-
-  // verificationId returned by /verify — needed to call /confirm later
   const [verificationId, setVerificationId] = useState(null);
+  const [ticketMode, setTicketMode] = useState(null); // "ERROR" | "MISMATCH"
+  const [searchValues, setSearchValues] = useState({
+    mvFileNo: "",
+    plateNo: "",
+    engineNo: "",
+    chassisNo: "",
+  });
+  const [mismatchedFields, setMismatchedFields] = useState([]);
 
-  // --- Step 2: voucher state ---
+  // ── Voucher state ─────────────────────────────────────────────────────────
   const [validatedVoucher, setValidatedVoucher] = useState(null);
   const [voucherError, setVoucherError] = useState(null);
   const [isValidatingVoucher, setIsValidatingVoucher] = useState(false);
 
-  // --- Data state ---
+  // ── Data state ────────────────────────────────────────────────────────────
   const [vehicleData, setVehicleData] = useState(initialVehicleData);
   const [ownerData, setOwnerData] = useState(initialOwnerData);
   const [insuranceData, setInsuranceData] = useState(initialInsuranceData);
 
-  // --- Step 3: final review + confirm state ---
+  // ── Modal state ───────────────────────────────────────────────────────────
   const [showFinalReview, setShowFinalReview] = useState(false);
+  const [showMismatchModal, setShowMismatchModal] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
 
   const { success, error, loading, close } = useAlert();
@@ -133,12 +142,14 @@ export const VerificationPage = ({ onCertificate }) => {
   // ---------------------------------------------------------------------------
 
   const calculateTotal = (data) => {
-    const prescribed = parseFloat(data.prescribedPremiumFee) || 0;
-    const dstVal = parseFloat(data.dst) || 0;
-    const vatVal = parseFloat(data.vat) || 0;
-    const lgtVal = parseFloat(data.lgt) || 0;
-    const validation = parseFloat(data.validationFee) || 0;
-    return (prescribed + dstVal + vatVal + lgtVal + validation).toFixed(2);
+    const p = (k) => parseFloat(data[k]) || 0;
+    return (
+      p("prescribedPremiumFee") +
+      p("dst") +
+      p("vat") +
+      p("lgt") +
+      p("validationFee")
+    ).toFixed(2);
   };
 
   const handleInsuranceCodeChange = (code) => {
@@ -158,14 +169,11 @@ export const VerificationPage = ({ onCertificate }) => {
     setInsuranceData({ ...newData, totalAmount: calculateTotal(newData) });
   };
 
-  const updatePolicyNumber = (value) => {
+  const updatePolicyNumber = (value) =>
     setInsuranceData({ ...insuranceData, policyNumber: value });
-  };
 
   // ---------------------------------------------------------------------------
-  // STEP 1 — Verify: call POST /api/v1/vvip/verify
-  // On success: save verificationId + populate vehicle/owner details
-  // On failure: show fetchError
+  // STEP 1 — Verify
   // ---------------------------------------------------------------------------
 
   const handleVerify = async ({ mvFileNo, plateNo, engineNo, chassisNo }) => {
@@ -173,6 +181,8 @@ export const VerificationPage = ({ onCertificate }) => {
     setFetchError(null);
     setIsRecordFound(false);
     setVerificationId(null);
+    setMismatchedFields([]);
+    setSearchValues({ mvFileNo, plateNo, engineNo, chassisNo });
     loading("Verifying vehicle...");
 
     try {
@@ -185,19 +195,62 @@ export const VerificationPage = ({ onCertificate }) => {
       const data = res.data;
       close();
 
-      // FAILED or ERROR from backend
+      // ── Vehicle Not Found ──────────────────────────────────────────────────
       if (data.verificationStatus !== "VERIFIED") {
         setFetchError(
           data.failureReason || "No matching vehicle record found.",
         );
         setIsRecordFound(false);
+        setTicketMode("ERROR");
         return;
       }
 
-      // Save verificationId — required for confirm step
+      // ── Mismatch detection ─────────────────────────────────────────────────
+      const mismatches = [];
+      if (
+        mvFileNo &&
+        data.mvFileNo &&
+        mvFileNo.toUpperCase() !== data.mvFileNo.toUpperCase()
+      )
+        mismatches.push({
+          field: "mv_file_number",
+          entered: mvFileNo,
+          actual: data.mvFileNo,
+        });
+      if (
+        plateNo &&
+        data.plateNumber &&
+        plateNo.toUpperCase() !== data.plateNumber.toUpperCase()
+      )
+        mismatches.push({
+          field: "plate_number",
+          entered: plateNo,
+          actual: data.plateNumber,
+        });
+      if (
+        engineNo &&
+        data.engineNumber &&
+        engineNo.toUpperCase() !== data.engineNumber.toUpperCase()
+      )
+        mismatches.push({
+          field: "engine_number",
+          entered: engineNo,
+          actual: data.engineNumber,
+        });
+      if (
+        chassisNo &&
+        data.chassisNumber &&
+        chassisNo.toUpperCase() !== data.chassisNumber.toUpperCase()
+      )
+        mismatches.push({
+          field: "chassis_number",
+          entered: chassisNo,
+          actual: data.chassisNumber,
+        });
+
+      setMismatchedFields(mismatches);
       setVerificationId(data.verificationId);
 
-      // Populate vehicle details from VVS response
       setVehicleData({
         mv_file_number: data.mvFileNo || "",
         plate_number: data.plateNumber || "",
@@ -213,7 +266,6 @@ export const VerificationPage = ({ onCertificate }) => {
         last_registration_date: data.lastRegistrationDate || "",
       });
 
-      // Populate owner details — now separate fields, not one full name
       setOwnerData({
         firstName: data.ownerFirstName || "",
         lastName: data.ownerLastName || "",
@@ -225,25 +277,149 @@ export const VerificationPage = ({ onCertificate }) => {
       });
 
       setIsRecordFound(true);
+      setTicketMode("MISMATCH");
+
+      if (mismatches.length > 0) {
+        await error(
+          "Mismatch Detected",
+          "Some entered fields do not match LTO records.",
+        );
+      }
     } catch (err) {
       close();
-      console.error(
-        "Verify error:",
-        err.response?.status,
-        err.response?.data,
-        err.message,
-      );
       setFetchError("Error verifying vehicle. Please try again.");
       setIsRecordFound(false);
+      setTicketMode("ERROR");
     } finally {
       setIsFetching(false);
     }
   };
 
   // ---------------------------------------------------------------------------
-  // STEP 2 — Voucher validation (frontend only, no backend call)
-  // Valid voucher → enables Final Review button
-  // Invalid voucher → shows error, button stays disabled
+  // SUBMIT SUPPORT TICKET
+  // ---------------------------------------------------------------------------
+
+  const handleSubmitTicket = async (selectedMismatches = null) => {
+    try {
+      loading("Submitting ticket...");
+
+      const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const randPart = Math.floor(1000 + Math.random() * 9000);
+      const referenceNumber = `REF-${datePart}-${randPart}`;
+
+      const isVehicleNotFound = ticketMode === "ERROR";
+
+      // Vehicle Not Found → use what the user searched
+      // Data Mismatch → use the LTO record values
+      const plateNo = isVehicleNotFound
+        ? searchValues.plateNo || null
+        : vehicleData.plate_number || null;
+      const mvFileNo = isVehicleNotFound
+        ? searchValues.mvFileNo || null
+        : vehicleData.mv_file_number || null;
+      const engineNo = isVehicleNotFound
+        ? searchValues.engineNo || null
+        : vehicleData.engine_number || null;
+      const chassisNo = isVehicleNotFound
+        ? searchValues.chassisNo || null
+        : vehicleData.chassis_number || null;
+
+      // Encode mismatch detail into address field so support team can see it
+      let description = "";
+      if (!isVehicleNotFound && selectedMismatches?.length > 0) {
+        description =
+          "Mismatched fields: " +
+          selectedMismatches
+            .map(
+              (m) =>
+                `${m.field} (entered: ${m.entered}, LTO record: ${m.actual})`,
+            )
+            .join("; ");
+      }
+
+      // const ticketPayload = {
+      //   referenceNumber,
+      //   type: isVehicleNotFound ? "Vehicle Not Found" : "Data Mismatch",
+      //   status: "PENDING",
+      //   requestedBy:
+      //     localStorage.getItem("username") ||
+      //     JSON.parse(localStorage.getItem("user") || "{}")?.username ||
+      //     "Unknown User",
+      //   escalated: "YES",
+      //   roleBased: "LTO",
+      //   dateRequested: new Date().toISOString(),
+      //   dateUpdated: new Date().toISOString(),
+      //   mvFileNo,
+      //   plateNo,
+      //   engineNo,
+      //   chassisNo,
+      //   make: vehicleData.make || null,
+      //   series: vehicleData.series || null,
+      //   vehicleColor: vehicleData.color || null,
+      //   vehicleTypeDenomination: vehicleData.denomination || null,
+      //   yearModel: vehicleData.year_model || null,
+      //   classification: vehicleData.classification || null,
+      //   name:
+      //     `${ownerData.firstName || ""} ${ownerData.lastName || ""}`.trim() ||
+      //     null,
+      //   address: description || ownerData.address || null,
+      // };
+
+      const ticketPayload = {
+        referenceNumber,
+        type: isVehicleNotFound ? "Vehicle Not Found" : "Data Mismatch",
+        status: "PENDING",
+        requestedBy:
+          localStorage.getItem("username") ||
+          JSON.parse(localStorage.getItem("user") || "{}")?.username ||
+          "Unknown User",
+        escalated: "YES",
+        roleBased: "LTO",
+        dateRequested: new Date().toISOString(),
+        dateUpdated: new Date().toISOString(),
+
+        mvFileNo,
+        plateNo,
+        engineNo,
+        chassisNo,
+        make: vehicleData.make || null,
+        series: vehicleData.series || null,
+        vehicleColor: vehicleData.color || null,
+        vehicleTypeDenomination: vehicleData.denomination || null,
+        yearModel: vehicleData.year_model || null,
+        classification: vehicleData.classification || null,
+        name:
+          `${ownerData.firstName || ""} ${ownerData.lastName || ""}`.trim() ||
+          null,
+        address: description || ownerData.address || null,
+
+        crAttachment: selectedMismatches?.crAttachment || null,
+      };
+
+      // Save mismatch fields to localStorage so TicketDetailModal can display them
+      // keyed by referenceNumber — matches what TicketDetailModal reads
+      if (!isVehicleNotFound && selectedMismatches?.length > 0) {
+        const stored = JSON.parse(
+          localStorage.getItem("ctpl_mismatch_fields") || "{}",
+        );
+        stored[referenceNumber] = selectedMismatches;
+        localStorage.setItem("ctpl_mismatch_fields", JSON.stringify(stored));
+      }
+
+      await ticketService.create(ticketPayload);
+
+      close();
+      setShowMismatchModal(false);
+      await success("Ticket Submitted", "Support ticket successfully created.");
+    } catch (err) {
+      close();
+      console.error("TICKET ERROR:", err);
+      await error("Ticket Error", "Failed to create support ticket.");
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // STEP 2 — Voucher validation
   // ---------------------------------------------------------------------------
 
   const validateVoucher = (voucherCode) => {
@@ -251,10 +427,8 @@ export const VerificationPage = ({ onCertificate }) => {
       setVoucherError("Please enter a voucher code");
       return;
     }
-
     setIsValidatingVoucher(true);
     setVoucherError(null);
-
     setTimeout(() => {
       const purchaseHistory = getPurchaseHistory();
       const voucher = purchaseHistory.find(
@@ -263,10 +437,8 @@ export const VerificationPage = ({ onCertificate }) => {
           v.status === "Active" &&
           new Date(v.expirationDate) > new Date(),
       );
-
       if (voucher) {
         setValidatedVoucher(voucher);
-        // Auto-populate insurance fees from voucher's insurance code
         const fees =
           insuranceFeeMap[voucher.insuranceCode] ||
           insuranceFeeMap["PRIVATE CARS (INCLUDING JEEPS AND AUVS)"];
@@ -280,50 +452,35 @@ export const VerificationPage = ({ onCertificate }) => {
         setVoucherError(null);
       } else {
         setValidatedVoucher(null);
-        setVoucherError(
-          "Invalid or expired voucher code. Please check and try again.",
-        );
+        setVoucherError("Invalid or expired voucher code.");
       }
-
       setIsValidatingVoucher(false);
     }, 800);
   };
 
   // ---------------------------------------------------------------------------
-  // STEP 3 — Confirm: call POST /api/v1/vvip/{verificationId}/confirm
-  // On COMPLETED: mark voucher redeemed, generate PDF, show certificate no.
-  // On ERROR: show submission error
+  // STEP 3 — Generate certificate
   // ---------------------------------------------------------------------------
 
   const handleGenerateCertificate = async () => {
     if (!verificationId) {
-      await error(
-        "Error",
-        "Verification ID missing. Please verify the vehicle again.",
-      );
+      await error("Error", "Verification ID missing.");
       return;
     }
-
     setIsConfirming(true);
     loading("Submitting final review...");
-
     try {
       const res = await verificationService.confirm(verificationId);
       const data = res.data;
       close();
-
-      // ConfirmRequest failed on VVS side
       if (data.verificationStatus !== "COMPLETED") {
         await error(
           "Submission Failed",
-          data.failureReason || "ConfirmRequest failed. Please try again.",
+          data.failureReason || "ConfirmRequest failed.",
         );
         return;
       }
-
       const { certificateNo } = data;
-
-      // Mark voucher as redeemed in localStorage
       if (validatedVoucher) {
         const purchaseHistory = getPurchaseHistory();
         const updated = purchaseHistory.map((v) =>
@@ -337,41 +494,26 @@ export const VerificationPage = ({ onCertificate }) => {
         );
         localStorage.setItem("ctpl_purchase_history", JSON.stringify(updated));
       }
-
       setShowFinalReview(false);
-
-      // Generate and auto-download the PDF certificate
       await generateCertificatePDF({
         vehicle: vehicleData,
         owner: ownerData,
         insurance: insuranceData,
         authNo: certificateNo,
       });
-
-      // Notify parent with certificate data
       onCertificate({
         vehicle: vehicleData,
         owner: ownerData,
         insurance: insuranceData,
         authNo: certificateNo,
       });
-
       await success(
         "Certificate Issued!",
-        `Certificate No: ${certificateNo} has been downloaded.`,
+        `Certificate No: ${certificateNo} downloaded.`,
       );
     } catch (err) {
       close();
-      console.error(
-        "Confirm error:",
-        err.response?.status,
-        err.response?.data,
-        err.message,
-      );
-      await error(
-        "Submission Error",
-        "Failed to submit final review. Please try again.",
-      );
+      await error("Submission Error", "Failed to submit final review.");
     } finally {
       setIsConfirming(false);
     }
@@ -387,13 +529,13 @@ export const VerificationPage = ({ onCertificate }) => {
     setVerificationId(null);
     setValidatedVoucher(null);
     setVoucherError(null);
+    setMismatchedFields([]);
+    setTicketMode(null);
     setVehicleData(initialVehicleData);
     setOwnerData(initialOwnerData);
     setInsuranceData(initialInsuranceData);
-    setShowFinalReview(false);
   };
 
-  // Final Review button enabled only when vehicle is verified AND voucher is valid
   const isFormComplete = () => isRecordFound && validatedVoucher !== null;
 
   // ---------------------------------------------------------------------------
@@ -402,6 +544,7 @@ export const VerificationPage = ({ onCertificate }) => {
 
   return (
     <div className="max-w-6xl mx-auto">
+      {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">
           LTO Vehicle Verification
@@ -411,22 +554,89 @@ export const VerificationPage = ({ onCertificate }) => {
         </p>
       </div>
 
-      {/* STEP 1 — Search + verify */}
+      {/* Search */}
       <VehicleSearchSection
         onVerify={handleVerify}
         isFetching={isFetching}
         fetchError={fetchError}
       />
 
-      {/* STEP 1 result — vehicle + owner details */}
+      {/* Vehicle Not Found — error + Submit Ticket button */}
+      {fetchError && (
+        <div className="flex justify-end mt-4">
+          <Button
+            variant="secondary"
+            className="flex items-center gap-2"
+            onClick={() => handleSubmitTicket()}
+          >
+            <Ticket size={16} />
+            Submit Ticket
+          </Button>
+        </div>
+      )}
+
+      {/* Vehicle found — info cards + Report Data Mismatch */}
       {isRecordFound && (
         <>
-          <VehicleInfoCard vehicleData={vehicleData} />
+          <VehicleInfoCard
+            vehicleData={vehicleData}
+            mismatchedFields={mismatchedFields}
+          />
+
+          <div className="flex justify-end mt-4">
+            <Button
+              variant="secondary"
+              className="flex items-center gap-2"
+              onClick={() => setShowMismatchModal(true)}
+            >
+              <Ticket size={16} />
+              Report Data Mismatch
+            </Button>
+          </div>
+
           <OwnerInfoCard ownerData={ownerData} />
+
+          {/* Auto-detected mismatch banner */}
+          {mismatchedFields.length > 0 && (
+            <Card className="p-5 mb-5 border border-red-300 bg-red-50">
+              <div className="flex items-center gap-2 mb-4">
+                <AlertCircle size={18} className="text-red-600" />
+                <h3 className="font-bold text-red-700">Mismatch Detected</h3>
+              </div>
+              <div className="space-y-3">
+                {mismatchedFields.map((item, index) => (
+                  <div
+                    key={index}
+                    className="bg-white border border-red-200 rounded-lg p-3"
+                  >
+                    <p className="text-sm font-semibold text-gray-700">
+                      {item.field}
+                    </p>
+                    <p className="text-sm text-red-600">
+                      Entered: {item.entered}
+                    </p>
+                    <p className="text-sm text-green-700">
+                      LTO Record: {item.actual}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 flex justify-end">
+                <Button
+                  variant="secondary"
+                  className="flex items-center gap-2"
+                  onClick={() => setShowMismatchModal(true)}
+                >
+                  <Ticket size={16} />
+                  Submit Ticket
+                </Button>
+              </div>
+            </Card>
+          )}
         </>
       )}
 
-      {/* STEP 2 — Voucher / insurance validation */}
+      {/* Insurance */}
       <Card className="p-5 mb-5">
         <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
           <Shield size={18} className="text-primary-600" />
@@ -435,13 +645,11 @@ export const VerificationPage = ({ onCertificate }) => {
           </h3>
           <span className="text-xs text-gray-400 ml-auto">Required fields</span>
         </div>
-
         {!isRecordFound ? (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
             <AlertCircle size={20} className="text-yellow-600 mx-auto mb-2" />
             <p className="text-sm text-yellow-700">
-              Please verify a vehicle from LTO database first to enable
-              insurance details
+              Please verify a vehicle first.
             </p>
           </div>
         ) : (
@@ -456,15 +664,6 @@ export const VerificationPage = ({ onCertificate }) => {
                 setInsuranceData(initialInsuranceData);
               }}
             />
-
-            {validatedVoucher && (
-              <InsuranceFormSection
-                insuranceData={insuranceData}
-                onInsuranceCodeChange={handleInsuranceCodeChange}
-                onPolicyNumberChange={updatePolicyNumber}
-                disabled={validatedVoucher !== null}
-              />
-            )}
           </div>
         )}
       </Card>
@@ -486,7 +685,19 @@ export const VerificationPage = ({ onCertificate }) => {
         </Button>
       </div>
 
-      {/* STEP 3 — Final review modal → confirm → certificate */}
+      {/* Data Mismatch Modal — lets user select which fields to report */}
+      {showMismatchModal && (
+        <DataMismatchModal
+          vehicleData={vehicleData}
+          onSubmit={(selectedMismatches) =>
+            handleSubmitTicket(selectedMismatches)
+          }
+          onClose={() => setShowMismatchModal(false)}
+          isSubmitting={isConfirming}
+        />
+      )}
+
+      {/* Final Review Modal */}
       {showFinalReview && (
         <FinalReviewModal
           vehicleData={vehicleData}

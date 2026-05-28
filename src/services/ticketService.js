@@ -55,6 +55,8 @@ const mapTicket = (t) => ({
   certificateOfRegistration: t.certificateOfRegistration ?? null,
   plateCertification: t.plateCertification ?? null,
   actualPlate: t.actualPlate ?? null,
+  // ✅ FIX: Preserve crAttachment from backend
+  crAttachment: t.crAttachment ?? null,
 });
 
 /**
@@ -87,6 +89,7 @@ const mapToRequest = (formData) => ({
   certificateOfRegistration: formData.certificateOfRegistration ?? null,
   plateCertification: formData.plateCertification ?? null,
   actualPlate: formData.actualPlate ?? null,
+  crAttachment: formData.crAttachment ?? null,
 });
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
