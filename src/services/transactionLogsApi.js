@@ -2,6 +2,16 @@
 
 const API_BASE_URL = "http://localhost:8080";
 
+// Helper function to get auth headers
+const getAuthHeaders = () => {
+  const token = localStorage.getItem("token");
+
+  return {
+    "Content-Type": "application/json",
+    ...(token && { Authorization: `Bearer ${token}` }),
+  };
+};
+
 export const transactionLogsApi = {
   // Get all transaction logs with filters
   getTransactionLogs: async ({ status, search, page, limit = 10 }) => {
@@ -11,31 +21,37 @@ export const transactionLogsApi = {
     if (page) params.append("page", page);
     if (limit) params.append("limit", limit);
 
-    const response = await fetch(
-      `${API_BASE_URL}/api/transaction-logs?${params}`,
-    );
+    const url = `${API_BASE_URL}/api/transaction-logs?${params}`;
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: getAuthHeaders(),
+    });
+
     if (!response.ok) {
+      if (response.status === 401) {
+        console.error("401 Unauthorized - Token may be invalid or expired");
+      }
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     return response.json();
   },
 
-  // Get single transaction log by ID
   getTransactionLogById: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/api/transaction-logs/${id}`);
+    const response = await fetch(`${API_BASE_URL}/api/transaction-logs/${id}`, {
+      method: "GET",
+      headers: getAuthHeaders(),
+    });
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     return response.json();
   },
 
-  // Create new transaction log (if needed for testing)
   createTransactionLog: async (data) => {
     const response = await fetch(`${API_BASE_URL}/api/transaction-logs`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
     if (!response.ok) {

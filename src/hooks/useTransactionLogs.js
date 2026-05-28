@@ -13,6 +13,14 @@ export const useTransactionLogs = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   const fetchTransactions = useCallback(async () => {
+    // Check if token exists
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setError("Please log in to view transactions");
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -24,9 +32,9 @@ export const useTransactionLogs = () => {
         limit: 10,
       });
 
-      setTransactions(data.data);
-      setTotalPages(data.totalPages);
-      setTotalElements(data.total);
+      setTransactions(data.data || []);
+      setTotalPages(data.totalPages || 1);
+      setTotalElements(data.total || 0);
     } catch (err) {
       setError(err.message);
       console.error("Error fetching transactions:", err);
