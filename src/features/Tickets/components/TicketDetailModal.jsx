@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { commentsService } from "../../../services/commentsService";
 import {
   X,
   Copy,
@@ -178,14 +179,7 @@ export const TicketDetailModal = ({
   const [updateError, setUpdateError] = useState(null);
   const [corrected, setCorrected] = useState({});
   const [chatMessage, setChatMessage] = useState("");
-  const [comments, setComments] = useState([
-    {
-      id: 1,
-      sender: "System",
-      message: "Chat started.",
-      createdAt: new Date(),
-    },
-  ]);
+  const [comments, setComments] = useState([]);
 
   useEffect(() => {
     console.log("🔥 useEffect fired", ticket);
@@ -424,6 +418,33 @@ export const TicketDetailModal = ({
     }
   };
 
+  const fetchComments = async () => {
+    try {
+      const data = await commentsService.getAll();
+
+      const filtered = data.filter(
+        (item) => item.referenceNumber === currentTicket.referenceNumber,
+      );
+
+      useEffect(() => {
+        if (currentTicket && activeTab === "livechat") {
+          fetchComments();
+        }
+      }, [currentTicket, activeTab]);
+
+      const mapped = filtered.map((item) => ({
+        id: item.id,
+        sender: item.users,
+        message: item.comments,
+        createdAt: new Date(),
+      }));
+
+      setComments(mapped);
+    } catch (error) {
+      console.error("Failed to load comments", error);
+    }
+  };
+
   const handleEscalate = async () => {
     if (isEscalated) return;
     setIsEscalating(true);
@@ -445,18 +466,32 @@ export const TicketDetailModal = ({
     }
   };
 
-  const handleSendComment = () => {
+  const handleSendComment = async () => {
     if (!chatMessage.trim()) return;
-    setComments((prev) => [
-      ...prev,
-      {
-        id: Date.now(),
-        sender: localStorage.getItem("username") || "You",
-        message: chatMessage,
-        createdAt: new Date(),
-      },
-    ]);
-    setChatMessage("");
+
+    try {
+      const payload = {
+        referenceNumber: currentTicket.referenceNumber,
+        users: localStorage.getItem("username") || "You",
+        comments: chatMessage,
+      };
+
+      const saved = await commentsService.create(payload);
+
+      setComments((prev) => [
+        ...prev,
+        {
+          id: saved.id,
+          sender: saved.users,
+          message: saved.comments,
+          createdAt: new Date(),
+        },
+      ]);
+
+      setChatMessage("");
+    } catch (error) {
+      console.error("Failed to save comment", error);
+    }
   };
 
   const v = currentTicket.vehicleInfo ?? {};
@@ -731,32 +766,20 @@ export const TicketDetailModal = ({
                         <h3 className="text-base font-semibold text-gray-900">
                           Vehicle Information
                         </h3>
-                        <button
-                          onClick={handleSaveCorrection}
-                          disabled={isSavingCorrection}
-                          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-lg transition-colors disabled:opacity-50"
-                        >
-                          {isSavingCorrection ? (
-                            <>
-                              <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />{" "}
-                              Saving…
-                            </>
-                          ) : (
-                            <>
-                              <Save size={14} /> Save Corrections
-                            </>
-                          )}
-                        </button>
                       </div>
+
                       <div className="grid grid-cols-[180px_1fr_1fr]">
                         <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase bg-gray-50 border-b border-gray-200" />
+
                         <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase bg-gray-50 border-b border-l border-gray-200">
-                          Submitted
+                          Record Found
                         </div>
+
                         <div className="px-3 py-2 text-xs font-semibold text-green-600 uppercase bg-green-50 border-b border-l border-gray-200">
-                          Corrected
+                          Expected
                         </div>
                       </div>
+
                       <div className="grid grid-cols-[180px_1fr_1fr]">
                         {vehicleCompareRows.map((row) => (
                           <CompareRow
@@ -766,7 +789,7 @@ export const TicketDetailModal = ({
                             correctedKey={row.originalKey}
                             correctedValues={corrected}
                             onChange={handleCorrectedChange}
-                            editable
+                            editable={false}
                           />
                         ))}
                       </div>
