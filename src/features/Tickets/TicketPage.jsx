@@ -21,6 +21,10 @@ import {
 } from "lucide-react";
 
 export const TicketPage = () => {
+  // ── Role detection ────────────────────────────────────────────────────────
+  const userRole = (localStorage.getItem("role") ?? "").toUpperCase();
+  const isLTO = userRole === "LTO";
+
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -38,7 +42,9 @@ export const TicketPage = () => {
     setError(null);
     try {
       const data = await ticketService.getAll();
-      setTickets(data);
+      // LTO users only see tickets escalated to them
+      const filtered = isLTO ? data.filter((t) => t.roleBased === "LTO") : data;
+      setTickets(filtered);
     } catch (err) {
       setError(err.message ?? "Failed to load tickets.");
     } finally {
@@ -220,13 +226,15 @@ export const TicketPage = () => {
             </p>
           </div>
 
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-xl"
-          >
-            <Plus size={16} />
-            Create Ticket
-          </button>
+          {!isLTO && (
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors"
+            >
+              <Plus size={16} />
+              Create Ticket
+            </button>
+          )}
         </div>
       </div>
 
@@ -320,12 +328,14 @@ export const TicketPage = () => {
         onTicketUpdated={handleTicketUpdated}
       />
 
-      {/* Create Modal */}
-      <CreateTicketModal
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSubmit={handleCreateTicket}
-      />
+      {/* Create Modal — hidden for LTO */}
+      {!isLTO && (
+        <CreateTicketModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onSubmit={handleCreateTicket}
+        />
+      )}
     </div>
   );
 };
