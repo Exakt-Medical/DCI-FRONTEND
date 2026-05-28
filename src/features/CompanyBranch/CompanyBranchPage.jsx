@@ -1,16 +1,19 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card } from "../../components/Card";
-import { Button } from "../../components/Button";
 import {
   Search,
-  Filter,
   Building2,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Plus,
   Upload,
   CheckSquare,
   XSquare,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
   AlertTriangle,
 } from "lucide-react";
 import { branchService } from "../../services/branchService";
@@ -21,6 +24,7 @@ import { BranchFormModal } from "./components/BranchFormModal";
 import { BranchViewModal } from "./components/BranchViewModal";
 import { BranchDeleteModal } from "./components/BranchDeleteModal";
 import { UploadBulkModal } from "../../components/UploadBulkModal";
+import { formatDateTime } from "../../utils/formatDate";
 
 export const CompanyBranchPage = () => {
   const role = localStorage.getItem("role");
@@ -30,17 +34,38 @@ export const CompanyBranchPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [activeStatusTab, setActiveStatusTab] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
-  const [copiedId, setCopiedId] = useState(null);
-  const [showFilters, setShowFilters] = useState(false);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [sortField, setSortField] = useState("name");
+  const [sortDirection, setSortDirection] = useState("asc");
+
+  const handleSort = (field) => {
+    setSortDirection((prev) => (sortField === field && prev === "asc" ? "desc" : "asc"));
+    setSortField(field);
+    setCurrentPage(1);
+  };
+
+  const SortIcon = ({ field }) => {
+    if (sortField !== field) return <ArrowUpDown size={12} className="inline ml-1 text-gray-300" />;
+    return sortDirection === "asc"
+      ? <ArrowUp size={12} className="inline ml-1 text-primary-600" />
+      : <ArrowDown size={12} className="inline ml-1 text-primary-600" />;
+  };
+
+  const getCombinedName = (branch) =>
+    `${branch.companyName} - ${branch.branchName}`;
+
+  const getSortName = (branch) => {
+    const short = branch.companyName || "";
+    return `${short} - ${branch.companyName} - ${branch.branchName}`.toLowerCase();
+  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -65,37 +90,48 @@ export const CompanyBranchPage = () => {
   }, [fetchData]);
 
   const totalBranches = branches.length;
-  const totalActive = branches.filter((b) => b.isactive).length;
-  const totalInactive = branches.filter((b) => !b.isactive).length;
+  const totalActive = branches.filter((b) => b.status === "ACTIVE").length;
+  const totalInactive = branches.filter((b) => b.status !== "ACTIVE").length;
 
   const filteredBranches = branches.filter((branch) => {
+    const combinedName = getCombinedName(branch).toLowerCase();
+    const term = searchTerm.toLowerCase();
     const matchesSearch =
       searchTerm === "" ||
-      branch.branchId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      branch.branchName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      branch.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (branch.branchShortname || "").toLowerCase().includes(searchTerm.toLowerCase());
+      branch.branchId?.toLowerCase().includes(term) ||
+      branch.branchName?.toLowerCase().includes(term) ||
+      branch.companyName?.toLowerCase().includes(term) ||
+      (branch.companyProvider && branch.companyProvider.toLowerCase().includes(term)) ||
+      combinedName.includes(term);
 
     const matchesStatus =
-      selectedStatus === "all" ||
-      (selectedStatus === "Active" && branch.isactive) ||
-      (selectedStatus === "Inactive" && !branch.isactive);
+      activeStatusTab === "all" ||
+      (activeStatusTab === "active" && branch.status === "ACTIVE") ||
+      (activeStatusTab === "inactive" && (branch.status === "INACTIVE" || branch.status === "DEACTIVATED"));
 
     return matchesSearch && matchesStatus;
   });
 
-  const totalPages = Math.ceil(filteredBranches.length / itemsPerPage);
+  const sortedBranches = [...filteredBranches].sort((a, b) => {
+    let cmp;
+    if (sortField === "name") {
+      cmp = getSortName(a).localeCompare(getSortName(b));
+    } else if (sortField === "dateCreated") {
+      cmp = new Date(a.dateCreated || 0) - new Date(b.dateCreated || 0);
+    } else {
+      const aVal = (a[sortField] ?? "").toString().toLowerCase();
+      const bVal = (b[sortField] ?? "").toString().toLowerCase();
+      cmp = aVal.localeCompare(bVal);
+    }
+    return sortDirection === "asc" ? cmp : -cmp;
+  });
+
+  const totalPages = Math.ceil(sortedBranches.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedBranches = filteredBranches.slice(
+  const paginatedBranches = sortedBranches.slice(
     startIndex,
     startIndex + itemsPerPage,
   );
-
-  const copyToClipboard = (text, id) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
 
   const handleAddBranch = () => {
     setSelectedBranch(null);
@@ -134,7 +170,7 @@ export const CompanyBranchPage = () => {
     try {
       const response = await branchService.update(branch.id, {
         ...branch,
-        isactive: !branch.isactive,
+        status: branch.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
       });
       setBranches(
         branches.map((b) =>
@@ -151,9 +187,8 @@ export const CompanyBranchPage = () => {
       const payload = {
         branchId: branchData.branchId,
         branchName: branchData.branchName,
-        branchShortname: branchData.branchShortname || null,
         companyId: parseInt(branchData.companyId),
-        isactive: branchData.isactive,
+        status: branchData.status,
       };
 
       if (isEditing && selectedBranch) {
@@ -175,23 +210,27 @@ export const CompanyBranchPage = () => {
   };
 
   const handleBulkUpload = async (records) => {
+    const invalid = records.find((r) => !r.company_code);
+    if (invalid) {
+      throw new Error(`Row with branch_id "${invalid.branch_id}" has a missing company_code. Please check your CSV.`);
+    }
     const payload = records.map((r) => ({
-      ...r,
-      companyId: parseInt(r.companyId),
-      isactive: true,
+      branchId: r.branch_id,
+      branchName: r.branch_name,
+      companyCode: r.company_code,
+      status: "ACTIVE",
     }));
     return branchService.bulkCreate(payload);
   };
 
-  const branchTemplateHeaders = ["branchId", "branchName", "branchShortname", "companyId"];
+  const branchTemplateHeaders = ["branch_id", "branch_name", "company_code"];
 
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Header */}
       <div className="mb-6 flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">
-            Company & Branch Management
+            Branch Management
           </h1>
           <p className="text-sm text-gray-500">
             Manage insurance companies and their branches
@@ -215,130 +254,86 @@ export const CompanyBranchPage = () => {
         )}
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <BranchStatCard
           title="Total Branches"
           value={totalBranches}
           icon={Building2}
           color="gray"
+          onClick={() => { setActiveStatusTab("all"); setCurrentPage(1); }}
+          active={activeStatusTab === "all"}
         />
         <BranchStatCard
           title="Active"
           value={totalActive}
           icon={CheckSquare}
           color="green"
+          onClick={() => { setActiveStatusTab("active"); setCurrentPage(1); }}
+          active={activeStatusTab === "active"}
         />
         <BranchStatCard
           title="Inactive"
           value={totalInactive}
           icon={XSquare}
           color="yellow"
-        />
-        <BranchStatCard
-          title="Deactivated"
-          value={0}
-          icon={AlertTriangle}
-          color="red"
+          onClick={() => { setActiveStatusTab("inactive"); setCurrentPage(1); }}
+          active={activeStatusTab === "inactive"}
         />
       </div>
 
-      {/* Search and Filters */}
       <Card className="p-4 mb-5">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="flex-1 relative">
-            <Search
-              size={18}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-            />
-            <input
-              type="text"
-              placeholder="Search by ID, company, or branch..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            />
-          </div>
-          <Button
-            variant="secondary"
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2"
-          >
-            <Filter size={16} /> Filters
-            {selectedStatus !== "all" && (
-              <span className="ml-1 w-2 h-2 bg-primary-500 rounded-full"></span>
-            )}
-          </Button>
+        <div className="flex-1 relative w-full">
+          <Search
+            size={18}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+          />
+          <input
+            type="text"
+            placeholder="Search by name, company, or shortname..."
+            value={searchTerm}
+            onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+          />
         </div>
-
-        {showFilters && (
-          <div className="flex flex-wrap gap-4 mt-4 pt-4 border-t border-gray-200">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-gray-700">Status:</span>
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="text-sm bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="all">All Status</option>
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
-            </div>
-            {selectedStatus !== "all" && (
-              <button
-                onClick={() => setSelectedStatus("all")}
-                className="text-xs text-primary-600 hover:text-primary-700"
-              >
-                Clear Filters
-              </button>
-            )}
-          </div>
-        )}
       </Card>
 
-      {/* Branches Table */}
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Code
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Company
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Branch
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Updated
-                </th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Actions
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("name")}>
+                  Name <SortIcon field="name" />
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("companyProvider")}>
+                  Provider <SortIcon field="companyProvider" />
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("status")}>
+                  Status <SortIcon field="status" />
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("dateCreated")}>
+                  Date Created <SortIcon field="dateCreated" />
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
                     Loading branches...
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-red-500">
+                  <td colSpan={5} className="px-4 py-8 text-center text-red-500">
                     {error}
                   </td>
                 </tr>
               ) : paginatedBranches.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
                     No branches found
                   </td>
                 </tr>
@@ -347,8 +342,6 @@ export const CompanyBranchPage = () => {
                   <BranchTableRow
                     key={branch.id}
                     branch={branch}
-                    copiedId={copiedId}
-                    onCopy={copyToClipboard}
                     onView={handleViewBranch}
                     onEdit={handleEditBranch}
                     onDelete={handleDeleteBranch}
@@ -361,15 +354,33 @@ export const CompanyBranchPage = () => {
           </table>
         </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+        <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+          <div className="flex items-center gap-3">
             <p className="text-xs text-gray-500">
               Showing {startIndex + 1} to{" "}
               {Math.min(startIndex + itemsPerPage, filteredBranches.length)} of{" "}
               {filteredBranches.length} branches
             </p>
-            <div className="flex gap-1">
+            <select
+              value={itemsPerPage}
+              onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+              className="text-xs border border-gray-300 rounded px-2 py-1 text-gray-600 bg-white focus:outline-none focus:ring-1 focus:ring-primary-500"
+            >
+              <option value={10}>10</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+          {totalPages > 1 && (
+            <div className="flex gap-1 items-center">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                className="p-1 text-gray-500 hover:text-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="First Page"
+              >
+                <ChevronsLeft size={18} />
+              </button>
               <button
                 onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                 disabled={currentPage === 1}
@@ -409,12 +420,19 @@ export const CompanyBranchPage = () => {
               >
                 <ChevronRight size={18} />
               </button>
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+                className="p-1 text-gray-500 hover:text-primary-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Last Page"
+              >
+                <ChevronsRight size={18} />
+              </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </Card>
 
-      {/* Modals */}
       <BranchFormModal
         isOpen={isFormModalOpen}
         onClose={() => setIsFormModalOpen(false)}

@@ -11,6 +11,7 @@ export const Dropdown = ({
   menuClassName = "",
   showCheckmark = true,
   disabled = false,
+  maxHeight = 240, // NEW: max height for scrollable menu (default 240px)
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -61,7 +62,8 @@ export const Dropdown = ({
 
       {isOpen && !disabled && (
         <div
-          className={`absolute left-0 z-10 mt-1 min-w-[160px] origin-top-left rounded-lg bg-white shadow-lg ring-1 ring-black/5 py-1 ${menuClassName}`}
+          className={`absolute left-0 z-10 mt-1 min-w-[160px] origin-top-left rounded-lg bg-white shadow-lg ring-1 ring-black/5 py-1 overflow-y-auto ${menuClassName}`}
+          style={{ maxHeight: `${maxHeight}px` }}
         >
           {normalizedOptions.map((option) => (
             <button
@@ -71,8 +73,10 @@ export const Dropdown = ({
                 value === option.value ? "text-primary-600" : "text-gray-700"
               }`}
             >
-              {option.label}
-              {showCheckmark && value === option.value && <Check size={14} />}
+              <span className="truncate">{option.label}</span>
+              {showCheckmark && value === option.value && (
+                <Check size={14} className="flex-shrink-0 ml-2" />
+              )}
             </button>
           ))}
         </div>

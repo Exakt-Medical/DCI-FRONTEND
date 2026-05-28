@@ -1,19 +1,29 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export function ThankYouPage({ selectedProduct, quantity, formatCurrency }) {
   const [copied, setCopied] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const navigate = useNavigate();
 
-  // Static voucher code for CTPL insurance
   const voucherCode = "CTPL-VIP-2024-001";
 
   useEffect(() => {
-    // Auto-redirect after 5 seconds
-    const timer = setTimeout(() => {
-      // This will be handled by parent component
-    }, 5000);
+    // Start redirecting after 1 second to show the message and spinner
+    const redirectTimer = setTimeout(() => {
+      setIsRedirecting(true);
+    }, 1000);
 
-    return () => clearTimeout(timer);
-  }, []);
+    // Redirect to verification page after 3 seconds
+    const navigationTimer = setTimeout(() => {
+      navigate("/vvip-access/verification");
+    }, 3000);
+
+    return () => {
+      clearTimeout(redirectTimer);
+      clearTimeout(navigationTimer);
+    };
+  }, [navigate]);
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
@@ -68,7 +78,7 @@ export function ThankYouPage({ selectedProduct, quantity, formatCurrency }) {
           </div>
         </div>
 
-        {/* Static Voucher Code Section */}
+        {/* Voucher Code Section */}
         <div className="bg-blue-50 rounded-lg p-6 max-w-md mx-auto mb-6">
           <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
             <svg
@@ -106,11 +116,16 @@ export function ThankYouPage({ selectedProduct, quantity, formatCurrency }) {
           </p>
         </div>
 
-        <p className="text-sm text-gray-500">
-          Redirecting to verification page...
-        </p>
-        <div className="mt-4">
-          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-[#1a3a6b] border-r-transparent"></div>
+        {/* Redirect Message with Spinner */}
+        <div className="text-center max-w-md mx-auto">
+          <p className="text-sm text-gray-600 mb-3">
+            Redirecting to verification page...
+          </p>
+          {isRedirecting && (
+            <div className="flex justify-center">
+              <div className="inline-block h-6 w-6 animate-spin rounded-full border-3 border-solid border-[#1a3a6b] border-r-transparent"></div>
+            </div>
+          )}
         </div>
       </div>
     </div>
