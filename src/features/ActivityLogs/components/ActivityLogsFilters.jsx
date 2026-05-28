@@ -26,7 +26,8 @@ export const ActivityLogsFilters = ({
 
   return (
     <div className="p-5 border-b border-gray-100">
-      <div className="flex flex-col sm:flex-row gap-4">
+      {/* Add overflow-visible here */}
+      <div className="flex flex-col sm:flex-row gap-4 overflow-visible">
         {/* Search */}
         <div className="flex-1 relative">
           <Search
@@ -42,8 +43,8 @@ export const ActivityLogsFilters = ({
           />
         </div>
 
-        {/* Action Filter */}
-        <div className="relative sm:w-48">
+        {/* Action Filter - Add higher z-index */}
+        <div className="relative sm:w-48 z-30">
           <Filter
             size={18}
             className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10"
@@ -57,8 +58,8 @@ export const ActivityLogsFilters = ({
           />
         </div>
 
-        {/* User Filter */}
-        <div className="relative sm:w-48">
+        {/* User Filter - Add higher z-index */}
+        <div className="relative sm:w-48 z-30">
           <User
             size={18}
             className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 z-10"
