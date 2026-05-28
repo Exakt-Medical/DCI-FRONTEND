@@ -184,11 +184,15 @@ export const AccountPage = () => {
         username: userData.username,
         firstName: userData.firstName,
         lastName: userData.lastName,
+        middleInitial: userData.middleInitial || "",
+        extName: userData.extName || "",
         email: userData.email || null,
+        mobile: userData.mobile || "",
         role: userData.role,
         branchId: userData.branchId ? parseInt(userData.branchId) : null,
         managerId: userData.managerId ? parseInt(userData.managerId) : null,
         status: userData.status,
+        allowedToBuyVoucher: userData.allowedToBuyVoucher,
       };
 
       if (!isEditing) {
