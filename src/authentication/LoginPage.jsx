@@ -47,9 +47,14 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
     setError("");
     try {
       const response = await authService.login(form.username, form.password);
-      const { token, role, allowedToBuyVoucher } = response.data;
+      const { token, role, allowedToBuyVoucher, firstname, lastname, email } =
+        response.data;
+
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
+      localStorage.setItem("email", email);
+      localStorage.setItem("firstname", firstname);
+      localStorage.setItem("lastname", lastname);
       localStorage.setItem("username", form.username);
       localStorage.setItem(
         "authAllowedToBuyVoucher",
