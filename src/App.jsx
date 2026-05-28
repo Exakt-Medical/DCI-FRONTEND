@@ -21,6 +21,7 @@ import PaymentPage from "./features/payment/PaymentPage";
 import { AccountPage } from "./features/accounts/AccountPage";
 import { TransactionLogsPage } from "./features/TransactionLogs/TransactionLogsPage";
 import { ActivityLogsPage } from "./features/ActivityLogs/ActivityLogsPage";
+import { AccessLogsPage } from "./features/AccessLogs/AccessLogsPage";
 import { PlaceholderPage } from "./features/placeholder/PlaceholderPage";
 import { ProfilePage } from "./features/Profile/ProfilePage";
 import { TransactionLedger } from "./features/TransactionLedger/TransactionLedger";
@@ -382,6 +383,17 @@ function AppContent() {
           );
         }
         return <ActivityLogsPage />;
+      case "accesslogs":
+        if (role === "agent" || role === "subagent" || role === "manager") {
+          return (
+            <PlaceholderPage
+              title="Access Denied"
+              icon="🔒"
+              description="You don't have permission to view access logs. Only administrators can access this page."
+            />
+          );
+        }
+        return <AccessLogsPage />;
       case "transactions":
         if (role === "agent" || role === "subagent" || role === "viewer") {
           return (

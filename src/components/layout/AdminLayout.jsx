@@ -14,6 +14,7 @@ import {
   ArrowLeftRight,
   BookOpen,
   HelpCircle,
+  LogIn,
   History,
   ListTodo,
 } from "lucide-react";
@@ -87,6 +88,13 @@ export const AdminLayout = ({
         id: "activitylogs",
         label: "Activity Logs",
         icon: History,
+        section: "LOGS",
+        disabled: false,
+      },
+      {
+        id: "accesslogs",
+        label: "Access Logs",
+        icon: LogIn,
         section: "LOGS",
         disabled: false,
       },
@@ -235,6 +243,13 @@ export const AdminLayout = ({
         disabled: false,
       },
       {
+        id: "accesslogs",
+        label: "Access Logs",
+        icon: LogIn,
+        section: "LOGS",
+        disabled: false,
+      },
+      {
         id: "transactions",
         label: "Transaction Logs",
         icon: ListTodo,
@@ -243,7 +258,7 @@ export const AdminLayout = ({
       },
       {
         id: "ledger",
-        label: "Ledger",
+        icon: LogIn,
         icon: BookOpen,
         section: "REPORTS",
         disabled: false,
