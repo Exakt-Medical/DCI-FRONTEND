@@ -13,7 +13,7 @@ export const BranchFormModal = ({
   const [formData, setFormData] = useState({
     branchId: "",
     branchName: "",
-    companyId: "",
+    companyCode: "",
     companyName: "",
     status: "ACTIVE",
   });
@@ -23,7 +23,7 @@ export const BranchFormModal = ({
       setFormData({
         branchId: branch.branchId || "",
         branchName: branch.branchName || "",
-        companyId: branch.companyId ? String(branch.companyId) : "",
+        companyCode: branch.companyCode || "",
         companyName: branch.companyName || "",
         status: branch.status || "ACTIVE",
       });
@@ -31,7 +31,7 @@ export const BranchFormModal = ({
       setFormData({
         branchId: "",
         branchName: "",
-        companyId: "",
+        companyCode: "",
         companyName: "",
         status: "ACTIVE",
       });
@@ -42,7 +42,7 @@ export const BranchFormModal = ({
     e.preventDefault();
     onSave({
       ...formData,
-      companyId: parseInt(formData.companyId),
+      companyCode: formData.companyCode,
     });
   };
 
@@ -92,14 +92,14 @@ export const BranchFormModal = ({
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
                 />
                 <select
-                  value={formData.companyId}
+                  value={formData.companyCode}
                   onChange={(e) => {
                     const selectedCompany = companies.find(
-                      (c) => String(c.id) === e.target.value,
+                      (c) => String(c.code) === e.target.value,
                     );
                     setFormData({
                       ...formData,
-                      companyId: e.target.value,
+                      companyCode: e.target.value,
                       companyName: selectedCompany?.companyName || "",
                     });
                   }}
@@ -108,8 +108,8 @@ export const BranchFormModal = ({
                 >
                   <option value="">Select Company</option>
                   {companies.map((company) => (
-                    <option key={company.id} value={company.id}>
-                      {company.companyName}
+                    <option key={company.code} value={company.code}>
+                      {company.companyName} ({company.code})
                     </option>
                   ))}
                 </select>

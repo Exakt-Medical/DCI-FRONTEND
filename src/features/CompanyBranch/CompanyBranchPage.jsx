@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useAlert } from "../../hooks/useAlert";
 import { Card } from "../../components/Card";
 import {
   Search,
@@ -29,6 +30,7 @@ import { formatDateTime } from "../../utils/formatDate";
 export const CompanyBranchPage = () => {
   const role = localStorage.getItem("role");
   const isViewer = role === "VIEWER";
+  const alert = useAlert();
   const [branches, setBranches] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -158,9 +160,10 @@ export const CompanyBranchPage = () => {
   const confirmDelete = async () => {
     try {
       await branchService.delete(selectedBranch.id);
-      setBranches(branches.filter((b) => b.id !== selectedBranch.id));
+      await alert.success("Deleted", "Branch has been deleted successfully.");
       setIsDeleteModalOpen(false);
       setSelectedBranch(null);
+      await fetchData();
     } catch (err) {
       console.error("Delete failed", err);
     }
@@ -168,15 +171,13 @@ export const CompanyBranchPage = () => {
 
   const handleToggleActive = async (branch) => {
     try {
-      const response = await branchService.update(branch.id, {
+      const newStatus = branch.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+      await branchService.update(branch.id, {
         ...branch,
-        status: branch.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
+        status: newStatus,
       });
-      setBranches(
-        branches.map((b) =>
-          b.id === branch.id ? { ...b, ...response.data } : b,
-        ),
-      );
+      await alert.success("Status Updated", `Branch has been set to ${newStatus}.`);
+      await fetchData();
     } catch (err) {
       console.error("Toggle active failed", err);
     }
@@ -187,23 +188,20 @@ export const CompanyBranchPage = () => {
       const payload = {
         branchId: branchData.branchId,
         branchName: branchData.branchName,
-        companyId: parseInt(branchData.companyId),
+        companyCode: branchData.companyCode,
         status: branchData.status,
       };
 
       if (isEditing && selectedBranch) {
-        const response = await branchService.update(selectedBranch.id, payload);
-        setBranches(
-          branches.map((b) =>
-            b.id === selectedBranch.id ? { ...b, ...response.data } : b,
-          ),
-        );
+        await branchService.update(selectedBranch.id, payload);
+        await alert.success("Updated", "Branch has been updated successfully.");
       } else {
-        const response = await branchService.create(payload);
-        setBranches([response.data, ...branches]);
+        await branchService.create(payload);
+        await alert.success("Created", "Branch has been created successfully.");
       }
       setIsFormModalOpen(false);
       setSelectedBranch(null);
+      await fetchData();
     } catch (err) {
       console.error("Save failed", err);
     }
@@ -457,7 +455,7 @@ export const CompanyBranchPage = () => {
 
       <UploadBulkModal
         isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
+        onClose={() => { setIsUploadModalOpen(false); fetchData(); }}
         onUpload={handleBulkUpload}
         templateHeaders={branchTemplateHeaders}
         moduleName="Branches"
