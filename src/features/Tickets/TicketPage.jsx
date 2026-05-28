@@ -119,13 +119,15 @@ export const TicketPage = () => {
               Manage and track customer support tickets and inquiries
             </p>
           </div>
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors"
-          >
-            <Plus size={16} />
-            Create Ticket
-          </button>
+          {!isViewer && (
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors"
+            >
+              <Plus size={16} />
+              Create Ticket
+            </button>
+          )}
         </div>
       </div>
 

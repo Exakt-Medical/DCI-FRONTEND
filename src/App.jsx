@@ -214,7 +214,7 @@ function App() {
     }
 
     if (page === "ledger") {
-      if (role === "admin" || role === "manager") {
+      if (role === "admin" || role === "manager" || role === "viewer") {
         return <TransactionLedger />;
       }
       return (
@@ -227,7 +227,7 @@ function App() {
     }
 
     if (page === "accounts") {
-      if (role === "agent" || role === "subagent" || role === "viewer")
+      if (role === "agent" || role === "subagent" )
         return (
           <PlaceholderPage
             title="Access Denied"
@@ -387,37 +387,37 @@ function App() {
       );
     }
 
-    // Activity Logs Page - Accessible by Admin and Manager only
+    // Activity Logs Page - Accessible by Admin and Viewer only
     if (page === "activitylogs") {
-      if (role === "agent" || role === "subagent" || role === "viewer") {
+      if (role === "agent" || role === "subagent" || role === "manager") {
         return (
           <PlaceholderPage
             title="Access Denied"
             icon="🔒"
-            description="You don't have permission to view activity logs. Only administrators and managers can access this page."
+            description="You don't have permission to view activity logs. Only administrators and viewers can access this page."
           />
         );
       }
       return <ActivityLogsPage />;
     }
 
-    // Access Logs Page - Accessible by Admin anda Admin view only
+    // Access Logs Page - Accessible by Admin and Viewer only
     if (page === "accesslogs") {
       if (role === "agent" || role === "subagent" || role === "manager") {
         return (
           <PlaceholderPage
             title="Access Denied"
             icon="🔒"
-            description="You don't have permission to view access logs. Only administrators and managers can access this page."
+            description="You don't have permission to view access logs. Only administrators and viewers can access this page."
           />
         );
       }
       return <AccessLogsPage />;
     }
 
-    // Transaction Logs Page - Accessible by Admin and Manager only
+    // Transaction Logs Page - Accessible by Admin and Manager, and Viewer only
     if (page === "transactions") {
-      if (role === "agent" || role === "subagent" || role === "viewer") {
+      if (role === "agent" || role === "subagent") {
         return (
           <PlaceholderPage
             title="Access Denied"
