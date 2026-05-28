@@ -24,7 +24,7 @@ export const TicketPage = () => {
   // ── Role detection ────────────────────────────────────────────────────────
   const userRole = (localStorage.getItem("role") ?? "").toUpperCase();
   const isLTO = userRole === "LTO";
-
+  const isViewer = userRole === "VIEWER";
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -328,8 +328,8 @@ export const TicketPage = () => {
         onTicketUpdated={handleTicketUpdated}
       />
 
-      {/* Create Modal — hidden for LTO */}
-      {!isLTO && (
+      {/* Create Modal — hidden for LTO and Viewer */}
+      {!isLTO && !isViewer && (
         <CreateTicketModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
