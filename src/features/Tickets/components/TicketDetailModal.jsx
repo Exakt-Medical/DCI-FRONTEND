@@ -171,6 +171,7 @@ export const TicketDetailModal = ({
   const [attachments, setAttachments] = useState([]);
   const [loadingAttachments, setLoadingAttachments] = useState(false);
   const [imageErrors, setImageErrors] = useState({});
+  const [previewImage, setPreviewImage] = useState(null);
 
   // Fetch attachments for this ticket
   const fetchAttachments = async (referenceNumber) => {
@@ -533,11 +534,30 @@ export const TicketDetailModal = ({
     }
   };
 
-  const handleViewAttachment = (url, fileName) => {
-    if (url) {
-      window.open(url, "_blank");
+const handleViewAttachment = async (url) => {
+  try {
+    const token = localStorage.getItem("token");
+
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to load image");
     }
-  };
+
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+
+    setPreviewImage(blobUrl);
+
+  } catch (error) {
+    console.error("View failed:", error);
+    alert("Failed to view attachment.");
+  }
+};
 
   const handleImageError = (attachmentId, type) => {
     console.error(
@@ -625,36 +645,34 @@ export const TicketDetailModal = ({
           </div>
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={() => {
-              // Open image in new window with authentication header
-              const token = localStorage.getItem("token");
-              if (token) {
-                // Create a new window and fetch the image with auth header
-                const imgWindow = window.open();
-                if (imgWindow) {
-                  imgWindow.document.write(`
-                  <html>
-                    <head><title>${title}</title></head>
-                    <body style="margin:0; display:flex; justify-content:center; align-items:center; min-height:100vh; background:#f5f5f5;">
-                      <div style="text-align:center;">
-                        <img src="${url}" style="max-width:100%; max-height:90vh; object-fit:contain;" 
-                             onerror="this.style.display='none'; document.getElementById('error').style.display='block';" />
-                        <p id="error" style="display:none; color:red;">Failed to load image</p>
-                        <button onclick="window.close()" style="margin-top:20px; padding:8px 16px;">Close</button>
-                      </div>
-                    </body>
-                  </html>
-                `);
-                }
-              } else {
-                window.open(url, "_blank");
-              }
-            }}
-            className="px-3 py-1.5 text-xs font-medium text-primary-600 hover:bg-primary-50 rounded-lg transition-colors flex items-center gap-1"
-          >
-            <Eye size={14} /> View
-          </button>
+<button
+  onClick={async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to load image");
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      setPreviewImage(blobUrl);
+    } catch (error) {
+      console.error("View failed:", error);
+      alert("Failed to view attachment.");
+    }
+  }}
+  className="px-3 py-1.5 text-xs font-medium text-primary-600 hover:bg-primary-50 rounded-lg transition-colors flex items-center gap-1"
+>
+  <Eye size={14} /> View
+</button>
           <button
             onClick={async () => {
               // Download with authentication
@@ -1199,6 +1217,23 @@ export const TicketDetailModal = ({
             )}
           </div>
 
+
+              {previewImage && (
+  <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4">
+    <button
+      onClick={() => setPreviewImage(null)}
+      className="absolute top-4 right-4 text-white text-3xl"
+    >
+      ×
+    </button>
+
+    <img
+      src={previewImage}
+      alt="Preview"
+      className="max-w-full max-h-[90vh] object-contain rounded-lg"
+    />
+  </div>
+)}
           {/* Footer */}
           <div className="flex-shrink-0 bg-white border-t border-gray-200 px-6 py-4 rounded-b-xl flex justify-end">
             <button
