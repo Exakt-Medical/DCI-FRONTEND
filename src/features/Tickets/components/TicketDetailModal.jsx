@@ -79,6 +79,7 @@ const parseCorrections = (crAttachment) => {
         : crAttachment;
 
     const FIELD_KEY_MAP = {
+      // Vehicle fields
       mv_file_number: "mvFileNo",
       plate_number: "plateNo",
       engine_number: "engineNo",
@@ -93,8 +94,16 @@ const parseCorrections = (crAttachment) => {
       year_model: "yearModel",
       year: "yearModel",
       classification: "classification",
-      owner_name: "ownerName",
+      // Owner fields
+      owner_firstName: "ownerFirstName",
+      owner_lastName: "ownerLastName",
+      owner_middleName: "ownerMiddleName",
       owner_address: "ownerAddress",
+      owner_contactNo: "ownerContactNo",
+      owner_email: "ownerEmail",
+      owner_tin: "ownerTin",
+      // Legacy fallbacks
+      owner_name: "ownerName",
     };
 
     const result = {};
@@ -130,10 +139,10 @@ const CompareRow = ({
     <div className="py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 border-b border-gray-100 flex items-center">
       {label}
     </div>
-    <div className="py-2.5 px-3 text-sm text-gray-700 border-b border-gray-100 bg-white flex items-center">
+    <div className="py-2.5 px-3 text-sm text-gray-700 border-b border-gray-100 bg-white flex items-center border-l border-gray-100">
       {original || "—"}
     </div>
-    <div className="py-2.5 px-3 border-b border-gray-100 bg-green-50 flex items-center">
+    <div className="py-2.5 px-3 border-b border-gray-100 bg-green-50 flex items-center border-l border-gray-100">
       {editable ? (
         <input
           type="text"
@@ -143,8 +152,14 @@ const CompareRow = ({
           className="w-full text-sm text-gray-900 bg-transparent border-b border-green-300 focus:border-green-500 focus:outline-none placeholder-gray-400 py-0.5"
         />
       ) : (
-        <span className="text-sm text-gray-700">
-          {correctedValues[correctedKey] || original || "—"}
+        <span
+          className={`text-sm ${
+            correctedValues[correctedKey]
+              ? "text-green-700 font-medium"
+              : "text-gray-400 italic"
+          }`}
+        >
+          {correctedValues[correctedKey] || "—"}
         </span>
       )}
     </div>
@@ -180,20 +195,13 @@ export const TicketDetailModal = ({
     setLoadingAttachments(true);
     try {
       const allAttachments = await attachmentService.getAll();
-      console.log("All attachments:", allAttachments);
 
-      // Filter attachments by reference number and remove duplicates
       const ticketAttachments = allAttachments.filter(
         (att) => att.referenceNumber === referenceNumber,
       );
 
-      console.log("Filtered attachments:", ticketAttachments);
-
-      // Use a Map to deduplicate by attachment type
       const uniqueAttachments = new Map();
-
       ticketAttachments.forEach((att) => {
-        // Use id as key or combine referenceNumber + type
         const key = att.id || `${att.referenceNumber}-cr`;
         if (!uniqueAttachments.has(key)) {
           uniqueAttachments.set(key, att);
@@ -202,7 +210,6 @@ export const TicketDetailModal = ({
 
       const uniqueList = Array.from(uniqueAttachments.values());
 
-      // Create image URLs using the API endpoint (not direct byte array conversion)
       const processedAttachments = uniqueList.map((att) => ({
         id: att.id,
         referenceNumber: att.referenceNumber,
@@ -212,7 +219,6 @@ export const TicketDetailModal = ({
           att.plateCertificationAttachment.length > 0,
         hasActualPlate:
           att.actualPlateAttachment && att.actualPlateAttachment.length > 0,
-        // Use API endpoint for images instead of converting byte arrays
         crAttachmentUrl:
           att.crAttachment && att.crAttachment.length > 0
             ? `${API_BASE_URL}/attachment/${att.id}/image/cr`
@@ -232,7 +238,6 @@ export const TicketDetailModal = ({
         actualPlateName: att.actualPlateName || "Actual Plate",
       }));
 
-      console.log("Processed attachments:", processedAttachments);
       setAttachments(processedAttachments);
     } catch (error) {
       console.error("Failed to fetch attachments:", error);
@@ -245,10 +250,10 @@ export const TicketDetailModal = ({
     if (ticket) {
       setCurrentTicket(ticket);
 
-      const v = ticket.vehicleInfo ?? {};
       const parsedCorrections = parseCorrections(ticket.crAttachment);
 
       setCorrected({
+        // Vehicle fields
         mvFileNo: parsedCorrections.mvFileNo ?? "",
         plateNo: parsedCorrections.plateNo ?? "",
         engineNo: parsedCorrections.engineNo ?? "",
@@ -259,11 +264,18 @@ export const TicketDetailModal = ({
         vehicleType: parsedCorrections.vehicleTypeDenomination ?? "",
         yearModel: parsedCorrections.yearModel ?? "",
         classification: parsedCorrections.classification ?? "",
-        ownerName: parsedCorrections.ownerName ?? "",
+        // Owner fields
+        ownerFirstName: parsedCorrections.ownerFirstName ?? "",
+        ownerLastName: parsedCorrections.ownerLastName ?? "",
+        ownerMiddleName: parsedCorrections.ownerMiddleName ?? "",
         ownerAddress: parsedCorrections.ownerAddress ?? "",
+        ownerContactNo: parsedCorrections.ownerContactNo ?? "",
+        ownerEmail: parsedCorrections.ownerEmail ?? "",
+        ownerTin: parsedCorrections.ownerTin ?? "",
+        // Legacy fallback
+        ownerName: parsedCorrections.ownerName ?? "",
       });
 
-      // Fetch attachments when ticket loads
       fetchAttachments(ticket.referenceNumber);
     }
   }, [ticket]);
@@ -367,109 +379,98 @@ export const TicketDetailModal = ({
       const correctionsArray = [];
       const originalVehicle = currentTicket.vehicleInfo ?? {};
 
-      if (corrected.plateNo && corrected.plateNo !== originalVehicle.plateNo) {
+      if (corrected.plateNo && corrected.plateNo !== originalVehicle.plateNo)
         correctionsArray.push({
           field: "plate_number",
           expected: corrected.plateNo,
         });
-      }
-      if (
-        corrected.mvFileNo &&
-        corrected.mvFileNo !== originalVehicle.mvFileNo
-      ) {
+      if (corrected.mvFileNo && corrected.mvFileNo !== originalVehicle.mvFileNo)
         correctionsArray.push({
           field: "mv_file_number",
           expected: corrected.mvFileNo,
         });
-      }
-      if (
-        corrected.engineNo &&
-        corrected.engineNo !== originalVehicle.engineNo
-      ) {
+      if (corrected.engineNo && corrected.engineNo !== originalVehicle.engineNo)
         correctionsArray.push({
           field: "engine_number",
           expected: corrected.engineNo,
         });
-      }
       if (
         corrected.chassisNo &&
         corrected.chassisNo !== originalVehicle.chassisNo
-      ) {
+      )
         correctionsArray.push({
           field: "chassis_number",
           expected: corrected.chassisNo,
         });
-      }
-      if (corrected.make && corrected.make !== originalVehicle.make) {
+      if (corrected.make && corrected.make !== originalVehicle.make)
         correctionsArray.push({ field: "make", expected: corrected.make });
-      }
-      if (corrected.model && corrected.model !== originalVehicle.series) {
+      if (corrected.model && corrected.model !== originalVehicle.series)
         correctionsArray.push({ field: "series", expected: corrected.model });
-      }
-      if (corrected.color && corrected.color !== originalVehicle.color) {
+      if (corrected.color && corrected.color !== originalVehicle.color)
         correctionsArray.push({ field: "color", expected: corrected.color });
-      }
       if (
         corrected.vehicleType &&
         corrected.vehicleType !== originalVehicle.vehicleType
-      ) {
+      )
         correctionsArray.push({
           field: "denomination",
           expected: corrected.vehicleType,
         });
-      }
       if (
         corrected.yearModel &&
         corrected.yearModel !== originalVehicle.yearModel
-      ) {
+      )
         correctionsArray.push({
           field: "year_model",
           expected: corrected.yearModel,
         });
-      }
       if (
         corrected.classification &&
         corrected.classification !== originalVehicle.classification
-      ) {
+      )
         correctionsArray.push({
           field: "classification",
           expected: corrected.classification,
         });
-      }
-      if (
-        corrected.ownerName &&
-        corrected.ownerName !== currentTicket.customer
-      ) {
+      if (corrected.ownerFirstName)
         correctionsArray.push({
-          field: "owner_name",
-          expected: corrected.ownerName,
+          field: "owner_firstName",
+          expected: corrected.ownerFirstName,
         });
-      }
-      if (
-        corrected.ownerAddress &&
-        corrected.ownerAddress !== currentTicket.description
-      ) {
+      if (corrected.ownerLastName)
+        correctionsArray.push({
+          field: "owner_lastName",
+          expected: corrected.ownerLastName,
+        });
+      if (corrected.ownerMiddleName)
+        correctionsArray.push({
+          field: "owner_middleName",
+          expected: corrected.ownerMiddleName,
+        });
+      if (corrected.ownerAddress)
         correctionsArray.push({
           field: "owner_address",
           expected: corrected.ownerAddress,
         });
-      }
+      if (corrected.ownerContactNo)
+        correctionsArray.push({
+          field: "owner_contactNo",
+          expected: corrected.ownerContactNo,
+        });
+      if (corrected.ownerEmail)
+        correctionsArray.push({
+          field: "owner_email",
+          expected: corrected.ownerEmail,
+        });
+      if (corrected.ownerTin)
+        correctionsArray.push({
+          field: "owner_tin",
+          expected: corrected.ownerTin,
+        });
 
       const updated = await ticketService.update(
         currentTicket.id,
         buildPayload({
-          name: corrected.ownerName || currentTicket.customer,
-          address: corrected.ownerAddress || currentTicket.description,
-          plateNo: corrected.plateNo || null,
-          mvFileNo: corrected.mvFileNo || null,
-          make: corrected.make || null,
-          series: corrected.model || null,
-          engineNo: corrected.engineNo || null,
-          chassisNo: corrected.chassisNo || null,
-          vehicleColor: corrected.color || null,
-          vehicleTypeDenomination: corrected.vehicleType || null,
-          classification: corrected.classification || null,
-          yearModel: corrected.yearModel || null,
           crAttachment:
             correctionsArray.length > 0
               ? JSON.stringify(correctionsArray)
@@ -492,10 +493,7 @@ export const TicketDetailModal = ({
     try {
       const updated = await ticketService.update(
         currentTicket.id,
-        buildPayload({
-          roleBased: "LTO",
-          escalated: "YES",
-        }),
+        buildPayload({ roleBased: "LTO", escalated: "YES" }),
       );
       setCurrentTicket(updated);
       onTicketUpdated?.(updated);
@@ -508,16 +506,13 @@ export const TicketDetailModal = ({
 
   const handleSendComment = async () => {
     if (!chatMessage.trim()) return;
-
     try {
       const payload = {
         referenceNumber: currentTicket.referenceNumber,
         users: localStorage.getItem("username") || "You",
         comments: chatMessage,
       };
-
       const saved = await commentsService.create(payload);
-
       setComments((prev) => [
         ...prev,
         {
@@ -527,46 +522,29 @@ export const TicketDetailModal = ({
           createdAt: new Date(),
         },
       ]);
-
       setChatMessage("");
     } catch (error) {
       console.error("Failed to save comment", error);
     }
   };
 
-const handleViewAttachment = async (url) => {
-  try {
-    const token = localStorage.getItem("token");
-
-    const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to load image");
+  const handleViewAttachment = async (url) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error("Failed to load image");
+      const blob = await response.blob();
+      setPreviewImage(URL.createObjectURL(blob));
+    } catch (error) {
+      console.error("View failed:", error);
+      alert("Failed to view attachment.");
     }
-
-    const blob = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
-
-    setPreviewImage(blobUrl);
-
-  } catch (error) {
-    console.error("View failed:", error);
-    alert("Failed to view attachment.");
-  }
-};
+  };
 
   const handleImageError = (attachmentId, type) => {
-    console.error(
-      `Failed to load image for attachment ${attachmentId}, type: ${type}`,
-    );
-    setImageErrors((prev) => ({
-      ...prev,
-      [`${attachmentId}-${type}`]: true,
-    }));
+    setImageErrors((prev) => ({ ...prev, [`${attachmentId}-${type}`]: true }));
   };
 
   const v = currentTicket.vehicleInfo ?? {};
@@ -599,13 +577,40 @@ const handleViewAttachment = async (url) => {
           originalKey: "vehicleType",
           original: v.vehicleType,
         },
-        { label: "Year Model", originalKey: "year", original: v.yearModel },
+        {
+          label: "Year Model",
+          originalKey: "yearModel",
+          original: v.yearModel,
+        },
         {
           label: "Classification",
           originalKey: "classification",
           original: v.classification,
         },
       ];
+
+  // currentTicket.customer = full name string from `t.name` in mapTicket
+  // Split it best-effort: "FIRST MIDDLE LAST" or however it was stored
+  const fullNameParts = (currentTicket.customer ?? "").trim().split(/\s+/);
+  const ltoFirstName = fullNameParts[0] ?? "—";
+  const ltoLastName =
+    fullNameParts.length > 1 ? fullNameParts[fullNameParts.length - 1] : "—";
+  const ltoMiddleName =
+    fullNameParts.length > 2 ? fullNameParts.slice(1, -1).join(" ") : "—";
+
+  const ownerCompareRows = [
+    { label: "First Name", key: "ownerFirstName", original: ltoFirstName },
+    { label: "Last Name", key: "ownerLastName", original: ltoLastName },
+    { label: "Middle Name", key: "ownerMiddleName", original: ltoMiddleName },
+    {
+      label: "Address",
+      key: "ownerAddress",
+      original: currentTicket.description ?? "—",
+    },
+    { label: "Contact No.", key: "ownerContactNo", original: "—" },
+    { label: "Email", key: "ownerEmail", original: "—" },
+    { label: "TIN", key: "ownerTin", original: "—" },
+  ];
 
   const requestedBy =
     typeof currentTicket.requestedBy === "string"
@@ -618,7 +623,6 @@ const handleViewAttachment = async (url) => {
     { id: "livechat", label: "Live Chat", icon: MessageCircle },
   ];
 
-  // Function to render attachment item
   const renderAttachmentItem = (
     url,
     title,
@@ -627,11 +631,7 @@ const handleViewAttachment = async (url) => {
     type,
     fileName,
   ) => {
-    const errorKey = `${attachmentId}-${type}`;
-    const hasError = imageErrors[errorKey];
-
     if (!url) return null;
-
     return (
       <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
         <div className="flex items-center gap-3">
@@ -645,43 +645,18 @@ const handleViewAttachment = async (url) => {
           </div>
         </div>
         <div className="flex gap-2">
-<button
-  onClick={async () => {
-    try {
-      const token = localStorage.getItem("token");
-
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to load image");
-      }
-
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-
-      setPreviewImage(blobUrl);
-    } catch (error) {
-      console.error("View failed:", error);
-      alert("Failed to view attachment.");
-    }
-  }}
-  className="px-3 py-1.5 text-xs font-medium text-primary-600 hover:bg-primary-50 rounded-lg transition-colors flex items-center gap-1"
->
-  <Eye size={14} /> View
-</button>
+          <button
+            onClick={() => handleViewAttachment(url)}
+            className="px-3 py-1.5 text-xs font-medium text-primary-600 hover:bg-primary-50 rounded-lg transition-colors flex items-center gap-1"
+          >
+            <Eye size={14} /> View
+          </button>
           <button
             onClick={async () => {
-              // Download with authentication
               try {
                 const token = localStorage.getItem("token");
                 const response = await fetch(url, {
-                  headers: {
-                    Authorization: `Bearer ${token}`,
-                  },
+                  headers: { Authorization: `Bearer ${token}` },
                 });
                 if (response.ok) {
                   const blob = await response.blob();
@@ -707,6 +682,18 @@ const handleViewAttachment = async (url) => {
       </div>
     );
   };
+
+  const SectionHeader = ({ title }) => (
+    <div className="grid grid-cols-[180px_1fr_1fr]">
+      <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase bg-gray-50 border-b border-gray-200" />
+      <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase bg-gray-50 border-b border-l border-gray-200">
+        LTO Record
+      </div>
+      <div className="px-3 py-2 text-xs font-semibold text-green-600 uppercase bg-green-50 border-b border-l border-gray-200">
+        Corrected
+      </div>
+    </div>
+  );
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -905,25 +892,14 @@ const handleViewAttachment = async (url) => {
                 {/* ── LTO types: two-column comparison ── */}
                 {isLTOType ? (
                   <>
+                    {/* Vehicle Information */}
                     <Card className="p-0 overflow-hidden">
                       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                         <h3 className="text-base font-semibold text-gray-900">
                           Vehicle Information
                         </h3>
                       </div>
-
-                      <div className="grid grid-cols-[180px_1fr_1fr]">
-                        <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase bg-gray-50 border-b border-gray-200" />
-
-                        <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase bg-gray-50 border-b border-l border-gray-200">
-                          Record Found
-                        </div>
-
-                        <div className="px-3 py-2 text-xs font-semibold text-green-600 uppercase bg-green-50 border-b border-l border-gray-200">
-                          Expected
-                        </div>
-                      </div>
-
+                      <SectionHeader />
                       <div className="grid grid-cols-[180px_1fr_1fr]">
                         {vehicleCompareRows.map((row) => (
                           <CompareRow
@@ -933,12 +909,13 @@ const handleViewAttachment = async (url) => {
                             correctedKey={row.originalKey}
                             correctedValues={corrected}
                             onChange={handleCorrectedChange}
-                            editable={false}
+                            editable={true}
                           />
                         ))}
                       </div>
                     </Card>
 
+                    {/* Owner Details */}
                     {!isVehicleNotFound && (
                       <Card className="p-0 overflow-hidden">
                         <div className="px-4 py-3 border-b border-gray-100">
@@ -946,37 +923,24 @@ const handleViewAttachment = async (url) => {
                             Owner Details
                           </h3>
                         </div>
+                        <SectionHeader />
                         <div className="grid grid-cols-[180px_1fr_1fr]">
-                          <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase bg-gray-50 border-b border-gray-200" />
-                          <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase bg-gray-50 border-b border-l border-gray-200">
-                            Submitted
-                          </div>
-                          <div className="px-3 py-2 text-xs font-semibold text-green-600 uppercase bg-green-50 border-b border-l border-gray-200">
-                            Corrected
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-[180px_1fr_1fr]">
-                          <CompareRow
-                            label="Name"
-                            original={currentTicket.customer}
-                            correctedKey="ownerName"
-                            correctedValues={corrected}
-                            onChange={handleCorrectedChange}
-                            editable
-                          />
-                          <CompareRow
-                            label="Address"
-                            original={currentTicket.description}
-                            correctedKey="ownerAddress"
-                            correctedValues={corrected}
-                            onChange={handleCorrectedChange}
-                            editable
-                          />
+                          {ownerCompareRows.map((row) => (
+                            <CompareRow
+                              key={row.key}
+                              label={row.label}
+                              original={row.original}
+                              correctedKey={row.key}
+                              correctedValues={corrected}
+                              onChange={handleCorrectedChange}
+                              editable={true}
+                            />
+                          ))}
                         </div>
                       </Card>
                     )}
 
-                    {/* Attachments from attachment table */}
+                    {/* Attachments */}
                     <Card className="p-4">
                       <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
                         <Paperclip size={18} className="text-primary-500" />
@@ -1071,8 +1035,6 @@ const handleViewAttachment = async (url) => {
                         </p>
                       </div>
                     </Card>
-
-                    {/* Attachments for non-LTO types */}
                     <Card className="p-4">
                       <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
                         <Paperclip size={18} className="text-primary-500" />
@@ -1217,31 +1179,57 @@ const handleViewAttachment = async (url) => {
             )}
           </div>
 
+          {/* Image Preview Overlay */}
+          {previewImage && (
+            <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4">
+              <button
+                onClick={() => setPreviewImage(null)}
+                className="absolute top-4 right-4 text-white text-3xl"
+              >
+                ×
+              </button>
+              <img
+                src={previewImage}
+                alt="Preview"
+                className="max-w-full max-h-[90vh] object-contain rounded-lg"
+              />
+            </div>
+          )}
 
-              {previewImage && (
-  <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4">
-    <button
-      onClick={() => setPreviewImage(null)}
-      className="absolute top-4 right-4 text-white text-3xl"
-    >
-      ×
-    </button>
-
-    <img
-      src={previewImage}
-      alt="Preview"
-      className="max-w-full max-h-[90vh] object-contain rounded-lg"
-    />
-  </div>
-)}
           {/* Footer */}
-          <div className="flex-shrink-0 bg-white border-t border-gray-200 px-6 py-4 rounded-b-xl flex justify-end">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Close
-            </button>
+          <div className="flex-shrink-0 bg-white border-t border-gray-200 px-6 py-4 rounded-b-xl flex items-center justify-between">
+            <p className="text-xs text-gray-400">
+              {isLTOType && activeTab === "ticket"
+                ? "Edit the Corrected column and save to update the ticket."
+                : ""}
+            </p>
+            <div className="flex gap-3">
+              {isLTOType && activeTab === "ticket" && (
+                <button
+                  onClick={handleSaveCorrection}
+                  disabled={isSavingCorrection}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+                >
+                  {isSavingCorrection ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Saving…
+                    </>
+                  ) : (
+                    <>
+                      <Save size={14} />
+                      Save Corrections
+                    </>
+                  )}
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { AlertCircle, X, Ticket, Paperclip } from "lucide-react";
+import { AlertCircle, X, Ticket, Paperclip, User, Car } from "lucide-react";
 import { Button } from "../../../components/Button";
 
-const MISMATCH_FIELDS = [
+const VEHICLE_MISMATCH_FIELDS = [
   { key: "mv_file_number", label: "MV File No.", dataKey: "mv_file_number" },
   { key: "plate_number", label: "Plate No.", dataKey: "plate_number" },
   { key: "engine_number", label: "Engine No.", dataKey: "engine_number" },
@@ -19,45 +19,100 @@ const MISMATCH_FIELDS = [
   { key: "classification", label: "Classification", dataKey: "classification" },
 ];
 
+const OWNER_MISMATCH_FIELDS = [
+  { key: "owner_firstName", label: "First Name", dataKey: "firstName" },
+  { key: "owner_lastName", label: "Last Name", dataKey: "lastName" },
+  { key: "owner_middleName", label: "Middle Name", dataKey: "middleName" },
+  { key: "owner_address", label: "Address", dataKey: "address" },
+  { key: "owner_contactNo", label: "Contact No.", dataKey: "contactNo" },
+  { key: "owner_email", label: "Email", dataKey: "email" },
+  { key: "owner_tin", label: "TIN", dataKey: "tin" },
+];
+
+const ALL_MISMATCH_FIELDS = [
+  ...VEHICLE_MISMATCH_FIELDS,
+  ...OWNER_MISMATCH_FIELDS,
+];
+
 export const DataMismatchModal = ({
   vehicleData,
+  ownerData,
   onSubmit,
   onClose,
   isSubmitting,
 }) => {
   const [correctedValues, setCorrectedValues] = useState({});
   const [attachmentFile, setAttachmentFile] = useState({
-  crAttachment: null,
-  plateCertificationAttachment: null,
-  actualPlateAttachment: null,
-});
+    crAttachment: null,
+    plateCertificationAttachment: null,
+    actualPlateAttachment: null,
+  });
 
   const handleChange = (key, value) => {
     setCorrectedValues((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleSubmit = () => {
-    const mismatches = MISMATCH_FIELDS.filter((f) =>
+    const mismatches = ALL_MISMATCH_FIELDS.filter((f) =>
       correctedValues[f.key]?.trim(),
-    ).map((f) => ({
-      field: f.key,
-      label: f.label,
-      actual: vehicleData[f.dataKey] || "N/A",
-      expected: correctedValues[f.key].trim(),
-    }));
+    ).map((f) => {
+      const isOwnerField = OWNER_MISMATCH_FIELDS.some((of) => of.key === f.key);
+      const sourceData = isOwnerField ? ownerData : vehicleData;
+      return {
+        field: f.key,
+        label: f.label,
+        actual: sourceData?.[f.dataKey] || "N/A", // ← LTO record value
+        expected: correctedValues[f.key].trim(), // ← user's correction
+      };
+    });
 
     if (mismatches.length === 0) return;
 
-    // ✅ THIS is what Spring will store in cr_attachment
-   onSubmit({
-  crAttachment: JSON.stringify(mismatches),
-  attachmentFile,
-});
+    onSubmit({
+      crAttachment: JSON.stringify(mismatches), // ← saved to cr_attachment column
+      attachmentFile,
+    });
   };
 
-  const filledCount = MISMATCH_FIELDS.filter((f) =>
+  const filledCount = ALL_MISMATCH_FIELDS.filter((f) =>
     correctedValues[f.key]?.trim(),
   ).length;
+
+  const renderFieldRow = (field, sourceData) => {
+    const submittedValue = sourceData?.[field.dataKey] || "—";
+    const hasCorrected = !!correctedValues[field.key]?.trim();
+
+    return (
+      <div
+        key={field.key}
+        className={`grid grid-cols-[1fr_1fr] border-b border-gray-100 ${
+          hasCorrected ? "bg-green-50/30" : ""
+        }`}
+      >
+        <div className="px-4 py-3 border-r border-gray-100 bg-red-50/20">
+          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">
+            {field.label}
+          </p>
+          <p className="text-sm font-medium text-gray-800 break-words">
+            {submittedValue}
+          </p>
+        </div>
+        <div className="px-4 py-3 flex items-center">
+          <input
+            type="text"
+            value={correctedValues[field.key] ?? ""}
+            onChange={(e) => handleChange(field.key, e.target.value)}
+            placeholder="Enter correct value…"
+            className={`w-full text-sm text-gray-900 bg-transparent border-b focus:outline-none placeholder-gray-300 transition-colors ${
+              hasCorrected
+                ? "border-green-400 text-green-800"
+                : "border-gray-300 focus:border-green-400"
+            }`}
+          />
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
@@ -75,7 +130,6 @@ export const DataMismatchModal = ({
               </p>
             </div>
           </div>
-
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -94,140 +148,81 @@ export const DataMismatchModal = ({
           </div>
         </div>
 
-{/* Fields */}
-<div className="overflow-y-auto flex-1">
-  {MISMATCH_FIELDS.map((field) => {
-    const submittedValue = vehicleData[field.dataKey] || "—";
-    const hasCorrected = !!correctedValues[field.key]?.trim();
+        {/* Fields */}
+        <div className="overflow-y-auto flex-1">
+          {/* Vehicle Section */}
+          <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
+            <Car size={13} className="text-gray-400" />
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+              Vehicle Details
+            </span>
+          </div>
+          {VEHICLE_MISMATCH_FIELDS.map((field) =>
+            renderFieldRow(field, vehicleData),
+          )}
 
-    return (
-      <div
-        key={field.key}
-        className={`grid grid-cols-[1fr_1fr] border-b border-gray-100 ${
-          hasCorrected ? "bg-green-50/30" : ""
-        }`}
-      >
-        <div className="px-4 py-3 border-r border-gray-100 bg-red-50/20">
-          <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">
-            {field.label}
-          </p>
-          <p className="text-sm font-medium text-gray-800 break-words">
-            {submittedValue}
-          </p>
+          {/* Owner Section */}
+          <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
+            <User size={13} className="text-gray-400" />
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+              Owner Details
+            </span>
+          </div>
+          {OWNER_MISMATCH_FIELDS.map((field) =>
+            renderFieldRow(field, ownerData),
+          )}
+
+          {/* Vehicle Attachments */}
+          <div className="px-6 py-5 border-t border-gray-100 bg-white">
+            <div className="flex items-center gap-2 mb-5">
+              <Paperclip size={18} className="text-primary-600" />
+              <h3 className="text-sm font-bold text-gray-900">
+                Vehicle Attachments
+              </h3>
+            </div>
+
+            <div className="space-y-5">
+              {[
+                { label: "CR Attachment (Optional)", key: "crAttachment" },
+                {
+                  label: "Plate Certification Attachment (Optional)",
+                  key: "plateCertificationAttachment",
+                },
+                {
+                  label: "Actual Plate Attachment (Optional)",
+                  key: "actualPlateAttachment",
+                },
+              ].map(({ label, key }) => (
+                <div key={key}>
+                  <label className="block text-sm font-medium text-gray-600 mb-2">
+                    {label}
+                  </label>
+                  <div className="flex items-center gap-4">
+                    <label className="cursor-pointer bg-blue-50 hover:bg-blue-100 text-primary-700 font-semibold px-4 py-2.5 rounded-lg text-sm">
+                      Choose File
+                      <input
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
+                        className="hidden"
+                        onChange={(e) =>
+                          setAttachmentFile((prev) => ({
+                            ...prev,
+                            [key]: e.target.files?.[0] || null,
+                          }))
+                        }
+                      />
+                    </label>
+                    <span className="text-sm text-gray-500">
+                      {attachmentFile?.[key]
+                        ? attachmentFile[key].name
+                        : "No file chosen"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
-
-        <div className="px-4 py-3 flex items-center">
-          <input
-            type="text"
-            value={correctedValues[field.key] ?? ""}
-            onChange={(e) => handleChange(field.key, e.target.value)}
-            placeholder="Enter correct value…"
-            className={`w-full text-sm text-gray-900 bg-transparent border-b focus:outline-none placeholder-gray-300 transition-colors ${
-              hasCorrected
-                ? "border-green-400 text-green-800"
-                : "border-gray-300 focus:border-green-400"
-            }`}
-          />
-        </div>
-      </div>
-    );
-  })}
-
-  {/* Vehicle Attachments */}
-  <div className="px-6 py-5 border-t border-gray-100 bg-white">
-    <div className="flex items-center gap-2 mb-5">
-      <Paperclip size={18} className="text-primary-600" />
-      <h3 className="text-sm font-bold text-gray-900">
-        Vehicle Attachments
-      </h3>
-    </div>
-
-    <div className="space-y-5">
-      <div>
-        <label className="block text-sm font-medium text-gray-600 mb-2">
-          CR Attachment (Optional)
-        </label>
-        <div className="flex items-center gap-4">
-          <label className="cursor-pointer bg-blue-50 hover:bg-blue-100 text-primary-700 font-semibold px-4 py-2.5 rounded-lg text-sm">
-            Choose File
-            <input
-              type="file"
-              accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
-              className="hidden"
-              onChange={(e) =>
-                setAttachmentFile((prev) => ({
-                  ...prev,
-                  crAttachment: e.target.files?.[0] || null,
-                }))
-              }
-            />
-          </label>
-          <span className="text-sm text-gray-500">
-            {attachmentFile?.crAttachment
-              ? attachmentFile.crAttachment.name
-              : "No file chosen"}
-          </span>
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-600 mb-2">
-          Plate Certification Attachment (Optional)
-        </label>
-        <div className="flex items-center gap-4">
-          <label className="cursor-pointer bg-blue-50 hover:bg-blue-100 text-primary-700 font-semibold px-4 py-2.5 rounded-lg text-sm">
-            Choose File
-            <input
-              type="file"
-              accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
-              className="hidden"
-              onChange={(e) =>
-                setAttachmentFile((prev) => ({
-                  ...prev,
-                  plateCertificationAttachment:
-                    e.target.files?.[0] || null,
-                }))
-              }
-            />
-          </label>
-          <span className="text-sm text-gray-500">
-            {attachmentFile?.plateCertificationAttachment
-              ? attachmentFile.plateCertificationAttachment.name
-              : "No file chosen"}
-          </span>
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-600 mb-2">
-          Actual Plate Attachment (Optional)
-        </label>
-        <div className="flex items-center gap-4">
-          <label className="cursor-pointer bg-blue-50 hover:bg-blue-100 text-primary-700 font-semibold px-4 py-2.5 rounded-lg text-sm">
-            Choose File
-            <input
-              type="file"
-              accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
-              className="hidden"
-              onChange={(e) =>
-                setAttachmentFile((prev) => ({
-                  ...prev,
-                  actualPlateAttachment:
-                    e.target.files?.[0] || null,
-                }))
-              }
-            />
-          </label>
-          <span className="text-sm text-gray-500">
-            {attachmentFile?.actualPlateAttachment
-              ? attachmentFile.actualPlateAttachment.name
-              : "No file chosen"}
-          </span>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 flex-shrink-0">
@@ -240,7 +235,6 @@ export const DataMismatchModal = ({
               </span>
             )}
           </p>
-
           <div className="flex gap-3">
             <Button
               variant="secondary"
@@ -249,7 +243,6 @@ export const DataMismatchModal = ({
             >
               Cancel
             </Button>
-
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting || filledCount === 0}
