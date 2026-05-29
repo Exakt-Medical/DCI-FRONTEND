@@ -110,44 +110,7 @@ export const FinalReviewModal = ({
               label="Voucher Code"
               value={validatedVoucher?.voucherCode}
             />
-            <ReviewRow label="Policy No." value={insuranceData.policyNumber} />
             <ReviewRow label="Premium Type" value={insuranceData.premiumType} />
-            <ReviewRow
-              label="Prescribed Fee"
-              value={
-                insuranceData.prescribedPremiumFee
-                  ? `₱ ${insuranceData.prescribedPremiumFee}`
-                  : null
-              }
-            />
-            <ReviewRow
-              label="DST"
-              value={insuranceData.dst ? `₱ ${insuranceData.dst}` : null}
-            />
-            <ReviewRow
-              label="VAT"
-              value={insuranceData.vat ? `₱ ${insuranceData.vat}` : null}
-            />
-            <ReviewRow
-              label="LGT"
-              value={insuranceData.lgt ? `₱ ${insuranceData.lgt}` : null}
-            />
-            <ReviewRow
-              label="Validation Fee"
-              value={
-                insuranceData.validationFee
-                  ? `₱ ${insuranceData.validationFee}`
-                  : null
-              }
-            />
-            <ReviewRow
-              label="Total Amount"
-              value={
-                insuranceData.totalAmount
-                  ? `₱ ${insuranceData.totalAmount}`
-                  : null
-              }
-            />
           </div>
         </div>
 
