@@ -665,6 +665,22 @@ export const VerificationPage = ({ onCertificate }) => {
                 setValidatedVoucher(null);
                 setInsuranceData(initialInsuranceData);
               }}
+              onRedeem={(voucher) => {
+                setValidatedVoucher(voucher);
+                const fees =
+                  insuranceFeeMap[voucher.insuranceCode] ||
+                  insuranceFeeMap["PRIVATE CARS (INCLUDING JEEPS AND AUVS)"];
+                const newData = {
+                  selectedCode: voucher.insuranceCode,
+                  policyNumber: voucher.policyNumber,
+                  premiumType: voucher.insuranceCode,
+                  ...fees,
+                };
+                setInsuranceData({
+                  ...newData,
+                  totalAmount: calculateTotal(newData),
+                });
+              }}
             />
           </div>
         )}

@@ -84,8 +84,9 @@ export const VoucherRedemption = ({
 
   const handleRedeem = () => {
     const voucherToRedeem = validatedVoucher || localValidatedVoucher;
-    if (voucherToRedeem && onRedeem) {
-      onRedeem(voucherToRedeem);
+    if (voucherToRedeem) {
+      if (onRedeem) onRedeem(voucherToRedeem);
+      if (onValidate) onValidate(voucherToRedeem);
     }
   };
 
