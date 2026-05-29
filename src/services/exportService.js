@@ -60,4 +60,26 @@ export const exportService = {
 
     this.toCSV(exportData, filename);
   },
+
+  // Export access logs specifically
+  exportAccessLogs(logs, filename = "access_logs") {
+    if (!logs || logs.length === 0) {
+      console.warn("No logs to export");
+      return;
+    }
+
+    const formatTimestamp = (ts) => {
+      if (!ts) return "-";
+      const d = new Date(ts);
+      return Number.isNaN(d.getTime()) ? "-" : d.toLocaleString();
+    };
+
+    // Format logs for export (matching the columns shown in AccessLogsTable)
+    const exportData = logs.map((log) => ({
+      Username: log.user || "Unknown",
+      "Login Time": formatTimestamp(log.timestamp),
+    }));
+
+    this.toCSV(exportData, filename);
+  },
 };
