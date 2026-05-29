@@ -44,7 +44,7 @@ export const UserFormModal = ({
         branchId: user.branchId ? String(user.branchId) : "",
         managerId: user.managerId ? String(user.managerId) : "",
         status: user.status || "ACTIVE",
-        allowedToBuyVoucher: user.allowedToBuyVoucher ?? false,
+        allowedToBuyVoucher: user.isBuyVoucherAllowed ?? user.allowedToBuyVoucher ?? false,
       });
     } else {
       setFormData({

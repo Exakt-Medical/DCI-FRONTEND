@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useAlert } from "../../hooks/useAlert";
 import { Card } from "../../components/Card";
 import {
   Search,
@@ -24,6 +25,7 @@ import { UploadBulkModal } from "../../components/UploadBulkModal";
 export const CompanyPage = () => {
   const role = localStorage.getItem("role");
   const isViewer = role === "VIEWER";
+  const alert = useAlert();
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -128,15 +130,12 @@ export const CompanyPage = () => {
   const handleToggleActive = async (company) => {
     try {
       const newStatus = company.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
-      const response = await companyService.update(company.id, {
-        companyName: company.companyName,
+      await companyService.update(company.id, {
+        ...company,
         status: newStatus,
       });
-      setCompanies(
-        companies.map((c) =>
-          c.id === company.id ? { ...c, ...response.data } : c,
-        ),
-      );
+      await alert.success("Status Updated", `Company has been set to ${newStatus}.`);
+      await fetchCompanies();
     } catch (err) {
       console.error("Toggle active failed", err);
     }
@@ -145,9 +144,10 @@ export const CompanyPage = () => {
   const confirmDelete = async () => {
     try {
       await companyService.delete(selectedCompany.id);
-      setCompanies(companies.filter((c) => c.id !== selectedCompany.id));
+      await alert.success("Deleted", "Company has been deleted successfully.");
       setIsDeleteModalOpen(false);
       setSelectedCompany(null);
+      await fetchCompanies();
     } catch (err) {
       console.error("Delete failed", err);
     }
@@ -156,18 +156,15 @@ export const CompanyPage = () => {
   const saveCompany = async (companyData) => {
     try {
       if (isEditing && selectedCompany) {
-        const response = await companyService.update(selectedCompany.id, companyData);
-        setCompanies(
-          companies.map((c) =>
-            c.id === selectedCompany.id ? { ...c, ...response.data } : c,
-          ),
-        );
+        await companyService.update(selectedCompany.id, companyData);
+        await alert.success("Updated", "Company has been updated successfully.");
       } else {
-        const response = await companyService.create(companyData);
-        setCompanies([response.data, ...companies]);
+        await companyService.create(companyData);
+        await alert.success("Created", "Company has been created successfully.");
       }
       setIsFormModalOpen(false);
       setSelectedCompany(null);
+      await fetchCompanies();
     } catch (err) {
       console.error("Save failed", err);
     }
@@ -419,7 +416,7 @@ export const CompanyPage = () => {
 
       <UploadBulkModal
         isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
+        onClose={() => { setIsUploadModalOpen(false); fetchCompanies(); }}
         onUpload={handleBulkUpload}
         templateHeaders={companyTemplateHeaders}
         moduleName="Companies"

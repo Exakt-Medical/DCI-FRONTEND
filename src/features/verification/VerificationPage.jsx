@@ -470,7 +470,10 @@ export const VerificationPage = ({ onCertificate }) => {
     setIsConfirming(true);
     loading("Submitting final review...");
     try {
-      const res = await verificationService.confirm(verificationId);
+      const res = await verificationService.confirm(verificationId, {
+        insuranceData,
+        voucherCode: validatedVoucher?.voucherCode,
+      });
       const data = res.data;
       close();
       if (data.verificationStatus !== "COMPLETED") {

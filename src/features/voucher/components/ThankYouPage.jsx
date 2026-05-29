@@ -9,21 +9,27 @@ export function ThankYouPage({ selectedProduct, quantity, formatCurrency }) {
   const voucherCode = "CTPL-VIP-2024-001";
 
   useEffect(() => {
+    // Temporarily disabled for debugging.
     // Start redirecting after 1 second to show the message and spinner
-    const redirectTimer = setTimeout(() => {
-      setIsRedirecting(true);
-    }, 1000);
+    // const redirectTimer = setTimeout(() => {
+    //   setIsRedirecting(true);
+    // }, 1000);
 
     // Redirect to verification page after 3 seconds
-    const navigationTimer = setTimeout(() => {
-      navigate("/vvip-access/verification");
-    }, 3000);
+    // const navigationTimer = setTimeout(() => {
+    //   navigate("/vvip-access/verification");
+    // }, 3000);
 
     return () => {
-      clearTimeout(redirectTimer);
-      clearTimeout(navigationTimer);
+      // clearTimeout(redirectTimer);
+      // clearTimeout(navigationTimer);
     };
   }, [navigate]);
+
+  const handleManualRedirect = () => {
+    setIsRedirecting(true);
+    navigate("/vvip-access/verification");
+  };
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
@@ -119,10 +125,17 @@ export function ThankYouPage({ selectedProduct, quantity, formatCurrency }) {
         {/* Redirect Message with Spinner */}
         <div className="text-center max-w-md mx-auto">
           <p className="text-sm text-gray-600 mb-3">
-            Redirecting to verification page...
+            Automatic redirection is paused for debugging.
           </p>
+          <button
+            type="button"
+            onClick={handleManualRedirect}
+            className="inline-flex items-center justify-center rounded-lg bg-[#1a3a6b] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#143055]"
+          >
+            Go to Verification
+          </button>
           {isRedirecting && (
-            <div className="flex justify-center">
+            <div className="mt-4 flex justify-center">
               <div className="inline-block h-6 w-6 animate-spin rounded-full border-3 border-solid border-[#1a3a6b] border-r-transparent"></div>
             </div>
           )}

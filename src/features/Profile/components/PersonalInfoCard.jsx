@@ -9,9 +9,30 @@ export const PersonalInfoCard = ({ formData, isEditing, onChange }) => {
       <SectionHeader icon={User} title="Personal Information" />
       <div className="p-6 space-y-4">
         <InfoField
-          label="Full Name"
-          name="fullName"
-          value={formData.fullName}
+          label="First Name"
+          name="firstName"
+          value={formData.firstName}
+          isEditing={isEditing}
+          onChange={onChange}
+        />
+        <InfoField
+          label="Last Name"
+          name="lastName"
+          value={formData.lastName}
+          isEditing={isEditing}
+          onChange={onChange}
+        />
+        <InfoField
+          label="Middle Initial"
+          name="middleInitial"
+          value={formData.middleInitial}
+          isEditing={isEditing}
+          onChange={onChange}
+        />
+        <InfoField
+          label="Extension Name"
+          name="extName"
+          value={formData.extName}
           isEditing={isEditing}
           onChange={onChange}
         />
@@ -24,37 +45,10 @@ export const PersonalInfoCard = ({ formData, isEditing, onChange }) => {
           onChange={onChange}
         />
         <InfoField
-          label="Phone Number"
-          name="phone"
-          value={formData.phone}
-          isEditing={isEditing}
-          onChange={onChange}
-        />
-        <InfoField
           label="Mobile Number"
           name="mobile"
           value={formData.mobile}
           isEditing={isEditing}
-          onChange={onChange}
-        />
-        <InfoField
-          label="Birth Date"
-          name="birthDate"
-          value={formData.birthDate}
-          isEditing={isEditing}
-          type="date"
-          onChange={onChange}
-        />
-        <InfoField
-          label="Gender"
-          name="gender"
-          value={formData.gender}
-          isEditing={isEditing}
-          options={[
-            { value: "Male", label: "Male" },
-            { value: "Female", label: "Female" },
-            { value: "Other", label: "Other" },
-          ]}
           onChange={onChange}
         />
       </div>

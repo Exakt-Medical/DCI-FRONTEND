@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useAlert } from "../../hooks/useAlert";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Search, Users, Plus, Upload, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
@@ -18,6 +19,7 @@ const ROLE_TABS = ["All", "Managers", "Agents", "Sub-agents", "Admin"];
 export const AccountPage = () => {
   const role = localStorage.getItem("role");
   const isViewer = role === "VIEWER";
+  const alert = useAlert();
   const [users, setUsers] = useState([]);
   const [branches, setBranches] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -156,9 +158,10 @@ export const AccountPage = () => {
   const confirmDelete = async () => {
     try {
       await userService.delete(selectedUser.id);
-      setUsers(users.filter((u) => u.id !== selectedUser.id));
+      await alert.success("Deleted", "Account has been deleted successfully.");
       setIsDeleteModalOpen(false);
       setSelectedUser(null);
+      await fetchData();
     } catch (err) {
       console.error("Delete failed", err);
     }
@@ -166,13 +169,13 @@ export const AccountPage = () => {
 
   const handleToggleActive = async (user) => {
     try {
-      const response = await userService.update(user.id, {
+      const newStatus = user.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+      await userService.update(user.id, {
         ...user,
-        status: user.status === "ACTIVE" ? "INACTIVE" : "ACTIVE",
+        status: newStatus,
       });
-      setUsers(
-        users.map((u) => (u.id === user.id ? { ...u, ...response.data } : u)),
-      );
+      await alert.success("Status Updated", `Account has been set to ${newStatus}.`);
+      await fetchData();
     } catch (err) {
       console.error("Toggle active failed", err);
     }
@@ -184,11 +187,15 @@ export const AccountPage = () => {
         username: userData.username,
         firstName: userData.firstName,
         lastName: userData.lastName,
+        middleInitial: userData.middleInitial || "",
+        extName: userData.extName || "",
         email: userData.email || null,
+        mobile: userData.mobile || "",
         role: userData.role,
         branchId: userData.branchId ? parseInt(userData.branchId) : null,
         managerId: userData.managerId ? parseInt(userData.managerId) : null,
         status: userData.status,
+        allowedToBuyVoucher: userData.allowedToBuyVoucher,
       };
 
       if (!isEditing) {
@@ -196,18 +203,15 @@ export const AccountPage = () => {
       }
 
       if (isEditing && selectedUser) {
-        const response = await userService.update(selectedUser.id, payload);
-        setUsers(
-          users.map((u) =>
-            u.id === selectedUser.id ? { ...u, ...response.data } : u,
-          ),
-        );
+        await userService.update(selectedUser.id, payload);
+        await alert.success("Updated", "Account has been updated successfully.");
       } else {
-        const response = await userService.create(payload);
-        setUsers([response.data, ...users]);
+        await userService.create(payload);
+        await alert.success("Created", "Account has been created successfully.");
       }
       setIsFormModalOpen(false);
       setSelectedUser(null);
+      await fetchData();
     } catch (err) {
       console.error("Save failed", err);
     }
@@ -434,7 +438,7 @@ export const AccountPage = () => {
 
       <UploadBulkModal
         isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
+        onClose={() => { setIsUploadModalOpen(false); fetchData(); }}
         onUpload={handleBulkUpload}
         templateHeaders={userTemplateHeaders}
         moduleName="Users"

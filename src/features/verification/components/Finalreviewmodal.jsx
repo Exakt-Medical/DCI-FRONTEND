@@ -87,7 +87,7 @@ export const FinalReviewModal = ({
             />
             <ReviewRow label="Body Type" value={vehicleData.body_type} />
             <ReviewRow
-              label="Vehicle Category"
+              label="Vehicle Type/Denomination"
               value={vehicleData.denomination}
             />
             <ReviewRow

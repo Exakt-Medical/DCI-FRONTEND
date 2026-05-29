@@ -8,6 +8,7 @@ import { PaymentModal } from "./components/PaymentModal";
 import { ThankYouPage } from "./components/ThankYouPage";
 import { Portal } from "../../components/Portal";
 import { voucherService } from "../../services/voucherService";
+import { paymentsService } from "../../services/paymentsService";
 import {
   MOCK_ASSIGNED_VOUCHERS,
   MOCK_PRODUCTS,
@@ -34,6 +35,11 @@ export default function Vouchers({
   const [selectedQuantity, setSelectedQuantity] = useState(1);
   const [paymentReference, setPaymentReference] = useState("");
   const [generatedVouchers, setGeneratedVouchers] = useState([]);
+  const [paymentError, setPaymentError] = useState(null);
+
+  const email = localStorage.getItem("email");
+  const firstname = localStorage.getItem("firstname");
+  const lastname = localStorage.getItem("lastname");
 
   // Primary color constant
   const primaryColor = "#1a3a6b";
@@ -99,43 +105,67 @@ export default function Vouchers({
     setShowPurchaseModal(true);
   };
 
-  const handleProceedToPayment = (quantity) => {
+  const handleProceedToPayment = async (quantity) => {
+    setSelectedQuantity(quantity);
     setShowPurchaseModal(false);
-    setShowPaymentModal(true);
-  };
+    setPaymentError(null);
+    setIsProcessing(true);
 
-  const handlePaymentComplete = (paymentMethod, referenceNumber) => {
-    setPaymentReference(referenceNumber);
-    setShowPaymentModal(false);
-    setShowThankYou(true);
+    try {
+      const callbackUrl = `${window.location.origin}/thankyoupage`;
 
-    const staticVoucherCode = "CTPL-VIP-2024-001";
-
-    const vouchers = [];
-    for (let i = 0; i < selectedQuantity; i++) {
-      vouchers.push({
-        id: `VOUCHER-${Date.now()}-${i}`,
-        code: staticVoucherCode,
-        product: selectedProduct,
-        purchaseDate: new Date(),
-        status: "pending_verification",
-      });
-    }
-    setGeneratedVouchers(vouchers);
-
-    setTimeout(() => {
-      setShowThankYou(false);
-      if (onNavigate) {
-        onNavigate("/verification", {
-          state: {
-            voucherCodes: [staticVoucherCode],
-            product: selectedProduct,
-            quantity: selectedQuantity,
-            paymentReference: referenceNumber,
+      const paymentRequest = {
+        customer: {
+          contact: {
+            email: email ?? "",
+            mobile: "",
           },
-        });
+          first_name: firstname ?? "",
+          last_name: lastname ?? "",
+          billing_address: {
+            line1: "",
+            line2: "",
+            zip: "",
+            city_municipality: "",
+            state_province_region: "",
+            country_code: "PH",
+          },
+        },
+        payment: {
+          description: selectedProduct
+            ? `Payment for ${selectedProduct.productName}`
+            : "Payment for a product",
+          amount: selectedProduct
+            ? String(selectedProduct.price * quantity)
+            : "100",
+          currency: "PHP",
+          merchant_reference_id: `AAZ-INV-${Date.now()}`,
+        },
+        route: {
+          callback_url: callbackUrl,
+          notify_user: true,
+        },
+      };
+
+      const response = await paymentsService.createTlpePayment(paymentRequest);
+      const paymentLink = response?.data?.link;
+
+      if (!paymentLink) {
+        throw new Error("No payment link returned from the server.");
       }
-    }, 5000);
+
+      // Redirect in the same tab
+      window.location.href = paymentLink;
+    } catch (error) {
+      console.error("Payment failed:", error);
+      setPaymentError(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Payment initiation failed. Please try again.",
+      );
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const copyToClipboard = (text) => {
@@ -257,23 +287,14 @@ export default function Vouchers({
             selectedProduct={selectedProduct}
             formatCurrency={formatCurrency}
             isProcessing={isProcessing}
+            paymentError={paymentError}
             onConfirm={handleProceedToPayment}
-            onClose={() => setShowPurchaseModal(false)}
+            onClose={() => {
+              setShowPurchaseModal(false);
+              setPaymentError(null);
+            }}
             selectedQuantity={selectedQuantity}
             onQuantityChange={setSelectedQuantity}
-            primaryColor={primaryColor}
-          />
-        </Portal>
-      )}
-
-      {showPaymentModal && selectedProduct && (
-        <Portal>
-          <PaymentModal
-            selectedProduct={selectedProduct}
-            quantity={selectedQuantity}
-            formatCurrency={formatCurrency}
-            onClose={() => setShowPaymentModal(false)}
-            onPaymentComplete={handlePaymentComplete}
             primaryColor={primaryColor}
           />
         </Portal>

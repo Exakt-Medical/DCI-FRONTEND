@@ -182,7 +182,7 @@ function AppContent() {
     // Navigate to root-level thankyoupage with state
     navigate("/thankyoupage", {
       state: { selectedProduct, quantity },
-    });
+    }); 
   };
 
   // SHOW MAINTENANCE PAGE AS DEFAULT
@@ -221,7 +221,7 @@ function AppContent() {
         }
         return <TicketPage />;
       case "ledger":
-        if (role === "admin" || role === "manager") {
+        if (role === "admin" || role === "manager" || role === "viewer") {
           return <TransactionLedger />;
         }
         return (
@@ -232,7 +232,7 @@ function AppContent() {
           />
         );
       case "accounts":
-        if (role === "agent" || role === "subagent" || role === "viewer") {
+        if (role === "agent" || role === "subagent") {
           return (
             <PlaceholderPage
               title="Access Denied"
@@ -373,7 +373,7 @@ function AppContent() {
           />
         );
       case "activitylogs":
-        if (role === "agent" || role === "subagent" || role === "viewer") {
+        if (role === "agent" || role === "subagent") {
           return (
             <PlaceholderPage
               title="Access Denied"
@@ -395,7 +395,7 @@ function AppContent() {
         }
         return <AccessLogsPage />;
       case "transactions":
-        if (role === "agent" || role === "subagent" || role === "viewer") {
+        if (role === "agent" || role === "subagent") {
           return (
             <PlaceholderPage
               title="Access Denied"
@@ -451,6 +451,9 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Merchant callback Thank You route (merchant redirects here) */}
+        <Route path="/thankyou" element={<ThankYouPageWrapper />} />
+
         {/* Root-level Thank You page route */}
         <Route path="/thankyoupage" element={<ThankYouPageWrapper />} />
 

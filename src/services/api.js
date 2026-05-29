@@ -4,7 +4,8 @@ const API_BASE = import.meta.env.VITE_API_URL || "/api";
 
 const api = axios.create({
   baseURL: API_BASE,
-  headers: { "Content-Type": "application/json" },
+  headers: { "Content-Type": "application/json; charset=utf-8" },
+  responseType: "json",
 });
 
 api.interceptors.request.use((config) => {
@@ -22,10 +23,11 @@ api.interceptors.response.use(
       localStorage.removeItem("token");
       localStorage.removeItem("role");
       localStorage.removeItem("username");
-      window.location.href = "/login";
+      localStorage.removeItem("authView");
+      window.location.href = "/vvip-access/login";
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;

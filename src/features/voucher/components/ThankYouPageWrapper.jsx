@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ThankYouPage } from "./ThankYouPage";
 import orderService from "../../../services/orderService"; // Adjust path as needed
+import merchantService from "../../../services/merchantCallbackService";
 
 export function ThankYouPageWrapper() {
   const [searchParams] = useSearchParams();
@@ -28,6 +29,32 @@ export function ThankYouPageWrapper() {
           });
           setLoading(false);
           return;
+        }
+
+        // If merchant callback with transaction_id is present, call backend summary
+        const transactionId = searchParams.get("transaction_id") || searchParams.get("transactionId");
+        if (transactionId) {
+          try {
+            const resp = await merchantService.fetchSummary(transactionId);
+            const data = resp?.data || {};
+
+            // Map backend summary to the existing ThankYouPage props
+            const selectedProduct = {
+              name: data.voucherDescription || data.merchantReference || "Voucher",
+              price: data.amountPaid ?? 0,
+            };
+
+            const quantity = data.voucherCount || 1;
+
+            setOrderData({ selectedProduct, quantity });
+            setLoading(false);
+            return;
+          } catch (err) {
+            console.error("Merchant callback load failed:", err);
+            setError("Unable to verify payment. Please contact support.");
+            setLoading(false);
+            return;
+          }
         }
 
         // Get order ID from URL

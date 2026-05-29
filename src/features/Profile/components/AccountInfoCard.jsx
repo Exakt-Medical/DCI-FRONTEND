@@ -16,9 +16,39 @@ export const AccountInfoCard = ({ formData }) => {
             isEditing={false}
           />
           <InfoField
-            label="Account Type"
+            label="User ID"
+            name="userId"
+            value={formData.userId}
+            isEditing={false}
+          />
+          <InfoField
+            label="Role"
             name="role"
             value={formData.role}
+            isEditing={false}
+          />
+          <InfoField
+            label="Status"
+            name="status"
+            value={formData.status}
+            isEditing={false}
+          />
+          <InfoField
+            label="Branch"
+            name="branchName"
+            value={formData.branchName}
+            isEditing={false}
+          />
+          <InfoField
+            label="Company"
+            name="companyName"
+            value={formData.companyName}
+            isEditing={false}
+          />
+          <InfoField
+            label="Join Date"
+            name="dateCreated"
+            value={formData.dateCreated}
             isEditing={false}
           />
         </div>

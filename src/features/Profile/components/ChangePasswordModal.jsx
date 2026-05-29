@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card } from "../../../components/Card";
 import { Button } from "../../../components/Button";
 import { Lock } from "lucide-react";
+import { useAlert } from "../../../hooks/useAlert";
 
 export const ChangePasswordModal = ({ isOpen, onClose, onChangePassword }) => {
   const [passwordData, setPasswordData] = useState({
@@ -9,28 +10,58 @@ export const ChangePasswordModal = ({ isOpen, onClose, onChangePassword }) => {
     newPassword: "",
     confirmPassword: "",
   });
+  const [loading, setLoading] = useState(false);
+  const { error: showError, success: showSuccess } = useAlert();
 
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
     setPasswordData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert("New passwords do not match!");
+      showError("Validation Error", "New passwords do not match!");
       return;
     }
-    if (passwordData.newPassword.length < 8) {
-      alert("Password must be at least 8 characters!");
+    if (passwordData.newPassword.length < 6) {
+      showError("Validation Error", "Password must be at least 6 characters!");
       return;
     }
-    onChangePassword?.(passwordData);
-    onClose();
+    if (!passwordData.currentPassword) {
+      showError("Validation Error", "Current password is required");
+      return;
+    }
+
+    setLoading(true);
+
+    const result = await onChangePassword(
+      passwordData.currentPassword,
+      passwordData.newPassword,
+      passwordData.confirmPassword,
+    );
+
+    setLoading(false);
+
+    if (result?.success) {
+      showSuccess("Success", "Password changed successfully!");
+      onClose();
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } else {
+      showError("Error", result?.error || "Failed to change password");
+    }
+  };
+
+  const handleClose = () => {
     setPasswordData({
       currentPassword: "",
       newPassword: "",
       confirmPassword: "",
     });
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -38,7 +69,6 @@ export const ChangePasswordModal = ({ isOpen, onClose, onChangePassword }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <Card className="w-full max-w-md mx-4 overflow-hidden">
-        {/* Header with left accent bar */}
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <div className="w-1 h-5 bg-primary-500 rounded-full"></div>
@@ -86,14 +116,15 @@ export const ChangePasswordModal = ({ isOpen, onClose, onChangePassword }) => {
         </div>
 
         <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-2">
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={handleClose}>
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
+            disabled={loading}
             className="bg-primary-500 hover:bg-primary-600"
           >
-            Update Password
+            {loading ? "Updating..." : "Update Password"}
           </Button>
         </div>
       </Card>

@@ -53,6 +53,7 @@ export const ProfileHeader = ({
   onSave,
   onChangePassword,
   onLogout,
+  joinDate,
 }) => {
   return (
     <Card className="overflow-hidden">
@@ -108,11 +109,7 @@ export const ProfileHeader = ({
             <div className="flex items-center gap-4 text-xs text-gray-500">
               <span className="flex items-center gap-1">
                 <Calendar size={12} />
-                Joined: {formData.joinDate}
-              </span>
-              <span className="flex items-center gap-1">
-                <Calendar size={12} />
-                Last Login: {formData.lastLogin}
+                Joined: {joinDate || "-"}
               </span>
             </div>
           </div>
