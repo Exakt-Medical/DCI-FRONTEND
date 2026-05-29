@@ -200,8 +200,85 @@ export const TicketPage = () => {
       engineNo: formData.vehicleInfo?.engineNo ?? null,
       chassisNo: formData.vehicleInfo?.chassisNo ?? null,
     };
+
+    // Step 1: Create the support ticket
     const created = await ticketService.create(payload);
+
+    // Step 2: Upload attachments to the attachment table (if any)
+    const hasAttachments =
+      formData.attachment ||
+      formData.attachments?.crAttachment ||
+      formData.attachments?.plateCertificationAttachment ||
+      formData.attachments?.actualPlateAttachment;
+
+    if (hasAttachments) {
+      const requestedBy = `${formData.requestedBy?.name} (${formData.requestedBy?.email})`;
+      const attachmentFormData = new FormData();
+      attachmentFormData.append("referenceNumber", referenceNumber);
+      attachmentFormData.append("requestedBy", requestedBy);
+
+      // Add general attachment
+      if (formData.attachment) {
+        attachmentFormData.append("crAttachment", formData.attachment);
+      }
+
+      // Add vehicle-specific attachments
+      if (formData.attachments?.crAttachment) {
+        attachmentFormData.append(
+          "crAttachment",
+          formData.attachments.crAttachment,
+        );
+      }
+      if (formData.attachments?.plateCertificationAttachment) {
+        attachmentFormData.append(
+          "plateCertificationAttachment",
+          formData.attachments.plateCertificationAttachment,
+        );
+      }
+      if (formData.attachments?.actualPlateAttachment) {
+        attachmentFormData.append(
+          "actualPlateAttachment",
+          formData.attachments.actualPlateAttachment,
+        );
+      }
+
+      try {
+        const token = localStorage.getItem("token");
+        const API_BASE_URL = "http://localhost:8080";
+
+        const attachmentResponse = await fetch(
+          `${API_BASE_URL}/api/attachment/upload`,
+          {
+            method: "POST",
+            body: attachmentFormData,
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+
+        if (!attachmentResponse.ok) {
+          const errorText = await attachmentResponse.text();
+          console.error("Failed to upload attachments:", errorText);
+          // Don't throw error - ticket was created successfully
+        } else {
+          const attachmentResult = await attachmentResponse.json();
+          console.log(
+            "Attachments saved to attachment table:",
+            attachmentResult,
+          );
+        }
+      } catch (error) {
+        console.error("Error uploading attachments:", error);
+        // Don't throw - ticket already created
+      }
+    }
+
+    // Step 3: Update the tickets list
     setTickets((prev) => [created, ...prev]);
+
+    // Step 4: Return the created ticket with reference number for the modal
+    return created;
   };
 
   // ── Tab counts ────────────────────────────────────────────────────────────

@@ -71,20 +71,6 @@ export const AdminLayout = ({
         disabled: false,
       },
       {
-        id: "vehicles",
-        label: "Vehicles",
-        icon: Car,
-        section: "MANAGE",
-        disabled: true,
-      },
-      {
-        id: "mvtype",
-        label: "MV Type",
-        icon: FileText,
-        section: "MANAGE",
-        disabled: true,
-      },
-      {
         id: "activitylogs",
         label: "Activity Logs",
         icon: History,
@@ -247,7 +233,7 @@ export const AdminLayout = ({
         label: "Transfer",
         icon: ArrowLeftRight,
         section: "VOUCHERS",
-        disabled: true,
+        disabled: false,
       },
       {
         id: "activitylogs",
@@ -365,7 +351,7 @@ export const AdminLayout = ({
         icon: LogIn,
         section: "LOGS",
         disabled: true,
-      }
+      },
     ],
   };
 

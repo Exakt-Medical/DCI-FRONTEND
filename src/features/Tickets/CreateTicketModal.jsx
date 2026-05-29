@@ -1,11 +1,67 @@
 // components/CreateTicketModal.jsx
 import { useState } from "react";
-import { X, Send, User, FileText, AlertCircle } from "lucide-react";
+import { X, Send, User, FileText, AlertCircle, Paperclip } from "lucide-react";
 import { Card } from "../../components/Card";
 import { ConcernTypeSelector } from "./components/modals/ConcernTypeSelector";
 import { RequestorInfoSection } from "./components/modals/RequestorInfoSection";
 import { VehicleSection } from "./components/modals/VehicleSection";
 import { OtherConcernSection } from "./components/modals/OtherConcernSection";
+
+// Get the API base URL from environment or use default
+const API_BASE_URL = import.meta.env?.VITE_API_URL || "http://localhost:8080";
+
+// Helper function to get auth token
+const getAuthToken = () => {
+  // Try multiple storage locations and keys
+  const token =
+    localStorage.getItem("token") ||
+    localStorage.getItem("accessToken") ||
+    sessionStorage.getItem("token") ||
+    sessionStorage.getItem("accessToken");
+
+  // If you're using cookies instead
+  // const cookies = document.cookie.split(';').find(c => c.trim().startsWith('token='));
+  // return cookies ? cookies.split('=')[1] : null;
+
+  return token;
+};
+
+// API service with proper authentication
+const attachmentApi = {
+  upload: async (formData) => {
+    const token = getAuthToken();
+
+    if (!token) {
+      throw new Error("No authentication token found. Please log in.");
+    }
+
+    console.log("Uploading attachment with token:", !!token); // Debug: check if token exists
+
+    const response = await fetch(`${API_BASE_URL}/api/attachment/upload`, {
+      method: "POST",
+      body: formData,
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.status === 401 || response.status === 403) {
+      // Clear invalid token
+      localStorage.removeItem("token");
+      localStorage.removeItem("accessToken");
+      sessionStorage.removeItem("token");
+      throw new Error("Authentication failed. Please log in again.");
+    }
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Upload failed:", response.status, errorText);
+      throw new Error(`Failed to upload attachment: ${response.status}`);
+    }
+
+    return response.json();
+  },
+};
 
 export const CreateTicketModal = ({
   isOpen,
@@ -30,15 +86,21 @@ export const CreateTicketModal = ({
       mismatchedField: "",
     },
     otherInfo: {
-      category: "", // account, voucher, company, system, other
+      category: "",
       details: "",
     },
     attachment: null,
+    attachments: {
+      crAttachment: null,
+      plateCertificationAttachment: null,
+      actualPlateAttachment: null,
+    },
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [activeSection, setActiveSection] = useState("requestor");
+  const [uploadProgress, setUploadProgress] = useState(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -54,8 +116,17 @@ export const CreateTicketModal = ({
     if (error) setError("");
   };
 
-  const handleFileChange = (e) => {
-    setFormData((prev) => ({ ...prev, attachment: e.target.files[0] }));
+  const handleFileChange = (e, attachmentType = "general") => {
+    const file = e.target.files[0];
+
+    if (attachmentType === "general") {
+      setFormData((prev) => ({ ...prev, attachment: file }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        attachments: { ...prev.attachments, [attachmentType]: file },
+      }));
+    }
   };
 
   const handleConcernTypeChange = (typeId) => {
@@ -65,7 +136,6 @@ export const CreateTicketModal = ({
       vehicleSubType: "",
     }));
 
-    // Auto-set subject based on concern type
     if (typeId === "vehicle") {
       setFormData((prev) => ({ ...prev, subject: "Vehicle Issue" }));
     } else if (typeId === "other") {
@@ -75,7 +145,6 @@ export const CreateTicketModal = ({
 
   const handleVehicleSubTypeChange = (subTypeId) => {
     setFormData((prev) => ({ ...prev, vehicleSubType: subTypeId }));
-    // Auto-set subject based on vehicle sub-type
     const subjectText =
       subTypeId === "dataMismatch"
         ? "Vehicle Data Mismatch"
@@ -83,9 +152,71 @@ export const CreateTicketModal = ({
     setFormData((prev) => ({ ...prev, subject: subjectText }));
   };
 
+  const uploadAttachments = async (referenceNumber, requestedBy) => {
+    const uploadedAttachments = [];
+
+    const hasFiles = Object.values(formData.attachments).some(
+      (file) => file !== null,
+    );
+
+    if (!hasFiles && !formData.attachment) {
+      console.log("No files to upload");
+      return uploadedAttachments;
+    }
+
+    // Upload general attachment
+    if (formData.attachment) {
+      console.log("Uploading general attachment...");
+      const uploadFormData = new FormData();
+      uploadFormData.append("referenceNumber", referenceNumber);
+      uploadFormData.append("requestedBy", requestedBy);
+      uploadFormData.append("crAttachment", formData.attachment);
+
+      try {
+        const result = await attachmentApi.upload(uploadFormData);
+        uploadedAttachments.push(result);
+        console.log("General attachment uploaded successfully");
+      } catch (error) {
+        console.error("Failed to upload general attachment:", error);
+        throw new Error("Failed to upload attachment: " + error.message);
+      }
+    }
+
+    // Upload vehicle-specific attachments
+    const attachmentTypes = {
+      crAttachment: formData.attachments.crAttachment,
+      plateCertificationAttachment:
+        formData.attachments.plateCertificationAttachment,
+      actualPlateAttachment: formData.attachments.actualPlateAttachment,
+    };
+
+    for (const [type, file] of Object.entries(attachmentTypes)) {
+      if (file) {
+        console.log(`Uploading ${type}...`);
+        const uploadFormData = new FormData();
+        uploadFormData.append("referenceNumber", referenceNumber);
+        uploadFormData.append("requestedBy", requestedBy);
+        uploadFormData.append(type, file);
+
+        try {
+          const result = await attachmentApi.upload(uploadFormData);
+          uploadedAttachments.push(result);
+          console.log(`${type} uploaded successfully`);
+        } catch (error) {
+          console.error(`Failed to upload ${type}:`, error);
+          throw new Error(`Failed to upload ${type}: ${error.message}`);
+        }
+      }
+    }
+
+    return uploadedAttachments;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("Form submitted!");
 
+    // Validation
     if (
       !formData.requestedBy.name ||
       !formData.requestedBy.email ||
@@ -96,7 +227,6 @@ export const CreateTicketModal = ({
       return;
     }
 
-    // Only validate vehicle fields if not in login page mode
     if (!isLoginPageMode && formData.concernType === "vehicle") {
       if (!formData.vehicleSubType) {
         setError(
@@ -115,9 +245,37 @@ export const CreateTicketModal = ({
 
     setIsSubmitting(true);
     setError("");
+    setUploadProgress(null);
 
     try {
-      await onSubmit(formData);
+      setUploadProgress("Creating ticket...");
+      const ticketResult = await onSubmit(formData);
+
+      const referenceNumber =
+        ticketResult?.referenceNumber ||
+        ticketResult?.id ||
+        ticketResult?.ticketId;
+      const requestedBy = `${formData.requestedBy.name} (${formData.requestedBy.email})`;
+
+      console.log("Ticket created with reference:", referenceNumber);
+
+      // Only try to upload attachments if we have a reference number
+      if (referenceNumber) {
+        if (
+          formData.attachment ||
+          Object.values(formData.attachments).some((file) => file !== null)
+        ) {
+          setUploadProgress("Uploading attachments...");
+          await uploadAttachments(referenceNumber, requestedBy);
+        }
+      } else {
+        console.warn(
+          "No reference number received from ticket creation, skipping attachment upload",
+        );
+      }
+
+      setUploadProgress("Success!");
+
       // Reset form
       setFormData({
         requestedBy: { name: "", email: "" },
@@ -137,24 +295,32 @@ export const CreateTicketModal = ({
         },
         otherInfo: { category: "", details: "" },
         attachment: null,
+        attachments: {
+          crAttachment: null,
+          plateCertificationAttachment: null,
+          actualPlateAttachment: null,
+        },
       });
+
       onClose();
     } catch (err) {
+      console.error("Submission error:", err);
       setError(err.message || "Failed to create ticket");
     } finally {
       setIsSubmitting(false);
+      setUploadProgress(null);
     }
   };
 
   if (!isOpen) return null;
 
+  // Rest of your component remains the same...
   const sections = [
     { id: "requestor", label: "Requestor Information", icon: User },
     { id: "details", label: "Ticket Details", icon: FileText },
   ];
 
   const renderDynamicFields = () => {
-    // For login page mode - show account section for login/account issues
     if (isLoginPageMode) {
       if (
         formData.concernType === "login" ||
@@ -165,7 +331,6 @@ export const CreateTicketModal = ({
       return null;
     }
 
-    // For regular mode
     switch (formData.concernType) {
       case "vehicle":
         return (
@@ -182,6 +347,76 @@ export const CreateTicketModal = ({
       default:
         return null;
     }
+  };
+
+  const renderAttachmentFields = () => {
+    if (isLoginPageMode) return null;
+
+    if (formData.concernType === "vehicle") {
+      return (
+        <Card className="p-4">
+          <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Paperclip size={18} className="text-primary-500" />
+            Vehicle Attachments
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-medium text-gray-500">
+                CR Attachment (Optional)
+              </label>
+              <input
+                type="file"
+                onChange={(e) => handleFileChange(e, "crAttachment")}
+                accept=".jpg,.jpeg,.png,.pdf"
+                className="w-full mt-1 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-600 hover:file:bg-primary-100"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500">
+                Plate Certification Attachment (Optional)
+              </label>
+              <input
+                type="file"
+                onChange={(e) =>
+                  handleFileChange(e, "plateCertificationAttachment")
+                }
+                accept=".jpg,.jpeg,.png,.pdf"
+                className="w-full mt-1 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-600 hover:file:bg-primary-100"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-500">
+                Actual Plate Attachment (Optional)
+              </label>
+              <input
+                type="file"
+                onChange={(e) => handleFileChange(e, "actualPlateAttachment")}
+                accept=".jpg,.jpeg,.png,.pdf"
+                className="w-full mt-1 text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-600 hover:file:bg-primary-100"
+              />
+            </div>
+          </div>
+        </Card>
+      );
+    }
+
+    return (
+      <Card className="p-4">
+        <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <Paperclip size={18} className="text-primary-500" />
+          Attachment (Optional)
+        </h3>
+        <input
+          type="file"
+          onChange={(e) => handleFileChange(e, "general")}
+          accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
+          className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-600 hover:file:bg-primary-100"
+        />
+        <p className="text-xs text-gray-400 mt-2">
+          Supported formats: JPG, PNG, PDF, DOC (Max 5MB)
+        </p>
+      </Card>
+    );
   };
 
   return (
@@ -221,6 +456,7 @@ export const CreateTicketModal = ({
                 return (
                   <button
                     key={section.id}
+                    type="button"
                     onClick={() => setActiveSection(section.id)}
                     className={`flex items-center gap-2 py-3 text-sm font-medium transition-colors relative ${
                       activeSection === section.id
@@ -239,12 +475,22 @@ export const CreateTicketModal = ({
             </div>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto">
-            <div className="px-6 py-6 space-y-6">
+          {/* Form with footer inside */}
+          <form
+            onSubmit={handleSubmit}
+            className="flex-1 overflow-y-auto flex flex-col"
+          >
+            <div className="px-6 py-6 space-y-6 flex-1">
               {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-600 text-sm flex items-center gap-2">
                   <AlertCircle size={16} /> {error}
+                </div>
+              )}
+
+              {uploadProgress && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-blue-600 text-sm flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                  {uploadProgress}
                 </div>
               )}
 
@@ -263,7 +509,6 @@ export const CreateTicketModal = ({
                     isLoginPageMode={isLoginPageMode}
                   />
 
-                  {/* Subject is now auto-generated, not required as separate field */}
                   <Card className="p-4">
                     <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
                       <FileText size={18} className="text-primary-500" />
@@ -288,54 +533,39 @@ export const CreateTicketModal = ({
                   </Card>
 
                   {renderDynamicFields()}
-
-                  <Card className="p-4">
-                    <h3 className="text-base font-semibold text-gray-900 mb-4">
-                      Attachment (Optional)
-                    </h3>
-                    <input
-                      type="file"
-                      onChange={handleFileChange}
-                      accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
-                      className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-600 hover:file:bg-primary-100"
-                    />
-                    <p className="text-xs text-gray-400 mt-2">
-                      Supported formats: JPG, PNG, PDF, DOC (Max 5MB)
-                    </p>
-                  </Card>
+                  {renderAttachmentFields()}
                 </>
               )}
             </div>
-          </form>
 
-          {/* Footer */}
-          <div className="flex-shrink-0 bg-white border-t border-gray-200 px-6 py-4 rounded-b-xl flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="px-5 py-2.5 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors flex items-center gap-2 disabled:opacity-50"
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />{" "}
-                  {isLoginPageMode ? "Reporting..." : "Creating..."}
-                </>
-              ) : (
-                <>
-                  <Send size={14} />{" "}
-                  {isLoginPageMode ? "Report Issue" : "Create Ticket"}
-                </>
-              )}
-            </button>
-          </div>
+            {/* Footer inside form */}
+            <div className="flex-shrink-0 bg-white border-t border-gray-200 px-6 py-4 rounded-b-xl flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-5 py-2.5 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    {isLoginPageMode ? "Reporting..." : "Creating..."}
+                  </>
+                ) : (
+                  <>
+                    <Send size={14} />
+                    {isLoginPageMode ? "Report Issue" : "Create Ticket"}
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
         </div>
       </div>
     </div>

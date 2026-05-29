@@ -9,9 +9,19 @@ import {
   ChevronDown,
   Save,
   AlertTriangle,
+  Paperclip,
+  Download,
+  Eye,
+  FileImage,
+  FileText,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Card } from "../../../components/Card";
 import { ticketService } from "../../../services/ticketService";
+import { attachmentService } from "../../../services/attachmentService";
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:8080/api";
 
 const STATUS_FLOW = [
   { value: "OPEN", label: "Open", style: "bg-blue-100 text-blue-700" },
@@ -59,18 +69,8 @@ const formatDate = (raw) => {
       });
 };
 
-// ---------------------------------------------------------------------------
-// Parse corrections encoded in the address field
-// Format: "CORRECTIONS:[{field, label, actual, expected}]"
-// ---------------------------------------------------------------------------
 const parseCorrections = (crAttachment) => {
-  if (!crAttachment) {
-    console.log("No crAttachment provided");
-    return {};
-  }
-
-  console.log("crAttachment RAW:", crAttachment);
-  console.log("crAttachment type:", typeof crAttachment);
+  if (!crAttachment) return {};
 
   try {
     let data =
@@ -78,17 +78,15 @@ const parseCorrections = (crAttachment) => {
         ? JSON.parse(crAttachment)
         : crAttachment;
 
-    console.log("Parsed data:", data);
-    console.log("Is array:", Array.isArray(data));
-
     const FIELD_KEY_MAP = {
+      // Vehicle fields
       mv_file_number: "mvFileNo",
       plate_number: "plateNo",
       engine_number: "engineNo",
       chassis_number: "chassisNo",
       make: "make",
       series: "series",
-      model: "series", // alias for series
+      model: "series",
       color: "vehicleColor",
       vehicle_color: "vehicleColor",
       denomination: "vehicleTypeDenomination",
@@ -96,30 +94,32 @@ const parseCorrections = (crAttachment) => {
       year_model: "yearModel",
       year: "yearModel",
       classification: "classification",
-      owner_name: "ownerName",
+      // Owner fields
+      owner_firstName: "ownerFirstName",
+      owner_lastName: "ownerLastName",
+      owner_middleName: "ownerMiddleName",
       owner_address: "ownerAddress",
+      owner_contactNo: "ownerContactNo",
+      owner_email: "ownerEmail",
+      owner_tin: "ownerTin",
+      // Legacy fallbacks
+      owner_name: "ownerName",
     };
 
     const result = {};
 
-    // Handle array format: [{field, expected}]
     if (Array.isArray(data)) {
-      data.forEach(({ field, expected, actual }) => {
+      data.forEach(({ field, expected }) => {
         const key = FIELD_KEY_MAP[field] ?? field;
         if (expected) result[key] = expected;
-        console.log(`Mapping ${field} -> ${key} = ${expected}`);
       });
-    }
-    // Handle object format: {field: value}
-    else if (typeof data === "object" && data !== null) {
+    } else if (typeof data === "object" && data !== null) {
       Object.entries(data).forEach(([field, expected]) => {
         const key = FIELD_KEY_MAP[field] ?? field;
         if (expected) result[key] = expected;
-        console.log(`Mapping ${field} -> ${key} = ${expected}`);
       });
     }
 
-    console.log("Final parsed corrections:", result);
     return result;
   } catch (e) {
     console.error("Failed to parse crAttachment:", e);
@@ -127,9 +127,6 @@ const parseCorrections = (crAttachment) => {
   }
 };
 
-// ---------------------------------------------------------------------------
-// CompareRow — simple two-column row, no mismatch highlighting needed
-// ---------------------------------------------------------------------------
 const CompareRow = ({
   label,
   original,
@@ -142,10 +139,10 @@ const CompareRow = ({
     <div className="py-2.5 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 border-b border-gray-100 flex items-center">
       {label}
     </div>
-    <div className="py-2.5 px-3 text-sm text-gray-700 border-b border-gray-100 bg-white flex items-center">
+    <div className="py-2.5 px-3 text-sm text-gray-700 border-b border-gray-100 bg-white flex items-center border-l border-gray-100">
       {original || "—"}
     </div>
-    <div className="py-2.5 px-3 border-b border-gray-100 bg-green-50 flex items-center">
+    <div className="py-2.5 px-3 border-b border-gray-100 bg-green-50 flex items-center border-l border-gray-100">
       {editable ? (
         <input
           type="text"
@@ -155,8 +152,14 @@ const CompareRow = ({
           className="w-full text-sm text-gray-900 bg-transparent border-b border-green-300 focus:border-green-500 focus:outline-none placeholder-gray-400 py-0.5"
         />
       ) : (
-        <span className="text-sm text-gray-700">
-          {correctedValues[correctedKey] || original || "—"}
+        <span
+          className={`text-sm ${
+            correctedValues[correctedKey]
+              ? "text-green-700 font-medium"
+              : "text-gray-400 italic"
+          }`}
+        >
+          {correctedValues[correctedKey] || "—"}
         </span>
       )}
     </div>
@@ -180,31 +183,77 @@ export const TicketDetailModal = ({
   const [corrected, setCorrected] = useState({});
   const [chatMessage, setChatMessage] = useState("");
   const [comments, setComments] = useState([]);
+  const [attachments, setAttachments] = useState([]);
+  const [loadingAttachments, setLoadingAttachments] = useState(false);
+  const [imageErrors, setImageErrors] = useState({});
+  const [previewImage, setPreviewImage] = useState(null);
+
+  // Fetch attachments for this ticket
+  const fetchAttachments = async (referenceNumber) => {
+    if (!referenceNumber) return;
+
+    setLoadingAttachments(true);
+    try {
+      const allAttachments = await attachmentService.getAll();
+
+      const ticketAttachments = allAttachments.filter(
+        (att) => att.referenceNumber === referenceNumber,
+      );
+
+      const uniqueAttachments = new Map();
+      ticketAttachments.forEach((att) => {
+        const key = att.id || `${att.referenceNumber}-cr`;
+        if (!uniqueAttachments.has(key)) {
+          uniqueAttachments.set(key, att);
+        }
+      });
+
+      const uniqueList = Array.from(uniqueAttachments.values());
+
+      const processedAttachments = uniqueList.map((att) => ({
+        id: att.id,
+        referenceNumber: att.referenceNumber,
+        hasCrAttachment: att.crAttachment && att.crAttachment.length > 0,
+        hasPlateCertification:
+          att.plateCertificationAttachment &&
+          att.plateCertificationAttachment.length > 0,
+        hasActualPlate:
+          att.actualPlateAttachment && att.actualPlateAttachment.length > 0,
+        crAttachmentUrl:
+          att.crAttachment && att.crAttachment.length > 0
+            ? `${API_BASE_URL}/attachment/${att.id}/image/cr`
+            : null,
+        plateCertificationUrl:
+          att.plateCertificationAttachment &&
+          att.plateCertificationAttachment.length > 0
+            ? `${API_BASE_URL}/attachment/${att.id}/image/plate`
+            : null,
+        actualPlateUrl:
+          att.actualPlateAttachment && att.actualPlateAttachment.length > 0
+            ? `${API_BASE_URL}/attachment/${att.id}/image/actual`
+            : null,
+        crAttachmentName: att.crAttachmentName || "CR Attachment",
+        plateCertificationName:
+          att.plateCertificationName || "Plate Certification",
+        actualPlateName: att.actualPlateName || "Actual Plate",
+      }));
+
+      setAttachments(processedAttachments);
+    } catch (error) {
+      console.error("Failed to fetch attachments:", error);
+    } finally {
+      setLoadingAttachments(false);
+    }
+  };
 
   useEffect(() => {
-    console.log("🔥 useEffect fired", ticket);
     if (ticket) {
       setCurrentTicket(ticket);
 
-      const v = ticket.vehicleInfo ?? {};
-
-      // Debug: Log all fields that might contain corrections
-      console.log("Full ticket object keys:", Object.keys(ticket));
-      console.log("crAttachment value:", ticket.crAttachment);
-      console.log("crAttachment type:", typeof ticket.crAttachment);
-      console.log("vehicleInfo:", ticket.vehicleInfo);
-
-      // Check if corrections might be stored elsewhere
-      if (ticket.corrections)
-        console.log("corrections field:", ticket.corrections);
-      if (ticket.correctionData)
-        console.log("correctionData field:", ticket.correctionData);
-      if (ticket.metadata) console.log("metadata field:", ticket.metadata);
-
       const parsedCorrections = parseCorrections(ticket.crAttachment);
-      console.log("Parsed corrections result:", parsedCorrections);
 
       setCorrected({
+        // Vehicle fields
         mvFileNo: parsedCorrections.mvFileNo ?? "",
         plateNo: parsedCorrections.plateNo ?? "",
         engineNo: parsedCorrections.engineNo ?? "",
@@ -215,11 +264,45 @@ export const TicketDetailModal = ({
         vehicleType: parsedCorrections.vehicleTypeDenomination ?? "",
         yearModel: parsedCorrections.yearModel ?? "",
         classification: parsedCorrections.classification ?? "",
-        ownerName: parsedCorrections.ownerName ?? "",
+        // Owner fields
+        ownerFirstName: parsedCorrections.ownerFirstName ?? "",
+        ownerLastName: parsedCorrections.ownerLastName ?? "",
+        ownerMiddleName: parsedCorrections.ownerMiddleName ?? "",
         ownerAddress: parsedCorrections.ownerAddress ?? "",
+        ownerContactNo: parsedCorrections.ownerContactNo ?? "",
+        ownerEmail: parsedCorrections.ownerEmail ?? "",
+        ownerTin: parsedCorrections.ownerTin ?? "",
+        // Legacy fallback
+        ownerName: parsedCorrections.ownerName ?? "",
       });
+
+      fetchAttachments(ticket.referenceNumber);
     }
   }, [ticket]);
+
+  useEffect(() => {
+    if (currentTicket && activeTab === "livechat") {
+      fetchComments();
+    }
+  }, [currentTicket, activeTab]);
+
+  const fetchComments = async () => {
+    try {
+      const data = await commentsService.getAll();
+      const filtered = data.filter(
+        (item) => item.referenceNumber === currentTicket.referenceNumber,
+      );
+      const mapped = filtered.map((item) => ({
+        id: item.id,
+        sender: item.users,
+        message: item.comments,
+        createdAt: new Date(item.createdAt || Date.now()),
+      }));
+      setComments(mapped);
+    } catch (error) {
+      console.error("Failed to load comments", error);
+    }
+  };
 
   if (!isOpen || !currentTicket) return null;
 
@@ -293,116 +376,101 @@ export const TicketDetailModal = ({
     setIsSavingCorrection(true);
     setUpdateError(null);
     try {
-      // Build corrections array from the corrected state
       const correctionsArray = [];
       const originalVehicle = currentTicket.vehicleInfo ?? {};
 
-      // Track vehicle field changes
-      if (corrected.plateNo && corrected.plateNo !== originalVehicle.plateNo) {
+      if (corrected.plateNo && corrected.plateNo !== originalVehicle.plateNo)
         correctionsArray.push({
           field: "plate_number",
           expected: corrected.plateNo,
         });
-      }
-      if (
-        corrected.mvFileNo &&
-        corrected.mvFileNo !== originalVehicle.mvFileNo
-      ) {
+      if (corrected.mvFileNo && corrected.mvFileNo !== originalVehicle.mvFileNo)
         correctionsArray.push({
           field: "mv_file_number",
           expected: corrected.mvFileNo,
         });
-      }
-      if (
-        corrected.engineNo &&
-        corrected.engineNo !== originalVehicle.engineNo
-      ) {
+      if (corrected.engineNo && corrected.engineNo !== originalVehicle.engineNo)
         correctionsArray.push({
           field: "engine_number",
           expected: corrected.engineNo,
         });
-      }
       if (
         corrected.chassisNo &&
         corrected.chassisNo !== originalVehicle.chassisNo
-      ) {
+      )
         correctionsArray.push({
           field: "chassis_number",
           expected: corrected.chassisNo,
         });
-      }
-      if (corrected.make && corrected.make !== originalVehicle.make) {
+      if (corrected.make && corrected.make !== originalVehicle.make)
         correctionsArray.push({ field: "make", expected: corrected.make });
-      }
-      if (corrected.model && corrected.model !== originalVehicle.series) {
+      if (corrected.model && corrected.model !== originalVehicle.series)
         correctionsArray.push({ field: "series", expected: corrected.model });
-      }
-      if (corrected.color && corrected.color !== originalVehicle.color) {
+      if (corrected.color && corrected.color !== originalVehicle.color)
         correctionsArray.push({ field: "color", expected: corrected.color });
-      }
       if (
         corrected.vehicleType &&
         corrected.vehicleType !== originalVehicle.vehicleType
-      ) {
+      )
         correctionsArray.push({
           field: "denomination",
           expected: corrected.vehicleType,
         });
-      }
       if (
         corrected.yearModel &&
         corrected.yearModel !== originalVehicle.yearModel
-      ) {
+      )
         correctionsArray.push({
           field: "year_model",
           expected: corrected.yearModel,
         });
-      }
       if (
         corrected.classification &&
         corrected.classification !== originalVehicle.classification
-      ) {
+      )
         correctionsArray.push({
           field: "classification",
           expected: corrected.classification,
         });
-      }
-
-      // Track owner changes
-      if (
-        corrected.ownerName &&
-        corrected.ownerName !== currentTicket.customer
-      ) {
+      if (corrected.ownerFirstName)
         correctionsArray.push({
-          field: "owner_name",
-          expected: corrected.ownerName,
+          field: "owner_firstName",
+          expected: corrected.ownerFirstName,
         });
-      }
-      if (
-        corrected.ownerAddress &&
-        corrected.ownerAddress !== currentTicket.description
-      ) {
+      if (corrected.ownerLastName)
+        correctionsArray.push({
+          field: "owner_lastName",
+          expected: corrected.ownerLastName,
+        });
+      if (corrected.ownerMiddleName)
+        correctionsArray.push({
+          field: "owner_middleName",
+          expected: corrected.ownerMiddleName,
+        });
+      if (corrected.ownerAddress)
         correctionsArray.push({
           field: "owner_address",
           expected: corrected.ownerAddress,
         });
-      }
+      if (corrected.ownerContactNo)
+        correctionsArray.push({
+          field: "owner_contactNo",
+          expected: corrected.ownerContactNo,
+        });
+      if (corrected.ownerEmail)
+        correctionsArray.push({
+          field: "owner_email",
+          expected: corrected.ownerEmail,
+        });
+      if (corrected.ownerTin)
+        correctionsArray.push({
+          field: "owner_tin",
+          expected: corrected.ownerTin,
+        });
 
       const updated = await ticketService.update(
         currentTicket.id,
         buildPayload({
-          name: corrected.ownerName || currentTicket.customer,
-          address: corrected.ownerAddress || currentTicket.description,
-          plateNo: corrected.plateNo || null,
-          mvFileNo: corrected.mvFileNo || null,
-          make: corrected.make || null,
-          series: corrected.model || null,
-          engineNo: corrected.engineNo || null,
-          chassisNo: corrected.chassisNo || null,
-          vehicleColor: corrected.color || null,
-          vehicleTypeDenomination: corrected.vehicleType || null,
-          classification: corrected.classification || null,
-          yearModel: corrected.yearModel || null,
           crAttachment:
             correctionsArray.length > 0
               ? JSON.stringify(correctionsArray)
@@ -418,33 +486,6 @@ export const TicketDetailModal = ({
     }
   };
 
-  const fetchComments = async () => {
-    try {
-      const data = await commentsService.getAll();
-
-      const filtered = data.filter(
-        (item) => item.referenceNumber === currentTicket.referenceNumber,
-      );
-
-      useEffect(() => {
-        if (currentTicket && activeTab === "livechat") {
-          fetchComments();
-        }
-      }, [currentTicket, activeTab]);
-
-      const mapped = filtered.map((item) => ({
-        id: item.id,
-        sender: item.users,
-        message: item.comments,
-        createdAt: new Date(),
-      }));
-
-      setComments(mapped);
-    } catch (error) {
-      console.error("Failed to load comments", error);
-    }
-  };
-
   const handleEscalate = async () => {
     if (isEscalated) return;
     setIsEscalating(true);
@@ -452,10 +493,7 @@ export const TicketDetailModal = ({
     try {
       const updated = await ticketService.update(
         currentTicket.id,
-        buildPayload({
-          roleBased: "LTO",
-          escalated: "YES",
-        }),
+        buildPayload({ roleBased: "LTO", escalated: "YES" }),
       );
       setCurrentTicket(updated);
       onTicketUpdated?.(updated);
@@ -468,16 +506,13 @@ export const TicketDetailModal = ({
 
   const handleSendComment = async () => {
     if (!chatMessage.trim()) return;
-
     try {
       const payload = {
         referenceNumber: currentTicket.referenceNumber,
         users: localStorage.getItem("username") || "You",
         comments: chatMessage,
       };
-
       const saved = await commentsService.create(payload);
-
       setComments((prev) => [
         ...prev,
         {
@@ -487,11 +522,29 @@ export const TicketDetailModal = ({
           createdAt: new Date(),
         },
       ]);
-
       setChatMessage("");
     } catch (error) {
       console.error("Failed to save comment", error);
     }
+  };
+
+  const handleViewAttachment = async (url) => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error("Failed to load image");
+      const blob = await response.blob();
+      setPreviewImage(URL.createObjectURL(blob));
+    } catch (error) {
+      console.error("View failed:", error);
+      alert("Failed to view attachment.");
+    }
+  };
+
+  const handleImageError = (attachmentId, type) => {
+    setImageErrors((prev) => ({ ...prev, [`${attachmentId}-${type}`]: true }));
   };
 
   const v = currentTicket.vehicleInfo ?? {};
@@ -524,7 +577,11 @@ export const TicketDetailModal = ({
           originalKey: "vehicleType",
           original: v.vehicleType,
         },
-        { label: "Year Model", originalKey: "year", original: v.yearModel },
+        {
+          label: "Year Model",
+          originalKey: "yearModel",
+          original: v.yearModel,
+        },
         {
           label: "Classification",
           originalKey: "classification",
@@ -532,26 +589,28 @@ export const TicketDetailModal = ({
         },
       ];
 
-  const attachments = [
-    currentTicket.certificateOfRegistration && {
-      id: 1,
-      type: "Certificate of Registration",
-      name: currentTicket.certificateOfRegistration,
-      url: currentTicket.certificateOfRegistration,
+  // currentTicket.customer = full name string from `t.name` in mapTicket
+  // Split it best-effort: "FIRST MIDDLE LAST" or however it was stored
+  const fullNameParts = (currentTicket.customer ?? "").trim().split(/\s+/);
+  const ltoFirstName = fullNameParts[0] ?? "—";
+  const ltoLastName =
+    fullNameParts.length > 1 ? fullNameParts[fullNameParts.length - 1] : "—";
+  const ltoMiddleName =
+    fullNameParts.length > 2 ? fullNameParts.slice(1, -1).join(" ") : "—";
+
+  const ownerCompareRows = [
+    { label: "First Name", key: "ownerFirstName", original: ltoFirstName },
+    { label: "Last Name", key: "ownerLastName", original: ltoLastName },
+    { label: "Middle Name", key: "ownerMiddleName", original: ltoMiddleName },
+    {
+      label: "Address",
+      key: "ownerAddress",
+      original: currentTicket.description ?? "—",
     },
-    currentTicket.plateCertification && {
-      id: 2,
-      type: "Plate Certification",
-      name: currentTicket.plateCertification,
-      url: currentTicket.plateCertification,
-    },
-    currentTicket.actualPlate && {
-      id: 3,
-      type: "Actual Plate",
-      name: currentTicket.actualPlate,
-      url: currentTicket.actualPlate,
-    },
-  ].filter(Boolean);
+    { label: "Contact No.", key: "ownerContactNo", original: "—" },
+    { label: "Email", key: "ownerEmail", original: "—" },
+    { label: "TIN", key: "ownerTin", original: "—" },
+  ];
 
   const requestedBy =
     typeof currentTicket.requestedBy === "string"
@@ -563,6 +622,78 @@ export const TicketDetailModal = ({
     { id: "ticket", label: "Ticket", icon: Info },
     { id: "livechat", label: "Live Chat", icon: MessageCircle },
   ];
+
+  const renderAttachmentItem = (
+    url,
+    title,
+    description,
+    attachmentId,
+    type,
+    fileName,
+  ) => {
+    if (!url) return null;
+    return (
+      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+        <div className="flex items-center gap-3">
+          <FileImage size={20} className="text-primary-500" />
+          <div>
+            <p className="text-sm font-medium text-gray-900">{title}</p>
+            <p className="text-xs text-gray-500">{description}</p>
+            {fileName && (
+              <p className="text-xs text-gray-400 mt-0.5">{fileName}</p>
+            )}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleViewAttachment(url)}
+            className="px-3 py-1.5 text-xs font-medium text-primary-600 hover:bg-primary-50 rounded-lg transition-colors flex items-center gap-1"
+          >
+            <Eye size={14} /> View
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                const token = localStorage.getItem("token");
+                const response = await fetch(url, {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                if (response.ok) {
+                  const blob = await response.blob();
+                  const downloadUrl = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = downloadUrl;
+                  a.download =
+                    fileName || `${title}_${currentTicket.referenceNumber}.jpg`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(downloadUrl);
+                }
+              } catch (error) {
+                console.error("Download failed:", error);
+              }
+            }}
+            className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-1"
+          >
+            <Download size={14} /> Download
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const SectionHeader = ({ title }) => (
+    <div className="grid grid-cols-[180px_1fr_1fr]">
+      <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase bg-gray-50 border-b border-gray-200" />
+      <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase bg-gray-50 border-b border-l border-gray-200">
+        LTO Record
+      </div>
+      <div className="px-3 py-2 text-xs font-semibold text-green-600 uppercase bg-green-50 border-b border-l border-gray-200">
+        Corrected
+      </div>
+    </div>
+  );
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -761,25 +892,14 @@ export const TicketDetailModal = ({
                 {/* ── LTO types: two-column comparison ── */}
                 {isLTOType ? (
                   <>
+                    {/* Vehicle Information */}
                     <Card className="p-0 overflow-hidden">
                       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                         <h3 className="text-base font-semibold text-gray-900">
                           Vehicle Information
                         </h3>
                       </div>
-
-                      <div className="grid grid-cols-[180px_1fr_1fr]">
-                        <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase bg-gray-50 border-b border-gray-200" />
-
-                        <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase bg-gray-50 border-b border-l border-gray-200">
-                          Record Found
-                        </div>
-
-                        <div className="px-3 py-2 text-xs font-semibold text-green-600 uppercase bg-green-50 border-b border-l border-gray-200">
-                          Expected
-                        </div>
-                      </div>
-
+                      <SectionHeader />
                       <div className="grid grid-cols-[180px_1fr_1fr]">
                         {vehicleCompareRows.map((row) => (
                           <CompareRow
@@ -789,12 +909,13 @@ export const TicketDetailModal = ({
                             correctedKey={row.originalKey}
                             correctedValues={corrected}
                             onChange={handleCorrectedChange}
-                            editable={false}
+                            editable={true}
                           />
                         ))}
                       </div>
                     </Card>
 
+                    {/* Owner Details */}
                     {!isVehicleNotFound && (
                       <Card className="p-0 overflow-hidden">
                         <div className="px-4 py-3 border-b border-gray-100">
@@ -802,74 +923,70 @@ export const TicketDetailModal = ({
                             Owner Details
                           </h3>
                         </div>
+                        <SectionHeader />
                         <div className="grid grid-cols-[180px_1fr_1fr]">
-                          <div className="px-3 py-2 text-xs font-semibold text-gray-400 uppercase bg-gray-50 border-b border-gray-200" />
-                          <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase bg-gray-50 border-b border-l border-gray-200">
-                            Submitted
-                          </div>
-                          <div className="px-3 py-2 text-xs font-semibold text-green-600 uppercase bg-green-50 border-b border-l border-gray-200">
-                            Corrected
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-[180px_1fr_1fr]">
-                          <CompareRow
-                            label="Name"
-                            original={currentTicket.customer}
-                            correctedKey="ownerName"
-                            correctedValues={corrected}
-                            onChange={handleCorrectedChange}
-                            editable
-                          />
-                          <CompareRow
-                            label="Address"
-                            original={currentTicket.description}
-                            correctedKey="ownerAddress"
-                            correctedValues={corrected}
-                            onChange={handleCorrectedChange}
-                            editable
-                          />
+                          {ownerCompareRows.map((row) => (
+                            <CompareRow
+                              key={row.key}
+                              label={row.label}
+                              original={row.original}
+                              correctedKey={row.key}
+                              correctedValues={corrected}
+                              onChange={handleCorrectedChange}
+                              editable={true}
+                            />
+                          ))}
                         </div>
                       </Card>
                     )}
 
-                    {!isVehicleNotFound && (
-                      <Card className="p-4">
-                        <h3 className="text-base font-semibold text-gray-900 mb-4">
-                          Attachment(s)
-                        </h3>
-                        {attachments.length === 0 ? (
-                          <p className="text-sm text-gray-400">
-                            No attachments.
-                          </p>
-                        ) : (
-                          <div className="space-y-2">
-                            {attachments.map((a) => (
-                              <div
-                                key={a.id}
-                                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                              >
-                                <div>
-                                  <p className="text-sm font-medium text-gray-900">
-                                    {a.type}
-                                  </p>
-                                  <p className="text-xs text-gray-500 break-all">
-                                    {a.name}
-                                  </p>
-                                </div>
-                                <a
-                                  href={a.url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-primary-600 hover:text-primary-700 text-sm font-medium"
-                                >
-                                  View
-                                </a>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </Card>
-                    )}
+                    {/* Attachments */}
+                    <Card className="p-4">
+                      <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <Paperclip size={18} className="text-primary-500" />
+                        Attachments
+                      </h3>
+                      {loadingAttachments ? (
+                        <div className="flex justify-center py-8">
+                          <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      ) : attachments.length === 0 ? (
+                        <p className="text-sm text-gray-400 text-center py-4">
+                          No attachments found.
+                        </p>
+                      ) : (
+                        <div className="space-y-4">
+                          {attachments.map((attachment) => (
+                            <div key={attachment.id} className="space-y-3">
+                              {renderAttachmentItem(
+                                attachment.crAttachmentUrl,
+                                "CR Attachment",
+                                "Certificate of Registration",
+                                attachment.id,
+                                "cr",
+                                attachment.crAttachmentName,
+                              )}
+                              {renderAttachmentItem(
+                                attachment.plateCertificationUrl,
+                                "Plate Certification",
+                                "Certification of Plate Number",
+                                attachment.id,
+                                "plate",
+                                attachment.plateCertificationName,
+                              )}
+                              {renderAttachmentItem(
+                                attachment.actualPlateUrl,
+                                "Actual Plate",
+                                "Photo of Actual Plate",
+                                attachment.id,
+                                "actual",
+                                attachment.actualPlateName,
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </Card>
                   </>
                 ) : (
                   /* ── Other types ── */
@@ -917,6 +1034,36 @@ export const TicketDetailModal = ({
                           {currentTicket.description || "—"}
                         </p>
                       </div>
+                    </Card>
+                    <Card className="p-4">
+                      <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <Paperclip size={18} className="text-primary-500" />
+                        Attachments
+                      </h3>
+                      {loadingAttachments ? (
+                        <div className="flex justify-center py-8">
+                          <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      ) : attachments.length === 0 ? (
+                        <p className="text-sm text-gray-400 text-center py-4">
+                          No attachments found.
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {attachments.map((attachment) => (
+                            <div key={attachment.id}>
+                              {renderAttachmentItem(
+                                attachment.crAttachmentUrl,
+                                "Attachment",
+                                "Uploaded file",
+                                attachment.id,
+                                "file",
+                                attachment.crAttachmentName,
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </Card>
                   </>
                 )}
@@ -986,23 +1133,29 @@ export const TicketDetailModal = ({
                     </p>
                   </div>
                   <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-                    {comments.map((comment) => (
-                      <div key={comment.id} className="flex flex-col">
-                        <div className="bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm font-semibold text-gray-900">
-                              {comment.sender}
-                            </span>
-                            <span className="text-xs text-gray-400">
-                              {formatDate(comment.createdAt)}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-700 break-words">
-                            {comment.message}
-                          </p>
-                        </div>
+                    {comments.length === 0 ? (
+                      <div className="text-center py-8 text-gray-400">
+                        No messages yet. Start the conversation!
                       </div>
-                    ))}
+                    ) : (
+                      comments.map((comment) => (
+                        <div key={comment.id} className="flex flex-col">
+                          <div className="bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm font-semibold text-gray-900">
+                                {comment.sender}
+                              </span>
+                              <span className="text-xs text-gray-400">
+                                {formatDate(comment.createdAt)}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-700 break-words">
+                              {comment.message}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                   <div className="border-t border-gray-200 p-4 bg-white">
                     <div className="flex items-end gap-3">
@@ -1026,14 +1179,57 @@ export const TicketDetailModal = ({
             )}
           </div>
 
+          {/* Image Preview Overlay */}
+          {previewImage && (
+            <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4">
+              <button
+                onClick={() => setPreviewImage(null)}
+                className="absolute top-4 right-4 text-white text-3xl"
+              >
+                ×
+              </button>
+              <img
+                src={previewImage}
+                alt="Preview"
+                className="max-w-full max-h-[90vh] object-contain rounded-lg"
+              />
+            </div>
+          )}
+
           {/* Footer */}
-          <div className="flex-shrink-0 bg-white border-t border-gray-200 px-6 py-4 rounded-b-xl flex justify-end">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              Close
-            </button>
+          <div className="flex-shrink-0 bg-white border-t border-gray-200 px-6 py-4 rounded-b-xl flex items-center justify-between">
+            <p className="text-xs text-gray-400">
+              {isLTOType && activeTab === "ticket"
+                ? "Edit the Corrected column and save to update the ticket."
+                : ""}
+            </p>
+            <div className="flex gap-3">
+              {isLTOType && activeTab === "ticket" && (
+                <button
+                  onClick={handleSaveCorrection}
+                  disabled={isSavingCorrection}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors"
+                >
+                  {isSavingCorrection ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Saving…
+                    </>
+                  ) : (
+                    <>
+                      <Save size={14} />
+                      Save Corrections
+                    </>
+                  )}
+                </button>
+              )}
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       </div>

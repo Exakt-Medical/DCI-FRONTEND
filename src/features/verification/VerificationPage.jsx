@@ -2,7 +2,14 @@ import { useState } from "react";
 import { generateCertificatePDF } from "../../utils/generateCertificatePDF";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
-import { RefreshCw, Shield, AlertCircle, Ticket } from "lucide-react";
+import {
+  RefreshCw,
+  Shield,
+  AlertCircle,
+  Ticket,
+  Paperclip,
+  Send,
+} from "lucide-react";
 import { FinalReviewModal } from "./components/Finalreviewmodal";
 import { DataMismatchModal } from "./components/Datamismatchmodal";
 import { VehicleSearchSection } from "./components/VehicleSearchSection";
@@ -12,6 +19,7 @@ import { VoucherRedemption } from "./components/VoucherRedemption";
 import { verificationService } from "../../services/verificationService";
 import { ticketService } from "../../services/ticketService";
 import { useAlert } from "../../hooks/useAlert";
+import { attachmentService } from "../../services/attachmentService";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -133,6 +141,13 @@ export const VerificationPage = ({ onCertificate }) => {
   // ── Modal state ───────────────────────────────────────────────────────────
   const [showFinalReview, setShowFinalReview] = useState(false);
   const [showMismatchModal, setShowMismatchModal] = useState(false);
+  const [showTicketAttachmentModal, setShowTicketAttachmentModal] =
+    useState(false);
+  const [ticketAttachmentFile, setTicketAttachmentFile] = useState({
+    crAttachment: null,
+    plateCertificationAttachment: null,
+    actualPlateAttachment: null,
+  });
   const [isConfirming, setIsConfirming] = useState(false);
 
   const { success, error, loading, close } = useAlert();
@@ -406,14 +421,85 @@ export const VerificationPage = ({ onCertificate }) => {
         localStorage.setItem("ctpl_mismatch_fields", JSON.stringify(stored));
       }
 
-      await ticketService.create(ticketPayload);
+      if (!isVehicleNotFound && selectedMismatches?.length > 0) {
+        const stored = JSON.parse(
+          localStorage.getItem("ctpl_mismatch_fields") || "{}",
+        );
+
+        stored[referenceNumber] = selectedMismatches;
+
+        localStorage.setItem("ctpl_mismatch_fields", JSON.stringify(stored));
+      }
+
+      const createdTicket = await ticketService.create(ticketPayload);
+
+      const mismatchAttachmentFile = selectedMismatches?.attachmentFile;
+
+      const filesToUpload = {
+        crAttachment:
+          ticketAttachmentFile?.crAttachment ||
+          mismatchAttachmentFile?.crAttachment ||
+          null,
+
+        plateCertificationAttachment:
+          ticketAttachmentFile?.plateCertificationAttachment ||
+          mismatchAttachmentFile?.plateCertificationAttachment ||
+          null,
+
+        actualPlateAttachment:
+          ticketAttachmentFile?.actualPlateAttachment ||
+          mismatchAttachmentFile?.actualPlateAttachment ||
+          null,
+      };
+
+      if (
+        filesToUpload.crAttachment ||
+        filesToUpload.plateCertificationAttachment ||
+        filesToUpload.actualPlateAttachment
+      ) {
+        const formData = new FormData();
+
+        formData.append("referenceNumber", referenceNumber);
+
+        formData.append("requestedBy", ticketPayload.requestedBy);
+
+        if (filesToUpload.crAttachment) {
+          formData.append("crAttachment", filesToUpload.crAttachment);
+        }
+
+        if (filesToUpload.plateCertificationAttachment) {
+          formData.append(
+            "plateCertificationAttachment",
+            filesToUpload.plateCertificationAttachment,
+          );
+        }
+
+        if (filesToUpload.actualPlateAttachment) {
+          formData.append(
+            "actualPlateAttachment",
+            filesToUpload.actualPlateAttachment,
+          );
+        }
+
+        await attachmentService.upload(formData);
+      }
+
+      setTicketAttachmentFile({
+        crAttachment: null,
+        plateCertificationAttachment: null,
+        actualPlateAttachment: null,
+      });
+
+      setShowTicketAttachmentModal(false);
 
       close();
       setShowMismatchModal(false);
+
       await success("Ticket Submitted", "Support ticket successfully created.");
     } catch (err) {
       close();
       console.error("TICKET ERROR:", err);
+
       await error("Ticket Error", "Failed to create support ticket.");
     }
   };
@@ -570,7 +656,7 @@ export const VerificationPage = ({ onCertificate }) => {
           <Button
             variant="secondary"
             className="flex items-center gap-2"
-            onClick={() => handleSubmitTicket()}
+            onClick={() => setShowTicketAttachmentModal(true)}
           >
             <Ticket size={16} />
             Submit Ticket
@@ -665,6 +751,22 @@ export const VerificationPage = ({ onCertificate }) => {
                 setValidatedVoucher(null);
                 setInsuranceData(initialInsuranceData);
               }}
+              onRedeem={(voucher) => {
+                setValidatedVoucher(voucher);
+                const fees =
+                  insuranceFeeMap[voucher.insuranceCode] ||
+                  insuranceFeeMap["PRIVATE CARS (INCLUDING JEEPS AND AUVS)"];
+                const newData = {
+                  selectedCode: voucher.insuranceCode,
+                  policyNumber: voucher.policyNumber,
+                  premiumType: voucher.insuranceCode,
+                  ...fees,
+                };
+                setInsuranceData({
+                  ...newData,
+                  totalAmount: calculateTotal(newData),
+                });
+              }}
             />
           </div>
         )}
@@ -691,12 +793,163 @@ export const VerificationPage = ({ onCertificate }) => {
       {showMismatchModal && (
         <DataMismatchModal
           vehicleData={vehicleData}
+          ownerData={ownerData}
           onSubmit={(selectedMismatches) =>
             handleSubmitTicket(selectedMismatches)
           }
           onClose={() => setShowMismatchModal(false)}
           isSubmitting={isConfirming}
         />
+      )}
+
+      {showTicketAttachmentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <Paperclip size={20} className="text-primary-600" />
+                Vehicle Attachments
+              </h3>
+
+              <button
+                onClick={() => setShowTicketAttachmentModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6">
+              <div className="space-y-6">
+                {/* CR Attachment */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-2">
+                    CR Attachment (Optional)
+                  </label>
+
+                  <div className="flex items-center gap-4">
+                    <label className="cursor-pointer bg-blue-50 hover:bg-blue-100 text-primary-700 font-semibold px-5 py-3 rounded-lg">
+                      Choose File
+                      <input
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
+                        className="hidden"
+                        onChange={(e) =>
+                          setTicketAttachmentFile((prev) => ({
+                            ...prev,
+                            crAttachment: e.target.files?.[0] || null,
+                          }))
+                        }
+                      />
+                    </label>
+
+                    <span className="text-sm text-gray-500">
+                      {ticketAttachmentFile?.crAttachment
+                        ? ticketAttachmentFile.crAttachment.name
+                        : "No file chosen"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Plate Certification */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-2">
+                    Plate Certification Attachment (Optional)
+                  </label>
+
+                  <div className="flex items-center gap-4">
+                    <label className="cursor-pointer bg-blue-50 hover:bg-blue-100 text-primary-700 font-semibold px-5 py-3 rounded-lg">
+                      Choose File
+                      <input
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
+                        className="hidden"
+                        onChange={(e) =>
+                          setTicketAttachmentFile((prev) => ({
+                            ...prev,
+                            plateCertificationAttachment:
+                              e.target.files?.[0] || null,
+                          }))
+                        }
+                      />
+                    </label>
+
+                    <span className="text-sm text-gray-500">
+                      {ticketAttachmentFile?.plateCertificationAttachment
+                        ? ticketAttachmentFile.plateCertificationAttachment.name
+                        : "No file chosen"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Actual Plate */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-2">
+                    Actual Plate Attachment (Optional)
+                  </label>
+
+                  <div className="flex items-center gap-4">
+                    <label className="cursor-pointer bg-blue-50 hover:bg-blue-100 text-primary-700 font-semibold px-5 py-3 rounded-lg">
+                      Choose File
+                      <input
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
+                        className="hidden"
+                        onChange={(e) =>
+                          setTicketAttachmentFile((prev) => ({
+                            ...prev,
+                            actualPlateAttachment: e.target.files?.[0] || null,
+                          }))
+                        }
+                      />
+                    </label>
+
+                    <span className="text-sm text-gray-500">
+                      {ticketAttachmentFile?.actualPlateAttachment
+                        ? ticketAttachmentFile.actualPlateAttachment.name
+                        : "No file chosen"}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-gray-400">
+                  Supported formats: JPG, PNG, PDF, DOC (Max 5MB)
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setTicketAttachmentFile({
+                    crAttachment: null,
+                    plateCertificationAttachment: null,
+                    actualPlateAttachment: null,
+                  });
+
+                  setShowTicketAttachmentModal(false);
+                }}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                className="flex items-center gap-2"
+                onClick={() => {
+                  setShowTicketAttachmentModal(false);
+                  handleSubmitTicket();
+                }}
+              >
+                <Send size={16} />
+                Create Ticket
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Final Review Modal */}
