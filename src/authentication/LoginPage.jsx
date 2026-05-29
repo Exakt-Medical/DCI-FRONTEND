@@ -11,6 +11,8 @@ import {
   AlertCircle,
   LogIn,
   HelpCircle,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { authService } from "../services/authService";
 import DciLogo from "../assets/DCI-LOGO.png";
@@ -23,6 +25,7 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
+  const [showDemoCredentials, setShowDemoCredentials] = useState(false); // ✅ Add this
 
   useEffect(() => {
     const savedUsername = localStorage.getItem("rememberedUsername");
@@ -81,9 +84,7 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
   };
 
   const handleTicketSubmit = async (ticketData) => {
-    // Here you would send the ticket to your backend
     console.log("Ticket submitted:", ticketData);
-    // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1000));
   };
 
@@ -98,19 +99,18 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
 
             <div className="p-8">
               {/* Logo & Title */}
-              {/* Logo & Title */}
               <div className="text-center mb-6">
                 <div className="inline-flex items-center justify-center mb-4">
                   <img
                     src={DciLogo}
                     alt="DCI Logo"
-                    className="h-60 w-auto object-contain" // Changed from h-16 to h-24
+                    className="h-60 w-auto object-contain"
                   />
                 </div>
                 <h1 className="text-xl font-bold text-gray-900">
                   Vehicle Verification Insurance Program
                 </h1>
-                <h1 className="text-xl font-bold text-gray-900">Mindanao </h1>
+                <h1 className="text-xl font-bold text-gray-900">Mindanao</h1>
               </div>
 
               {/* Sign In Title */}
@@ -229,40 +229,53 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
                 </button>
               </div>
 
-              {/* Demo Credentials */}
+              {/* ✅ COLLAPSIBLE DEMO CREDENTIALS */}
               <div className="mt-5 pt-4 border-t border-gray-100">
-                <p className="text-center text-[10px] text-gray-400 mb-2">
-                  Demo Credentials
-                </p>
-                <div className="grid grid-cols-2 gap-1.5 text-[10px]">
-                  <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
-                    admin / admin123
+                <button
+                  onClick={() => setShowDemoCredentials(!showDemoCredentials)}
+                  className="w-full flex items-center justify-between text-center text-[10px] text-gray-400 mb-2 hover:text-gray-600 transition-colors group"
+                >
+                  <span className="flex-1 text-center group-hover:text-gray-500">
+                    Demo Credentials
+                  </span>
+                  {showDemoCredentials ? (
+                    <ChevronUp size={14} className="text-gray-400" />
+                  ) : (
+                    <ChevronDown size={14} className="text-gray-400" />
+                  )}
+                </button>
+
+                {showDemoCredentials && (
+                  <div className="grid grid-cols-2 gap-1.5 text-[10px] animate-in fade-in duration-200">
+                    <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
+                      admin / admin123
+                    </div>
+                    <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
+                      manager1 / manager123
+                    </div>
+                    <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
+                      manager2 / manager123
+                    </div>
+                    <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
+                      agent1 / agent123
+                    </div>
+                    <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
+                      agent2 / agent123
+                    </div>
+                    <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
+                      subagent1 / subagent123
+                    </div>
+                    <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
+                      subagent2 / subagent123
+                    </div>
+                    <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
+                      viewer1 / viewer123
+                    </div>
+                    <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
+                      viewer2 / viewer123
+                    </div>
                   </div>
-                  <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
-                    manager1 / manager123
-                  </div>
-                  <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
-                    manager2 / manager123
-                  </div>
-                  <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
-                    agent1 / agent123
-                  </div>
-                  <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
-                    agent2 / agent123
-                  </div>
-                  <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
-                    subagent1 / subagent123
-                  </div>
-                  <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
-                    subagent2 / subagent123
-                  </div>
-                  <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
-                    viewer1 / viewer123
-                  </div>
-                  <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
-                    viewer2 / viewer123
-                  </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -277,7 +290,7 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
         </div>
       </div>
 
-      {/* Create Ticket Modal - Only shows login-related concern types */}
+      {/* Create Ticket Modal */}
       <CreateTicketModal
         isOpen={showTicketModal}
         onClose={() => setShowTicketModal(false)}
