@@ -9,9 +9,19 @@ import {
   ChevronDown,
   Save,
   AlertTriangle,
+  Paperclip,
+  Download,
+  Eye,
+  FileImage,
+  FileText,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Card } from "../../../components/Card";
 import { ticketService } from "../../../services/ticketService";
+import { attachmentService } from "../../../services/attachmentService";
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:8080/api";
 
 const STATUS_FLOW = [
   { value: "OPEN", label: "Open", style: "bg-blue-100 text-blue-700" },
@@ -59,27 +69,14 @@ const formatDate = (raw) => {
       });
 };
 
-// ---------------------------------------------------------------------------
-// Parse corrections encoded in the address field
-// Format: "CORRECTIONS:[{field, label, actual, expected}]"
-// ---------------------------------------------------------------------------
 const parseCorrections = (crAttachment) => {
-  if (!crAttachment) {
-    console.log("No crAttachment provided");
-    return {};
-  }
-
-  console.log("crAttachment RAW:", crAttachment);
-  console.log("crAttachment type:", typeof crAttachment);
+  if (!crAttachment) return {};
 
   try {
     let data =
       typeof crAttachment === "string"
         ? JSON.parse(crAttachment)
         : crAttachment;
-
-    console.log("Parsed data:", data);
-    console.log("Is array:", Array.isArray(data));
 
     const FIELD_KEY_MAP = {
       mv_file_number: "mvFileNo",
@@ -88,7 +85,7 @@ const parseCorrections = (crAttachment) => {
       chassis_number: "chassisNo",
       make: "make",
       series: "series",
-      model: "series", // alias for series
+      model: "series",
       color: "vehicleColor",
       vehicle_color: "vehicleColor",
       denomination: "vehicleTypeDenomination",
@@ -102,24 +99,18 @@ const parseCorrections = (crAttachment) => {
 
     const result = {};
 
-    // Handle array format: [{field, expected}]
     if (Array.isArray(data)) {
-      data.forEach(({ field, expected, actual }) => {
+      data.forEach(({ field, expected }) => {
         const key = FIELD_KEY_MAP[field] ?? field;
         if (expected) result[key] = expected;
-        console.log(`Mapping ${field} -> ${key} = ${expected}`);
       });
-    }
-    // Handle object format: {field: value}
-    else if (typeof data === "object" && data !== null) {
+    } else if (typeof data === "object" && data !== null) {
       Object.entries(data).forEach(([field, expected]) => {
         const key = FIELD_KEY_MAP[field] ?? field;
         if (expected) result[key] = expected;
-        console.log(`Mapping ${field} -> ${key} = ${expected}`);
       });
     }
 
-    console.log("Final parsed corrections:", result);
     return result;
   } catch (e) {
     console.error("Failed to parse crAttachment:", e);
@@ -127,9 +118,6 @@ const parseCorrections = (crAttachment) => {
   }
 };
 
-// ---------------------------------------------------------------------------
-// CompareRow — simple two-column row, no mismatch highlighting needed
-// ---------------------------------------------------------------------------
 const CompareRow = ({
   label,
   original,
@@ -180,29 +168,84 @@ export const TicketDetailModal = ({
   const [corrected, setCorrected] = useState({});
   const [chatMessage, setChatMessage] = useState("");
   const [comments, setComments] = useState([]);
+  const [attachments, setAttachments] = useState([]);
+  const [loadingAttachments, setLoadingAttachments] = useState(false);
+  const [imageErrors, setImageErrors] = useState({});
+
+  // Fetch attachments for this ticket
+  const fetchAttachments = async (referenceNumber) => {
+    if (!referenceNumber) return;
+
+    setLoadingAttachments(true);
+    try {
+      const allAttachments = await attachmentService.getAll();
+      console.log("All attachments:", allAttachments);
+
+      // Filter attachments by reference number and remove duplicates
+      const ticketAttachments = allAttachments.filter(
+        (att) => att.referenceNumber === referenceNumber,
+      );
+
+      console.log("Filtered attachments:", ticketAttachments);
+
+      // Use a Map to deduplicate by attachment type
+      const uniqueAttachments = new Map();
+
+      ticketAttachments.forEach((att) => {
+        // Use id as key or combine referenceNumber + type
+        const key = att.id || `${att.referenceNumber}-cr`;
+        if (!uniqueAttachments.has(key)) {
+          uniqueAttachments.set(key, att);
+        }
+      });
+
+      const uniqueList = Array.from(uniqueAttachments.values());
+
+      // Create image URLs using the API endpoint (not direct byte array conversion)
+      const processedAttachments = uniqueList.map((att) => ({
+        id: att.id,
+        referenceNumber: att.referenceNumber,
+        hasCrAttachment: att.crAttachment && att.crAttachment.length > 0,
+        hasPlateCertification:
+          att.plateCertificationAttachment &&
+          att.plateCertificationAttachment.length > 0,
+        hasActualPlate:
+          att.actualPlateAttachment && att.actualPlateAttachment.length > 0,
+        // Use API endpoint for images instead of converting byte arrays
+        crAttachmentUrl:
+          att.crAttachment && att.crAttachment.length > 0
+            ? `${API_BASE_URL}/attachment/${att.id}/image/cr`
+            : null,
+        plateCertificationUrl:
+          att.plateCertificationAttachment &&
+          att.plateCertificationAttachment.length > 0
+            ? `${API_BASE_URL}/attachment/${att.id}/image/plate`
+            : null,
+        actualPlateUrl:
+          att.actualPlateAttachment && att.actualPlateAttachment.length > 0
+            ? `${API_BASE_URL}/attachment/${att.id}/image/actual`
+            : null,
+        crAttachmentName: att.crAttachmentName || "CR Attachment",
+        plateCertificationName:
+          att.plateCertificationName || "Plate Certification",
+        actualPlateName: att.actualPlateName || "Actual Plate",
+      }));
+
+      console.log("Processed attachments:", processedAttachments);
+      setAttachments(processedAttachments);
+    } catch (error) {
+      console.error("Failed to fetch attachments:", error);
+    } finally {
+      setLoadingAttachments(false);
+    }
+  };
 
   useEffect(() => {
-    console.log("🔥 useEffect fired", ticket);
     if (ticket) {
       setCurrentTicket(ticket);
 
       const v = ticket.vehicleInfo ?? {};
-
-      // Debug: Log all fields that might contain corrections
-      console.log("Full ticket object keys:", Object.keys(ticket));
-      console.log("crAttachment value:", ticket.crAttachment);
-      console.log("crAttachment type:", typeof ticket.crAttachment);
-      console.log("vehicleInfo:", ticket.vehicleInfo);
-
-      // Check if corrections might be stored elsewhere
-      if (ticket.corrections)
-        console.log("corrections field:", ticket.corrections);
-      if (ticket.correctionData)
-        console.log("correctionData field:", ticket.correctionData);
-      if (ticket.metadata) console.log("metadata field:", ticket.metadata);
-
       const parsedCorrections = parseCorrections(ticket.crAttachment);
-      console.log("Parsed corrections result:", parsedCorrections);
 
       setCorrected({
         mvFileNo: parsedCorrections.mvFileNo ?? "",
@@ -218,8 +261,35 @@ export const TicketDetailModal = ({
         ownerName: parsedCorrections.ownerName ?? "",
         ownerAddress: parsedCorrections.ownerAddress ?? "",
       });
+
+      // Fetch attachments when ticket loads
+      fetchAttachments(ticket.referenceNumber);
     }
   }, [ticket]);
+
+  useEffect(() => {
+    if (currentTicket && activeTab === "livechat") {
+      fetchComments();
+    }
+  }, [currentTicket, activeTab]);
+
+  const fetchComments = async () => {
+    try {
+      const data = await commentsService.getAll();
+      const filtered = data.filter(
+        (item) => item.referenceNumber === currentTicket.referenceNumber,
+      );
+      const mapped = filtered.map((item) => ({
+        id: item.id,
+        sender: item.users,
+        message: item.comments,
+        createdAt: new Date(item.createdAt || Date.now()),
+      }));
+      setComments(mapped);
+    } catch (error) {
+      console.error("Failed to load comments", error);
+    }
+  };
 
   if (!isOpen || !currentTicket) return null;
 
@@ -293,11 +363,9 @@ export const TicketDetailModal = ({
     setIsSavingCorrection(true);
     setUpdateError(null);
     try {
-      // Build corrections array from the corrected state
       const correctionsArray = [];
       const originalVehicle = currentTicket.vehicleInfo ?? {};
 
-      // Track vehicle field changes
       if (corrected.plateNo && corrected.plateNo !== originalVehicle.plateNo) {
         correctionsArray.push({
           field: "plate_number",
@@ -367,8 +435,6 @@ export const TicketDetailModal = ({
           expected: corrected.classification,
         });
       }
-
-      // Track owner changes
       if (
         corrected.ownerName &&
         corrected.ownerName !== currentTicket.customer
@@ -415,33 +481,6 @@ export const TicketDetailModal = ({
       setUpdateError(err.message ?? "Failed to save corrections.");
     } finally {
       setIsSavingCorrection(false);
-    }
-  };
-
-  const fetchComments = async () => {
-    try {
-      const data = await commentsService.getAll();
-
-      const filtered = data.filter(
-        (item) => item.referenceNumber === currentTicket.referenceNumber,
-      );
-
-      useEffect(() => {
-        if (currentTicket && activeTab === "livechat") {
-          fetchComments();
-        }
-      }, [currentTicket, activeTab]);
-
-      const mapped = filtered.map((item) => ({
-        id: item.id,
-        sender: item.users,
-        message: item.comments,
-        createdAt: new Date(),
-      }));
-
-      setComments(mapped);
-    } catch (error) {
-      console.error("Failed to load comments", error);
     }
   };
 
@@ -494,6 +533,22 @@ export const TicketDetailModal = ({
     }
   };
 
+  const handleViewAttachment = (url, fileName) => {
+    if (url) {
+      window.open(url, "_blank");
+    }
+  };
+
+  const handleImageError = (attachmentId, type) => {
+    console.error(
+      `Failed to load image for attachment ${attachmentId}, type: ${type}`,
+    );
+    setImageErrors((prev) => ({
+      ...prev,
+      [`${attachmentId}-${type}`]: true,
+    }));
+  };
+
   const v = currentTicket.vehicleInfo ?? {};
 
   const vehicleCompareRows = isVehicleNotFound
@@ -532,27 +587,6 @@ export const TicketDetailModal = ({
         },
       ];
 
-  const attachments = [
-    currentTicket.certificateOfRegistration && {
-      id: 1,
-      type: "Certificate of Registration",
-      name: currentTicket.certificateOfRegistration,
-      url: currentTicket.certificateOfRegistration,
-    },
-    currentTicket.plateCertification && {
-      id: 2,
-      type: "Plate Certification",
-      name: currentTicket.plateCertification,
-      url: currentTicket.plateCertification,
-    },
-    currentTicket.actualPlate && {
-      id: 3,
-      type: "Actual Plate",
-      name: currentTicket.actualPlate,
-      url: currentTicket.actualPlate,
-    },
-  ].filter(Boolean);
-
   const requestedBy =
     typeof currentTicket.requestedBy === "string"
       ? currentTicket.requestedBy
@@ -563,6 +597,98 @@ export const TicketDetailModal = ({
     { id: "ticket", label: "Ticket", icon: Info },
     { id: "livechat", label: "Live Chat", icon: MessageCircle },
   ];
+
+  // Function to render attachment item
+  const renderAttachmentItem = (
+    url,
+    title,
+    description,
+    attachmentId,
+    type,
+    fileName,
+  ) => {
+    const errorKey = `${attachmentId}-${type}`;
+    const hasError = imageErrors[errorKey];
+
+    if (!url) return null;
+
+    return (
+      <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+        <div className="flex items-center gap-3">
+          <FileImage size={20} className="text-primary-500" />
+          <div>
+            <p className="text-sm font-medium text-gray-900">{title}</p>
+            <p className="text-xs text-gray-500">{description}</p>
+            {fileName && (
+              <p className="text-xs text-gray-400 mt-0.5">{fileName}</p>
+            )}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => {
+              // Open image in new window with authentication header
+              const token = localStorage.getItem("token");
+              if (token) {
+                // Create a new window and fetch the image with auth header
+                const imgWindow = window.open();
+                if (imgWindow) {
+                  imgWindow.document.write(`
+                  <html>
+                    <head><title>${title}</title></head>
+                    <body style="margin:0; display:flex; justify-content:center; align-items:center; min-height:100vh; background:#f5f5f5;">
+                      <div style="text-align:center;">
+                        <img src="${url}" style="max-width:100%; max-height:90vh; object-fit:contain;" 
+                             onerror="this.style.display='none'; document.getElementById('error').style.display='block';" />
+                        <p id="error" style="display:none; color:red;">Failed to load image</p>
+                        <button onclick="window.close()" style="margin-top:20px; padding:8px 16px;">Close</button>
+                      </div>
+                    </body>
+                  </html>
+                `);
+                }
+              } else {
+                window.open(url, "_blank");
+              }
+            }}
+            className="px-3 py-1.5 text-xs font-medium text-primary-600 hover:bg-primary-50 rounded-lg transition-colors flex items-center gap-1"
+          >
+            <Eye size={14} /> View
+          </button>
+          <button
+            onClick={async () => {
+              // Download with authentication
+              try {
+                const token = localStorage.getItem("token");
+                const response = await fetch(url, {
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                  },
+                });
+                if (response.ok) {
+                  const blob = await response.blob();
+                  const downloadUrl = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = downloadUrl;
+                  a.download =
+                    fileName || `${title}_${currentTicket.referenceNumber}.jpg`;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(downloadUrl);
+                }
+              } catch (error) {
+                console.error("Download failed:", error);
+              }
+            }}
+            className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200 rounded-lg transition-colors flex items-center gap-1"
+          >
+            <Download size={14} /> Download
+          </button>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -832,44 +958,53 @@ export const TicketDetailModal = ({
                       </Card>
                     )}
 
-                    {!isVehicleNotFound && (
-                      <Card className="p-4">
-                        <h3 className="text-base font-semibold text-gray-900 mb-4">
-                          Attachment(s)
-                        </h3>
-                        {attachments.length === 0 ? (
-                          <p className="text-sm text-gray-400">
-                            No attachments.
-                          </p>
-                        ) : (
-                          <div className="space-y-2">
-                            {attachments.map((a) => (
-                              <div
-                                key={a.id}
-                                className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                              >
-                                <div>
-                                  <p className="text-sm font-medium text-gray-900">
-                                    {a.type}
-                                  </p>
-                                  <p className="text-xs text-gray-500 break-all">
-                                    {a.name}
-                                  </p>
-                                </div>
-                                <a
-                                  href={a.url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-primary-600 hover:text-primary-700 text-sm font-medium"
-                                >
-                                  View
-                                </a>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </Card>
-                    )}
+                    {/* Attachments from attachment table */}
+                    <Card className="p-4">
+                      <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <Paperclip size={18} className="text-primary-500" />
+                        Attachments
+                      </h3>
+                      {loadingAttachments ? (
+                        <div className="flex justify-center py-8">
+                          <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      ) : attachments.length === 0 ? (
+                        <p className="text-sm text-gray-400 text-center py-4">
+                          No attachments found.
+                        </p>
+                      ) : (
+                        <div className="space-y-4">
+                          {attachments.map((attachment) => (
+                            <div key={attachment.id} className="space-y-3">
+                              {renderAttachmentItem(
+                                attachment.crAttachmentUrl,
+                                "CR Attachment",
+                                "Certificate of Registration",
+                                attachment.id,
+                                "cr",
+                                attachment.crAttachmentName,
+                              )}
+                              {renderAttachmentItem(
+                                attachment.plateCertificationUrl,
+                                "Plate Certification",
+                                "Certification of Plate Number",
+                                attachment.id,
+                                "plate",
+                                attachment.plateCertificationName,
+                              )}
+                              {renderAttachmentItem(
+                                attachment.actualPlateUrl,
+                                "Actual Plate",
+                                "Photo of Actual Plate",
+                                attachment.id,
+                                "actual",
+                                attachment.actualPlateName,
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </Card>
                   </>
                 ) : (
                   /* ── Other types ── */
@@ -917,6 +1052,38 @@ export const TicketDetailModal = ({
                           {currentTicket.description || "—"}
                         </p>
                       </div>
+                    </Card>
+
+                    {/* Attachments for non-LTO types */}
+                    <Card className="p-4">
+                      <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <Paperclip size={18} className="text-primary-500" />
+                        Attachments
+                      </h3>
+                      {loadingAttachments ? (
+                        <div className="flex justify-center py-8">
+                          <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      ) : attachments.length === 0 ? (
+                        <p className="text-sm text-gray-400 text-center py-4">
+                          No attachments found.
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {attachments.map((attachment) => (
+                            <div key={attachment.id}>
+                              {renderAttachmentItem(
+                                attachment.crAttachmentUrl,
+                                "Attachment",
+                                "Uploaded file",
+                                attachment.id,
+                                "file",
+                                attachment.crAttachmentName,
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </Card>
                   </>
                 )}
@@ -986,23 +1153,29 @@ export const TicketDetailModal = ({
                     </p>
                   </div>
                   <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-                    {comments.map((comment) => (
-                      <div key={comment.id} className="flex flex-col">
-                        <div className="bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm font-semibold text-gray-900">
-                              {comment.sender}
-                            </span>
-                            <span className="text-xs text-gray-400">
-                              {formatDate(comment.createdAt)}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-700 break-words">
-                            {comment.message}
-                          </p>
-                        </div>
+                    {comments.length === 0 ? (
+                      <div className="text-center py-8 text-gray-400">
+                        No messages yet. Start the conversation!
                       </div>
-                    ))}
+                    ) : (
+                      comments.map((comment) => (
+                        <div key={comment.id} className="flex flex-col">
+                          <div className="bg-white rounded-xl px-4 py-3 shadow-sm border border-gray-100">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm font-semibold text-gray-900">
+                                {comment.sender}
+                              </span>
+                              <span className="text-xs text-gray-400">
+                                {formatDate(comment.createdAt)}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-700 break-words">
+                              {comment.message}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                   <div className="border-t border-gray-200 p-4 bg-white">
                     <div className="flex items-end gap-3">
