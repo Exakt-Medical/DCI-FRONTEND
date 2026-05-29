@@ -233,7 +233,7 @@ export const AdminLayout = ({
         label: "Transfer",
         icon: ArrowLeftRight,
         section: "VOUCHERS",
-        disabled: true,
+        disabled: false,
       },
       {
         id: "activitylogs",
