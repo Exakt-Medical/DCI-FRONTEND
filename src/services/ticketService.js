@@ -1,6 +1,6 @@
 const BASE_URL = "/api/support-ticket";
 
-// ─── Date helper ─────────────────────────────────────────────────────────────
+// ─── Date helpers ─────────────────────────────────────────────────────────────
 
 const formatDate = (raw) => {
   if (!raw) return null;
@@ -12,6 +12,25 @@ const formatDate = (raw) => {
         month: "short",
         day: "numeric",
       });
+};
+
+// ✅ Appends +08:00 to backend LocalDateTime strings so JS treats them as Manila time
+const parseManilaDate = (raw) => {
+  if (!raw) return null;
+  // If it already has timezone info (Z or +), use as-is
+  if (typeof raw === "string" && (raw.includes("Z") || raw.includes("+"))) {
+    return raw;
+  }
+  // Otherwise treat it as Manila time by appending +08:00
+  return raw + "+08:00";
+};
+
+// ✅ Returns current time adjusted to Philippine Time (UTC+8)
+const toManilaISO = () => {
+  const now = new Date();
+  const offset = 8 * 60; // UTC+8 in minutes
+  const manila = new Date(now.getTime() + offset * 60 * 1000);
+  return manila.toISOString();
 };
 
 // ─── Mappers ─────────────────────────────────────────────────────────────────
@@ -34,10 +53,11 @@ const mapTicket = (t) => ({
   statusLabel: t.status ?? "Pending",
   // escalated comes as "YES" / "NO" string from backend
   priority: t.escalated === "YES" ? "high" : "normal",
-  date: t.dateRequested,
-  lastUpdated: t.dateUpdated,
-  dateRequested: t.dateRequested,
-  dateUpdated: t.dateUpdated,
+  date: parseManilaDate(t.dateRequested),
+  lastUpdated: parseManilaDate(t.dateUpdated),
+  // ✅ Parse as Manila time so frontend displays correctly
+  dateRequested: parseManilaDate(t.dateRequested),
+  dateUpdated: parseManilaDate(t.dateUpdated),
   vehicleInfo: {
     plateNo: t.plateNo ?? "N/A",
     make: t.make ?? "N/A",
@@ -68,8 +88,9 @@ const mapToRequest = (formData) => ({
   requestedBy: formData.requestedBy ?? null,
   type: formData.type ?? null,
   processedBy: formData.processedBy ?? null,
-  dateUpdated: formData.dateUpdated ?? new Date().toISOString(),
-  dateRequested: formData.dateRequested ?? new Date().toISOString(),
+  // ✅ Use toManilaISO() so the saved time reflects Philippine Time (UTC+8)
+  dateUpdated: formData.dateUpdated ?? toManilaISO(),
+  dateRequested: formData.dateRequested ?? toManilaISO(),
   escalated: formData.escalated ?? "NO",
   roleBased: formData.roleBased ?? null,
 
@@ -118,7 +139,12 @@ export const ticketService = {
   async getAll() {
     const res = await fetch(BASE_URL, { headers: getAuthHeaders() });
     const data = await handleResponse(res);
-    return data.map(mapTicket);
+    return (
+      data
+        .map(mapTicket)
+        // ✅ Sort by dateRequested descending so newest tickets appear first
+        .sort((a, b) => new Date(b.dateRequested) - new Date(a.dateRequested))
+    );
   },
 
   /** GET /api/support-ticket/:id */
@@ -149,7 +175,7 @@ export const ticketService = {
     const data = await handleResponse(res);
     return mapTicket(data);
   },
-  //additional
+
   /** DELETE /api/support-ticket/:id */
   async delete(id) {
     const res = await fetch(`${BASE_URL}/${id}`, {

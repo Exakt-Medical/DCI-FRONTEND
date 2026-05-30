@@ -690,7 +690,7 @@ export const TicketDetailModal = ({
         LTO Record
       </div>
       <div className="px-3 py-2 text-xs font-semibold text-green-600 uppercase bg-green-50 border-b border-l border-gray-200">
-        Corrected
+        On Hand Record
       </div>
     </div>
   );
