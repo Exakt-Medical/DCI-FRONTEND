@@ -9,11 +9,14 @@ import {
   Minus,
   Send,
   Building2,
+  AlertCircle,
 } from "lucide-react";
 import { VOUCHER_VALUE, formatCurrency } from "../TransferVoucherPage";
 
 const TransferTab = ({
   agents,
+  isLoadingAgents,
+  agentsError,
   selectedAgent,
   setSelectedAgent,
   searchTerm,
@@ -34,7 +37,13 @@ const TransferTab = ({
       <Card className="p-5">
         <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
           <Users size={18} className="text-primary-600" />
-          <h3 className="text-base font-bold text-gray-900">Select Agent </h3>
+          <h3 className="text-base font-bold text-gray-900">Select Agent</h3>
+          {/* ✅ Show live count from API */}
+          {!isLoadingAgents && (
+            <span className="ml-auto text-xs text-gray-400">
+              {agents.length} agent{agents.length !== 1 ? "s" : ""} found
+            </span>
+          )}
         </div>
 
         <div className="relative mb-4">
@@ -52,31 +61,64 @@ const TransferTab = ({
         </div>
 
         <div className="space-y-2 max-h-96 overflow-y-auto">
-          {agents.map((agent) => (
-            <div
-              key={agent.id}
-              onClick={() => setSelectedAgent(agent.id)}
-              className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                selectedAgent === agent.id
-                  ? "border-primary-500 bg-primary-50"
-                  : "border-gray-200 hover:border-gray-300"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-gray-900">{agent.name}</p>
-                  <p className="text-xs text-gray-500">{agent.email}</p>
-                  <p className="text-xs text-gray-400 mt-1">{agent.branch}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs font-medium text-gray-700">
-                    Current Vouchers: {agent.assignedVouchers} vouchers
-                  </p>
+          {/* ✅ Loading state */}
+          {isLoadingAgents && (
+            <div className="flex items-center justify-center py-10 gap-2 text-gray-400">
+              <Spinner size="sm" />
+              <span className="text-sm">Loading agents...</span>
+            </div>
+          )}
+
+          {/* ✅ Error state */}
+          {!isLoadingAgents && agentsError && (
+            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg p-3 text-red-600 text-sm">
+              <AlertCircle size={16} />
+              {agentsError}
+            </div>
+          )}
+
+          {/* ✅ Agent list from API */}
+          {!isLoadingAgents &&
+            !agentsError &&
+            agents.map((agent) => (
+              <div
+                key={agent.id}
+                onClick={() => setSelectedAgent(agent.id)}
+                className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                  selectedAgent === agent.id
+                    ? "border-primary-500 bg-primary-50"
+                    : "border-gray-200 hover:border-gray-300"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-gray-900">{agent.name}</p>
+                    <p className="text-xs text-gray-500">{agent.email}</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      {agent.branch}
+                      {agent.branchCompanyName &&
+                        agent.branchCompanyName !== "—" && (
+                          <span className="text-gray-300">
+                            {" "}
+                            · {agent.branchCompanyName}
+                          </span>
+                        )}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-medium text-gray-700">
+                      {agent.assignedVouchers ?? 0} vouchers
+                    </p>
+                    {/* ✅ Show userId for reference */}
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {agent.userId}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-          {agents.length === 0 && (
+            ))}
+
+          {!isLoadingAgents && !agentsError && agents.length === 0 && (
             <p className="text-center text-gray-500 py-4">No agents found</p>
           )}
         </div>
@@ -89,7 +131,7 @@ const TransferTab = ({
           <h3 className="text-base font-bold text-gray-900">Voucher Details</h3>
         </div>
 
-        {/* Current Vouchers (Manager) - Company Balance */}
+        {/* Company Balance */}
         <div className="mb-6 p-4 bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl shadow-lg">
           <div className="flex items-center gap-2 mb-2">
             <Building2 size={16} className="text-primary-100" />

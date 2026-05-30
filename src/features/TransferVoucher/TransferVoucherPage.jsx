@@ -1,34 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import TabNavigation from "./components/TabNavigation";
 import TransferTab from "./components/TransferTab";
 import AgentsTab from "./components/AgentsTab";
 import HistoryTab from "./components/HistoryTab";
 import SuccessModal from "./components/SuccessModal";
-
-// Mock agents list
-export const mockAgents = [
-  {
-    id: 1,
-    name: "Juan Dela Cruz",
-    email: "juan.delacruz@agent.com",
-    branch: "Manila Branch",
-    assignedVouchers: 5,
-  },
-  {
-    id: 2,
-    name: "Maria Santos",
-    email: "maria.santos@agent.com",
-    branch: "Quezon City Branch",
-    assignedVouchers: 3,
-  },
-  {
-    id: 3,
-    name: "Jose Reyes",
-    email: "jose.reyes@agent.com",
-    branch: "Makati Branch",
-    assignedVouchers: 2,
-  },
-];
+import { transferVoucherService } from "../../services/transferVoucherService";
 
 export const VOUCHER_VALUE = 60;
 
@@ -49,12 +25,62 @@ const TransferVoucherPage = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [transferSuccess, setTransferSuccess] = useState(null);
-  const [agents, setAgents] = useState(mockAgents);
   const [transferHistory, setTransferHistory] = useState([]);
 
-  // Company balance - this would come from backend/API
-  const [companyBalance, setCompanyBalance] = useState(100); // Total vouchers company has
-  const [remainingBalance, setRemainingBalance] = useState(100); // Remaining vouchers
+  // ✅ Agents with real voucher counts from API
+  const [agents, setAgents] = useState([]);
+  const [isLoadingAgents, setIsLoadingAgents] = useState(true);
+  const [agentsError, setAgentsError] = useState(null);
+
+  // ✅ Manager's real voucher balance from API
+  const [companyBalance, setCompanyBalance] = useState(0);
+  const [remainingBalance, setRemainingBalance] = useState(0);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(true);
+
+  // ✅ Get logged-in manager's ID from localStorage
+  const managerId =
+    JSON.parse(localStorage.getItem("user") || "{}")?.id ||
+    localStorage.getItem("userId");
+  console.log("user from storage:", localStorage.getItem("user"));
+  console.log("userId:", localStorage.getItem("userId"));
+
+  useEffect(() => {
+    const fetchAgents = async () => {
+      try {
+        setIsLoadingAgents(true);
+        setAgentsError(null);
+        const data = await transferVoucherService.getAgentsWithVoucherCounts();
+        setAgents(data);
+      } catch (err) {
+        console.error("Failed to fetch agents:", err);
+        setAgentsError("Failed to load agents. Please try again.");
+      } finally {
+        setIsLoadingAgents(false);
+      }
+    };
+
+    fetchAgents();
+  }, []);
+
+  // ✅ Fetch manager's voucher balance on mount
+  useEffect(() => {
+    const fetchBalance = async () => {
+      if (!managerId) return;
+      try {
+        setIsLoadingBalance(true);
+        const counts =
+          await transferVoucherService.getManagerBalance(managerId);
+        setCompanyBalance(counts.total ?? 0);
+        setRemainingBalance(counts.available ?? 0);
+      } catch (err) {
+        console.error("Failed to fetch manager balance:", err);
+      } finally {
+        setIsLoadingBalance(false);
+      }
+    };
+
+    fetchBalance();
+  }, [managerId]);
 
   const filteredAgents = agents.filter(
     (agent) =>
@@ -64,15 +90,11 @@ const TransferVoucherPage = () => {
   );
 
   const incrementQuantity = () => {
-    if (quantity < remainingBalance) {
-      setQuantity(quantity + 1);
-    }
+    if (quantity < remainingBalance) setQuantity(quantity + 1);
   };
 
   const decrementQuantity = () => {
-    if (quantity > 1) {
-      setQuantity(quantity - 1);
-    }
+    if (quantity > 1) setQuantity(quantity - 1);
   };
 
   const totalVoucherValue = quantity * VOUCHER_VALUE;
@@ -82,7 +104,6 @@ const TransferVoucherPage = () => {
       alert("Please select an agent");
       return;
     }
-
     if (quantity > remainingBalance) {
       alert(
         `Insufficient balance. Only ${remainingBalance} vouchers available.`,
@@ -91,54 +112,60 @@ const TransferVoucherPage = () => {
     }
 
     setIsProcessing(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      await transferVoucherService.transfer(managerId, selectedAgent, quantity);
 
-    const agent = agents.find((a) => a.id === selectedAgent);
-    const newAssignedCount = agent.assignedVouchers + quantity;
+      const agent = agents.find((a) => a.id === selectedAgent);
+      const newAssignedCount = (agent.assignedVouchers ?? 0) + quantity;
 
-    setAgents(
-      agents.map((a) =>
-        a.id === selectedAgent
-          ? {
-              ...a,
-              assignedVouchers: newAssignedCount,
-            }
-          : a,
-      ),
-    );
+      setAgents(
+        agents.map((a) =>
+          a.id === selectedAgent
+            ? { ...a, assignedVouchers: newAssignedCount }
+            : a,
+        ),
+      );
 
-    // Update company balance
-    setRemainingBalance(remainingBalance - quantity);
+      setRemainingBalance((prev) => prev - quantity);
 
-    const newTransfer = {
-      id: transferHistory.length + 1,
-      toAgent: agent.name,
-      quantity: quantity,
-      totalValue: totalVoucherValue,
-      transferDate: new Date().toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      status: "Completed",
-      referenceNumber: `TRF-${Date.now().toString().slice(-8)}`,
-    };
-    setTransferHistory([newTransfer, ...transferHistory]);
+      const newTransfer = {
+        id: transferHistory.length + 1,
+        agentId: agent.id,
+        agentUserId: agent.userId,
+        toAgent: agent.name,
+        branch: agent.branch,
+        quantity,
+        totalValue: totalVoucherValue,
+        transferDate: new Date().toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        status: "Completed",
+        referenceNumber: `TRF-${Date.now().toString().slice(-8)}`,
+      };
+      setTransferHistory([newTransfer, ...transferHistory]);
 
-    setTransferSuccess({
-      agent: agent.name,
-      quantity: quantity,
-      totalValue: totalVoucherValue,
-      newAssignedCount: newAssignedCount,
-      remainingBalance: remainingBalance - quantity,
-    });
+      setTransferSuccess({
+        agent: agent.name,
+        agentUserId: agent.userId,
+        quantity,
+        totalValue: totalVoucherValue,
+        newAssignedCount,
+        remainingBalance: remainingBalance - quantity,
+      });
 
-    setIsProcessing(false);
-    setShowSuccessModal(true);
-    setSelectedAgent(null);
-    setQuantity(1);
+      setShowSuccessModal(true);
+      setSelectedAgent(null);
+      setQuantity(1);
+    } catch (err) {
+      console.error("Transfer failed:", err);
+      alert(err.message || "Transfer failed. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
@@ -161,6 +188,9 @@ const TransferVoucherPage = () => {
       {activeTab === "transfer" && (
         <TransferTab
           agents={filteredAgents}
+          isLoadingAgents={isLoadingAgents}
+          agentsError={agentsError}
+          isLoadingBalance={isLoadingBalance}
           selectedAgent={selectedAgent}
           setSelectedAgent={setSelectedAgent}
           searchTerm={searchTerm}
@@ -177,7 +207,13 @@ const TransferVoucherPage = () => {
         />
       )}
 
-      {activeTab === "agents" && <AgentsTab agents={agents} />}
+      {activeTab === "agents" && (
+        <AgentsTab
+          agents={agents}
+          isLoadingAgents={isLoadingAgents}
+          agentsError={agentsError}
+        />
+      )}
 
       {activeTab === "history" && (
         <HistoryTab transferHistory={transferHistory} />
