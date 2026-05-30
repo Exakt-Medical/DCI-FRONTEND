@@ -32,4 +32,37 @@ async function fetchSummary(transactionId, { timeout = 10000 } = {}) {
   }
 }
 
-export default { fetchSummary };
+function streamPaymentResult(transactionId, { onMessage, onError, timeoutMs = 15000 } = {}) {
+  if (!transactionId) throw new Error("Missing transactionId");
+
+  const url = `${API_BASE}/api/merchant-callback/stream?transactionId=${encodeURIComponent(transactionId)}`;
+  const es = new EventSource(url);
+
+  const timeoutId = setTimeout(() => {
+    es.close();
+    onError?.(new Error("SSE timeout"));
+  }, timeoutMs);
+
+  es.addEventListener("payment-result", (event) => {
+    clearTimeout(timeoutId);
+    try {
+      const data = JSON.parse(event.data);
+      onMessage?.(data);
+    } finally {
+      es.close();
+    }
+  });
+
+  es.onerror = (err) => {
+    clearTimeout(timeoutId);
+    es.close();
+    onError?.(err);
+  };
+
+  return () => {
+    clearTimeout(timeoutId);
+    es.close();
+  };
+}
+
+export default { fetchSummary, streamPaymentResult };

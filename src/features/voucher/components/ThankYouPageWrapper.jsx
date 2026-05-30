@@ -12,52 +12,55 @@ export function ThankYouPageWrapper() {
   const [orderData, setOrderData] = useState(null);
 
   useEffect(() => {
-    const loadOrder = async () => {
-      try {
-        // Check for debug mode (for frontend testing)
-        const debug = searchParams.get("debug");
-        const mock = searchParams.get("mock");
+    // Check for debug mode (for frontend testing)
+    const debug = searchParams.get("debug");
+    const mock = searchParams.get("mock");
 
-        if (debug === "true" || mock === "true") {
-          // Use mock data for frontend testing
-          setOrderData({
-            selectedProduct: {
-              name: searchParams.get("product") || "CTPL Insurance (Test)",
-              price: parseFloat(searchParams.get("price")) || 650,
-            },
-            quantity: parseInt(searchParams.get("quantity")) || 1,
-          });
+    if (debug === "true" || mock === "true") {
+      // Use mock data for frontend testing
+      setOrderData({
+        selectedProduct: {
+          name: searchParams.get("product") || "CTPL Insurance (Test)",
+          price: parseFloat(searchParams.get("price")) || 650,
+        },
+        quantity: parseInt(searchParams.get("quantity")) || 1,
+      });
+      setLoading(false);
+      return;
+    }
+
+    // If merchant callback with transaction_id is present, call backend stream
+    const transactionId = searchParams.get("transaction_id") || searchParams.get("transactionId");
+    if (transactionId) {
+      const stop = merchantService.streamPaymentResult(transactionId, {
+        onMessage: (result) => {
+          const data = result?.data || result || {};
+
+          // Map backend summary to the existing ThankYouPage props
+          const selectedProduct = {
+            name: data.voucherDescription || data.merchantReference || "Voucher",
+            price: data.amountPaid ?? 0,
+          };
+
+          const quantity = data.voucherCount || 1;
+
+          setOrderData({ selectedProduct, quantity });
           setLoading(false);
-          return;
-        }
+          setError(null);
+        },
+        onError: (err) => {
+          console.error("Merchant callback stream failed:", err);
+          setError(err.message || "Unable to verify payment. Please contact support.");
+          setLoading(false);
+        },
+      });
 
-        // If merchant callback with transaction_id is present, call backend summary
-        const transactionId = searchParams.get("transaction_id") || searchParams.get("transactionId");
-        if (transactionId) {
-          try {
-            const resp = await merchantService.fetchSummary(transactionId);
-            const data = resp?.data || {};
+      return () => stop();
+    }
 
-            // Map backend summary to the existing ThankYouPage props
-            const selectedProduct = {
-              name: data.voucherDescription || data.merchantReference || "Voucher",
-              price: data.amountPaid ?? 0,
-            };
-
-            const quantity = data.voucherCount || 1;
-
-            setOrderData({ selectedProduct, quantity });
-            setLoading(false);
-            return;
-          } catch (err) {
-            console.error("Merchant callback load failed:", err);
-            setError("Unable to verify payment. Please contact support.");
-            setLoading(false);
-            return;
-          }
-        }
-
-        // Get order ID from URL
+    // Fallback: Get order ID from URL
+    const loadOrderById = async () => {
+      try {
         const orderId = orderService.getOrderIdFromUrl();
 
         if (!orderId) {
@@ -77,7 +80,7 @@ export function ThankYouPageWrapper() {
       }
     };
 
-    loadOrder();
+    loadOrderById();
   }, [searchParams]);
 
   const formatCurrency = (amount) => {
