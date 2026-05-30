@@ -374,12 +374,12 @@ function AppContent() {
           />
         );
       case "activitylogs":
-        if (role === "agent" || role === "subagent") {
+        if (role === "agent" || role === "subagent" || role === "manager") {
           return (
             <PlaceholderPage
               title="Access Denied"
               icon="🔒"
-              description="You don't have permission to view activity logs. Only administrators and managers can access this page."
+              description="You don't have permission to view activity logs. Only administrators can access this page."
             />
           );
         }

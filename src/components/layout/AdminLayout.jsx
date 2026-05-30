@@ -240,14 +240,14 @@ export const AdminLayout = ({
         label: "Activity Logs",
         icon: History,
         section: "LOGS",
-        disabled: false,
+        disabled: true,
       },
       {
         id: "accesslogs",
         label: "Access Logs",
         icon: LogIn,
         section: "LOGS",
-        disabled: false,
+        disabled: true,
       },
       {
         id: "transactions",
