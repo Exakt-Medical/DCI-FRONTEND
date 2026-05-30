@@ -71,20 +71,6 @@ export const AdminLayout = ({
         disabled: false,
       },
       {
-        id: "vehicles",
-        label: "Vehicles",
-        icon: Car,
-        section: "MANAGE",
-        disabled: true,
-      },
-      {
-        id: "mvtype",
-        label: "MV Type",
-        icon: FileText,
-        section: "MANAGE",
-        disabled: true,
-      },
-      {
         id: "activitylogs",
         label: "Activity Logs",
         icon: History,
@@ -184,13 +170,13 @@ export const AdminLayout = ({
         section: "LOGS",
         disabled: false,
       },
-      {
-        id: "ledger",
-        label: "Ledger",
-        icon: BookOpen,
-        section: "REPORTS",
-        disabled: false,
-      },
+      // {
+      //   id: "ledger",
+      //   label: "Ledger",
+      //   icon: BookOpen,
+      //   section: "REPORTS",
+      //   disabled: false,
+      // },
     ],
     manager: [
       {
@@ -247,21 +233,21 @@ export const AdminLayout = ({
         label: "Transfer",
         icon: ArrowLeftRight,
         section: "VOUCHERS",
-        disabled: true,
+        disabled: false,
       },
       {
         id: "activitylogs",
         label: "Activity Logs",
         icon: History,
         section: "LOGS",
-        disabled: false,
+        disabled: true,
       },
       {
         id: "accesslogs",
         label: "Access Logs",
         icon: LogIn,
         section: "LOGS",
-        disabled: false,
+        disabled: true,
       },
       {
         id: "transactions",
@@ -270,14 +256,14 @@ export const AdminLayout = ({
         section: "LOGS",
         disabled: false,
       },
-      {
-        id: "ledger",
-        label: "Ledger",
-        icon: LogIn,
-        icon: BookOpen,
-        section: "REPORTS",
-        disabled: false,
-      },
+      // {
+      //   id: "ledger",
+      //   label: "Ledger",
+      //   icon: LogIn,
+      //   icon: BookOpen,
+      //   section: "REPORTS",
+      //   disabled: false,
+      // },
     ],
     agent: [
       {
@@ -365,7 +351,7 @@ export const AdminLayout = ({
         icon: LogIn,
         section: "LOGS",
         disabled: true,
-      }
+      },
     ],
   };
 

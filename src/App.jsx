@@ -29,6 +29,7 @@ import { TicketPage } from "./features/Tickets/TicketPage";
 import { MaintenancePage } from "./features/Maintenance/MaintenancePage";
 import { ThankYouPageWrapper } from "./features/voucher/components/ThankYouPageWrapper";
 import { useAlert } from "./hooks/useAlert";
+import { VerifyPage } from "./features/verification/components/VerifyPage";
 
 // Main App Content component
 function AppContent() {
@@ -182,7 +183,7 @@ function AppContent() {
     // Navigate to root-level thankyoupage with state
     navigate("/thankyoupage", {
       state: { selectedProduct, quantity },
-    }); 
+    });
   };
 
   // SHOW MAINTENANCE PAGE AS DEFAULT
@@ -208,7 +209,8 @@ function AppContent() {
           />
         );
       case "dashboard":
-        return role === "manager" ? <ManagerDashboard /> : <DashboardPage />;
+        // UPDATED: Both admin and manager use ManagerDashboard
+        return <ManagerDashboard />;
       case "tickets":
         if (role === "agent" || role === "subagent") {
           return (
@@ -373,12 +375,12 @@ function AppContent() {
           />
         );
       case "activitylogs":
-        if (role === "agent" || role === "subagent") {
+        if (role === "agent" || role === "subagent" || role === "manager") {
           return (
             <PlaceholderPage
               title="Access Denied"
               icon="🔒"
-              description="You don't have permission to view activity logs. Only administrators and managers can access this page."
+              description="You don't have permission to view activity logs. Only administrators can access this page."
             />
           );
         }
@@ -406,7 +408,7 @@ function AppContent() {
         }
         return <TransactionLogsPage />;
       default:
-        return <DashboardPage />;
+        return <ManagerDashboard />; // Also changed default to ManagerDashboard
     }
   };
 
@@ -456,6 +458,8 @@ function App() {
 
         {/* Root-level Thank You page route */}
         <Route path="/thankyoupage" element={<ThankYouPageWrapper />} />
+
+        <Route path="/verify/:authNo" element={<VerifyPage />} />
 
         {/* Main app routes */}
         <Route path="/vvip-access/*" element={<AppContent />} />

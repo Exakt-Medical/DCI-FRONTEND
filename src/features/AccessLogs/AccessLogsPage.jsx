@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card } from "../../components/Card";
 import { accessLogService } from "../../services/accessLogService";
+import { exportService } from "../../services/exportService";
 import { AccessLogsHeader } from "./components/AccessLogsHeader";
 import { AccessLogsFilters } from "./components/AccessLogsFilters";
 import { AccessLogsTable } from "./components/AccessLogsTable";
@@ -59,7 +60,11 @@ export const AccessLogsPage = () => {
   );
 
   const handleExport = () => {
-    console.log("Exporting access logs...");
+    if (filteredLogs.length === 0) {
+      alert("No logs to export");
+      return;
+    }
+    exportService.exportAccessLogs(filteredLogs, "access_logs");
   };
 
   const handleRefresh = () => {

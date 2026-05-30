@@ -1,4 +1,5 @@
 import { jsPDF } from "jspdf";
+import QRCode from "qrcode";
 import DOTRLogo from "../assets/DOTR-LOGO.png";
 import LTOLogo from "../assets/LTO-LOGO.png";
 
@@ -21,7 +22,16 @@ const getImageBase64 = (imageUrl) => {
   });
 };
 
-function drawTableRow(doc, y, label, value, pageWidth, marginLeft, labelColWidth, valueColWidth) {
+function drawTableRow(
+  doc,
+  y,
+  label,
+  value,
+  pageWidth,
+  marginLeft,
+  labelColWidth,
+  valueColWidth,
+) {
   const rowHeight = 7;
   const paddingLeft = 3;
   const paddingTop = 2.5;
@@ -40,17 +50,29 @@ function drawTableRow(doc, y, label, value, pageWidth, marginLeft, labelColWidth
 
   // Value text - Normal but slightly bold for data
   let displayValue = String(value || "-");
-  if (!displayValue.match(/\d{1,2}\/\d{1,2}\/\d{4}/) && !displayValue.includes("@")) {
+  if (
+    !displayValue.match(/\d{1,2}\/\d{1,2}\/\d{4}/) &&
+    !displayValue.includes("@")
+  ) {
     displayValue = displayValue.toUpperCase();
   }
   doc.setFont("helvetica", "bold");
   doc.setTextColor(20, 20, 20);
-  doc.text(displayValue, marginLeft + labelColWidth + paddingLeft, y + paddingTop + 3);
+  doc.text(
+    displayValue,
+    marginLeft + labelColWidth + paddingLeft,
+    y + paddingTop + 3,
+  );
 
   return y + rowHeight;
 }
 
-export async function generateCertificatePDF({ vehicle, owner, insurance, authNo }) {
+export async function generateCertificatePDF({
+  vehicle,
+  owner,
+  insurance,
+  authNo,
+}) {
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -84,7 +106,14 @@ export async function generateCertificatePDF({ vehicle, owner, insurance, authNo
   }
 
   try {
-    doc.addImage(ltoLogoBase64, "PNG", pageWidth - marginRight - 22, y - 5, 22, 22);
+    doc.addImage(
+      ltoLogoBase64,
+      "PNG",
+      pageWidth - marginRight - 22,
+      y - 5,
+      22,
+      22,
+    );
   } catch (e) {
     doc.setDrawColor(180, 30, 30);
     doc.setLineWidth(0.5);
@@ -134,13 +163,25 @@ export async function generateCertificatePDF({ vehicle, owner, insurance, authNo
     ["Chassis No.", vehicle.chassis_number],
     ["Plate No.", vehicle.plate_number],
     ["Color", vehicle.color],
-    ["Vehicle Type/Denomination", vehicle.vehicle_type || vehicle.denomination || ""],
+    [
+      "Vehicle Type/Denomination",
+      vehicle.vehicle_type || vehicle.denomination || "",
+    ],
     ["Year Model", vehicle.year_model],
     ["Classification", vehicle.classification],
   ];
 
   for (const [label, value] of vehicleRows) {
-    y = drawTableRow(doc, y, label, value, pageWidth, marginLeft, labelColWidth, valueColWidth);
+    y = drawTableRow(
+      doc,
+      y,
+      label,
+      value,
+      pageWidth,
+      marginLeft,
+      labelColWidth,
+      valueColWidth,
+    );
   }
 
   y += 8;
@@ -154,13 +195,25 @@ export async function generateCertificatePDF({ vehicle, owner, insurance, authNo
   y += 8;
 
   const premiumTypeRows = [
-    ["Premium Type", vehicle.classification
-      ? `${vehicle.classification.toUpperCase()} CARS (INCLUDING JEEPS AND AUVS)`
-      : "PRIVATE CARS (INCLUDING JEEPS AND AUVS)"],
+    [
+      "Premium Type",
+      vehicle.classification
+        ? `${vehicle.classification.toUpperCase()} CARS (INCLUDING JEEPS AND AUVS)`
+        : "PRIVATE CARS (INCLUDING JEEPS AND AUVS)",
+    ],
   ];
 
   for (const [label, value] of premiumTypeRows) {
-    y = drawTableRow(doc, y, label, value, pageWidth, marginLeft, labelColWidth, valueColWidth);
+    y = drawTableRow(
+      doc,
+      y,
+      label,
+      value,
+      pageWidth,
+      marginLeft,
+      labelColWidth,
+      valueColWidth,
+    );
   }
 
   y += 8;
@@ -190,7 +243,16 @@ export async function generateCertificatePDF({ vehicle, owner, insurance, authNo
   ];
 
   for (const [label, value] of inspectionRows) {
-    y = drawTableRow(doc, y, label, value, pageWidth, marginLeft, labelColWidth, valueColWidth);
+    y = drawTableRow(
+      doc,
+      y,
+      label,
+      value,
+      pageWidth,
+      marginLeft,
+      labelColWidth,
+      valueColWidth,
+    );
   }
 
   y += 12;
@@ -198,17 +260,25 @@ export async function generateCertificatePDF({ vehicle, owner, insurance, authNo
   // ─── QR CODE ─────────────────────────────────────────────────────────────────
   const qrSize = 28;
   const qrX = pageWidth - marginRight - qrSize;
-  doc.setDrawColor(40, 40, 40);
-  doc.setLineWidth(0.5);
-  doc.rect(qrX, y, qrSize, qrSize);
 
-  doc.setFontSize(6);
-  doc.setTextColor(80, 80, 80);
-  doc.text("[QR CODE]", qrX + 5, y + qrSize / 2 + 1);
+  try {
+    const verificationUrl = `${window.location.origin}/verify/${authNo}`;
+    const qrDataUrl = await QRCode.toDataURL(verificationUrl, {
+      width: 200,
+      margin: 1,
+    });
+    doc.addImage(qrDataUrl, "PNG", qrX, y, qrSize, qrSize);
+  } catch (e) {
+    // fallback placeholder if QR generation fails
+    doc.setDrawColor(40, 40, 40);
+    doc.setLineWidth(0.5);
+    doc.rect(qrX, y, qrSize, qrSize);
+    doc.setFontSize(6);
+    doc.setTextColor(80, 80, 80);
+    doc.text("[QR CODE]", qrX + 5, y + qrSize / 2 + 1);
+  }
 
   y += qrSize + 8;
-
-
 
   // ─── SAVE ─────────────────────────────────────────────────────────────────────
 

@@ -139,7 +139,7 @@ export default function Vouchers({
             ? String(selectedProduct.price * quantity)
             : "100",
           currency: "PHP",
-          merchant_reference_id: `AAZ-INV-${Date.now()}`,
+          merchant_reference_id: `VVIPCTPL${Date.now()}`,
         },
         route: {
           callback_url: callbackUrl,
@@ -252,7 +252,7 @@ export default function Vouchers({
 
       {activeTab === "vouchers" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {safeProducts.map((product) => (
+          {safeProducts.slice(0, 1).map((product) => (
             <ProductCard
               key={product.id}
               product={product}

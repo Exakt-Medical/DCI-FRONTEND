@@ -19,7 +19,8 @@ export const TransactionTableRow = ({ transaction }) => {
       </td>
       <td className="px-4 py-3">
         <code className="text-xs font-mono font-bold text-primary-600">
-          {transaction.refNo}
+          {transaction.referenceNo}{" "}
+          {/* ✅ CHANGE THIS - was transaction.refNo */}
         </code>
       </td>
       <td className="px-4 py-3">
