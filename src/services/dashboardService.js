@@ -1,7 +1,17 @@
+// services/dashboardService.js
 import api from "./api";
 
 export const dashboardService = {
-  getStats: () => api.get("/admin/dashboard/stats"),
-  getRecentTransactions: () => api.get("/admin/transactions/recent"),
-  getAllTransactions: () => api.get("/admin/transactions"),
+  async getDashboardData(page = 1, size = 8) {
+    try {
+      // Remove the extra /api - your baseURL already adds it
+      const response = await api.get(
+        `/dashboard/data?page=${page}&size=${size}`,
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      throw error;
+    }
+  },
 };

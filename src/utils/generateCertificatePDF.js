@@ -262,7 +262,8 @@ export async function generateCertificatePDF({
   const qrX = pageWidth - marginRight - qrSize;
 
   try {
-    const qrDataUrl = await QRCode.toDataURL(authNo, {
+    const verificationUrl = `${window.location.origin}/verify/${authNo}`;
+    const qrDataUrl = await QRCode.toDataURL(verificationUrl, {
       width: 200,
       margin: 1,
     });
