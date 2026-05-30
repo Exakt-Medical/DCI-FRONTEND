@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { CheckCircle, Car, Shield, XCircle, Loader } from "lucide-react";
+import { CheckCircle, Car, Shield, XCircle, Loader, User } from "lucide-react";
 import DOTRLogo from "../../../assets/DOTR-LOGO.png";
 import LTOLogo from "../../../assets/LTO-LOGO.png";
 import { verificationService } from "../../../services/verificationService";
@@ -51,7 +51,33 @@ export const VerifyPage = () => {
       </div>
     );
 
-  const { vehicle, owner, insurance, issuedDate, issuer } = data;
+  const {
+    issuedDate,
+    issuer,
+    // vehicle fields
+    mvFileNo,
+    plateNumber,
+    engineNumber,
+    chassisNumber,
+    make,
+    series,
+    color,
+    yearModel,
+    classification,
+    denomination,
+    // owner fields
+    ownerFirstName,
+    ownerMiddleName,
+    ownerLastName,
+    ownerAddress,
+    // insurance
+    premiumType,
+  } = data;
+
+  const ownerFullName =
+    [ownerFirstName, ownerMiddleName, ownerLastName]
+      .filter(Boolean)
+      .join(" ") || "—";
 
   const Field = ({ label, value }) => (
     <div className="bg-gray-50 rounded-lg p-3">
@@ -139,20 +165,34 @@ export const VerifyPage = () => {
           <div className="grid grid-cols-2 gap-2">
             <Field
               label="Make & Model"
-              value={`${vehicle?.make || ""} ${vehicle?.series || ""}`.trim()}
+              value={`${make || ""} ${series || ""}`.trim()}
             />
-            <Field label="MV File No." value={vehicle?.mv_file_number} />
-            <Field label="Engine No." value={vehicle?.engine_number} />
-            <Field label="Chassis No." value={vehicle?.chassis_number} />
-            <Field label="Plate No." value={vehicle?.plate_number} />
-            <Field label="Color" value={vehicle?.color} />
-            <Field
-              label="Vehicle Type / Denomination"
-              value={vehicle?.denomination || vehicle?.vehicle_type}
-            />
-            <Field label="Year Model" value={vehicle?.year_model} />
-            <Field label="Classification" value={vehicle?.classification} />
-            <Field label="Premium Type" value={insurance?.premiumType} />
+            <Field label="MV File No." value={mvFileNo} />
+            <Field label="Engine No." value={engineNumber} />
+            <Field label="Chassis No." value={chassisNumber} />
+            <Field label="Plate No." value={plateNumber} />
+            <Field label="Color" value={color} />
+            <Field label="Vehicle Type / Denomination" value={denomination} />
+            <Field label="Year Model" value={yearModel} />
+            <Field label="Classification" value={classification} />
+            <Field label="Premium Type" value={premiumType} />
+          </div>
+        </div>
+
+        {/* Owner Information */}
+        <div className="bg-white rounded-2xl shadow p-5 mb-4 border border-gray-200">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-5 h-5 bg-primary-600 rounded flex items-center justify-center">
+              <User size={12} className="text-white" />
+            </div>
+            <h3 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+              Owner Information
+            </h3>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Full Name" value={ownerFullName} />
+            <Field label="Address" value={ownerAddress} />
           </div>
         </div>
 
