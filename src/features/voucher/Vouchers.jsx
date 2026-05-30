@@ -1,3 +1,4 @@
+// features/voucher/Vouchers.jsx (UPDATED - Only Basic CTPL)
 import { useState, useEffect } from "react";
 import { ProductCard } from "./components/ProductCard";
 import { PurchaseHistoryTable } from "./components/PurchaseHistoryTable";
@@ -44,55 +45,124 @@ export default function Vouchers({
   // Primary color constant
   const primaryColor = "#1a3a6b";
 
+  // Only Basic CTPL product
+  const BASIC_CTPL_PRODUCT = {
+    id: "prod_001",
+    productName: "Basic CTPL",
+    description: "Basic coverage for third party liability as required by LTO",
+    price: 60,
+    insuranceCode: "PRIVATE CARS (INCLUDING JEEPS AND AUVS)",
+    validityDays: 365,
+    coverage: "Third Party Liability",
+    stock: 999999,
+  };
+
+  // Check for payment success callback on mount
   useEffect(() => {
+    // Check if coming from payment success
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentStatus = urlParams.get("payment_status");
+    const transactionId = urlParams.get("transaction_id");
+
+    if (paymentStatus === "success" && transactionId) {
+      createPolicyFromPayment(transactionId);
+      // Remove query params from URL
+      window.location.href = window.location.pathname;
+    }
+
     loadProducts();
     loadPurchaseHistory();
     loadAssignedVouchers();
   }, []);
 
+  const createPolicyFromPayment = (transactionId) => {
+    const newPolicy = {
+      id: `hist_${Date.now()}`,
+      policyNumber: `POL-${new Date().getFullYear()}${Math.floor(Math.random() * 1000000)}`,
+      productName: "Basic CTPL",
+      premium: 60 * selectedQuantity,
+      expirationDate: new Date(
+        new Date().setFullYear(new Date().getFullYear() + 1),
+      )
+        .toISOString()
+        .split("T")[0],
+      status: "Available",
+      voucherCode: `VCH-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+      purchaseDate: new Date().toISOString().split("T")[0],
+      transactionId: transactionId,
+      quantity: selectedQuantity,
+    };
+
+    const newAssignedVoucher = {
+      id: `vch_${Date.now()}`,
+      voucherCode: newPolicy.voucherCode,
+      productName: "Basic CTPL",
+      premium: 60,
+      status: "Available",
+      assignedBy: "Self Purchase",
+      assignedDate: new Date().toISOString().split("T")[0],
+      expiryDate: newPolicy.expirationDate,
+      assignedTo: email || "user@example.com",
+    };
+
+    setPurchaseHistory((prev) => [newPolicy, ...prev]);
+    setAssignedVouchers((prev) => [newAssignedVoucher, ...prev]);
+
+    // Save to localStorage
+    localStorage.setItem(
+      "purchaseHistory",
+      JSON.stringify([newPolicy, ...purchaseHistory]),
+    );
+    localStorage.setItem(
+      "assignedVouchers",
+      JSON.stringify([newAssignedVoucher, ...assignedVouchers]),
+    );
+
+    setPurchasedPolicy(newPolicy);
+    setShowSuccessModal(true);
+  };
+
   const loadProducts = async () => {
-    try {
-      if (voucherService.getProducts) {
-        const res = await voucherService.getProducts();
-        // Ensure we're setting an array
-        if (res?.data && Array.isArray(res.data)) {
-          setProducts(res.data);
-          return;
-        }
-      }
-      // Fallback to mock data
-      setProducts(Array.isArray(MOCK_PRODUCTS) ? MOCK_PRODUCTS : []);
-    } catch (e) {
-      console.error("Failed to load products:", e);
-      setProducts(Array.isArray(MOCK_PRODUCTS) ? MOCK_PRODUCTS : []);
-    }
+    // Always use Basic CTPL product only
+    setProducts([BASIC_CTPL_PRODUCT]);
   };
 
   const loadPurchaseHistory = async () => {
     try {
-      if (voucherService.getHistory) {
-        const res = await voucherService.getHistory();
-        if (res?.data && Array.isArray(res.data)) {
-          setPurchaseHistory(res.data);
-          return;
-        }
+      // Check localStorage for persistence
+      const storedHistory = localStorage.getItem("purchaseHistory");
+      if (storedHistory) {
+        setPurchaseHistory(JSON.parse(storedHistory));
+        return;
       }
-      setPurchaseHistory(
-        Array.isArray(MOCK_PURCHASE_HISTORY) ? MOCK_PURCHASE_HISTORY : [],
-      );
+
+      // Fallback to mock data
+      const mockData = Array.isArray(MOCK_PURCHASE_HISTORY)
+        ? MOCK_PURCHASE_HISTORY
+        : [];
+      setPurchaseHistory(mockData);
+      localStorage.setItem("purchaseHistory", JSON.stringify(mockData));
     } catch (e) {
       console.error("Failed to load history:", e);
-      setPurchaseHistory(
-        Array.isArray(MOCK_PURCHASE_HISTORY) ? MOCK_PURCHASE_HISTORY : [],
-      );
+      setPurchaseHistory([]);
     }
   };
 
   const loadAssignedVouchers = async () => {
     try {
-      setAssignedVouchers(
-        Array.isArray(MOCK_ASSIGNED_VOUCHERS) ? MOCK_ASSIGNED_VOUCHERS : [],
-      );
+      // Check localStorage for persistence
+      const storedVouchers = localStorage.getItem("assignedVouchers");
+      if (storedVouchers) {
+        setAssignedVouchers(JSON.parse(storedVouchers));
+        return;
+      }
+
+      // Fallback to mock data
+      const mockData = Array.isArray(MOCK_ASSIGNED_VOUCHERS)
+        ? MOCK_ASSIGNED_VOUCHERS
+        : [];
+      setAssignedVouchers(mockData);
+      localStorage.setItem("assignedVouchers", JSON.stringify(mockData));
     } catch (e) {
       console.error("Failed to load assigned vouchers:", e);
       setAssignedVouchers([]);
@@ -111,61 +181,54 @@ export default function Vouchers({
     setPaymentError(null);
     setIsProcessing(true);
 
-    try {
-      const callbackUrl = `${window.location.origin}/thankyoupage`;
-
-      const paymentRequest = {
-        customer: {
-          contact: {
-            email: email ?? "",
-            mobile: "",
-          },
-          first_name: firstname ?? "",
-          last_name: lastname ?? "",
-          billing_address: {
-            line1: "",
-            line2: "",
-            zip: "",
-            city_municipality: "",
-            state_province_region: "",
-            country_code: "PH",
-          },
-        },
-        payment: {
-          description: selectedProduct
-            ? `Payment for ${selectedProduct.productName}`
-            : "Payment for a product",
-          amount: selectedProduct
-            ? String(selectedProduct.price * quantity)
-            : "100",
-          currency: "PHP",
-          merchant_reference_id: `VVIPCTPL${Date.now()}`,
-        },
-        route: {
-          callback_url: callbackUrl,
-          notify_user: true,
-        },
+    // For demo purposes, simulate payment success
+    setTimeout(() => {
+      const newPolicy = {
+        id: `hist_${Date.now()}`,
+        policyNumber: `POL-${new Date().getFullYear()}${Math.floor(Math.random() * 1000000)}`,
+        productName: "Basic CTPL",
+        premium: 60 * quantity,
+        expirationDate: new Date(
+          new Date().setFullYear(new Date().getFullYear() + 1),
+        )
+          .toISOString()
+          .split("T")[0],
+        status: "Available",
+        voucherCode: `VCH-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+        purchaseDate: new Date().toISOString().split("T")[0],
+        transactionId: `TXN-${Date.now()}`,
+        quantity: quantity,
       };
 
-      const response = await paymentsService.createTlpePayment(paymentRequest);
-      const paymentLink = response?.data?.link;
-
-      if (!paymentLink) {
-        throw new Error("No payment link returned from the server.");
+      // Create multiple voucher codes if quantity > 1
+      const newVouchers = [];
+      for (let i = 0; i < quantity; i++) {
+        newVouchers.push({
+          id: `vch_${Date.now()}_${i}`,
+          voucherCode: `VCH-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
+          productName: "Basic CTPL",
+          premium: 60,
+          status: "Available",
+          assignedBy: "Self Purchase",
+          assignedDate: new Date().toISOString().split("T")[0],
+          expiryDate: newPolicy.expirationDate,
+          assignedTo: email || "user@example.com",
+        });
       }
 
-      // Redirect in the same tab
-      window.location.href = paymentLink;
-    } catch (error) {
-      console.error("Payment failed:", error);
-      setPaymentError(
-        error?.response?.data?.message ||
-          error?.message ||
-          "Payment initiation failed. Please try again.",
-      );
-    } finally {
+      setPurchaseHistory((prev) => [newPolicy, ...prev]);
+      setAssignedVouchers((prev) => [...newVouchers, ...prev]);
+
+      // Save to localStorage
+      const updatedHistory = [newPolicy, ...purchaseHistory];
+      const updatedVouchers = [...newVouchers, ...assignedVouchers];
+      localStorage.setItem("purchaseHistory", JSON.stringify(updatedHistory));
+      localStorage.setItem("assignedVouchers", JSON.stringify(updatedVouchers));
+
+      setPurchasedPolicy(newPolicy);
+      setShowSuccessModal(true);
       setIsProcessing(false);
-    }
+    }, 2000);
   };
 
   const copyToClipboard = (text) => {
@@ -181,7 +244,6 @@ export default function Vouchers({
     }).format(amount);
   };
 
-  // Add a safety check before rendering products
   const safeProducts = Array.isArray(products) ? products : [];
   const safePurchaseHistory = Array.isArray(purchaseHistory)
     ? purchaseHistory
@@ -210,7 +272,7 @@ export default function Vouchers({
                 : "text-gray-500 hover:text-gray-700"
             }`}
           >
-            Available Plans
+            Purchase Vouchers
             {activeTab === "vouchers" && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500 rounded-full"></div>
             )}
@@ -252,7 +314,7 @@ export default function Vouchers({
 
       {activeTab === "vouchers" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {safeProducts.slice(0, 1).map((product) => (
+          {safeProducts.map((product) => (
             <ProductCard
               key={product.id}
               product={product}
@@ -261,11 +323,6 @@ export default function Vouchers({
               primaryColor={primaryColor}
             />
           ))}
-          {safeProducts.length === 0 && (
-            <div className="col-span-full text-center py-8 text-gray-500">
-              No products available at the moment.
-            </div>
-          )}
         </div>
       ) : activeTab === "assigned" ? (
         <AssignedVouchersTable
@@ -320,7 +377,6 @@ export default function Vouchers({
             setShowSuccessModal(false);
             setPurchasedPolicy(null);
             setActiveTab("history");
-            setPurchaseHistory([purchasedPolicy, ...safePurchaseHistory]);
           }}
           primaryColor={primaryColor}
         />
