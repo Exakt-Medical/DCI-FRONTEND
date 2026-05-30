@@ -1,7 +1,15 @@
 import { Card } from "../../../components/Card";
 import { Button } from "../../../components/Button";
 import { Spinner } from "../../../components/Spinner";
-import { Users, Ticket, Search, Plus, Minus, Wallet, Send } from "lucide-react";
+import {
+  Users,
+  Ticket,
+  Search,
+  Plus,
+  Minus,
+  Send,
+  Building2,
+} from "lucide-react";
 import { VOUCHER_VALUE, formatCurrency } from "../TransferVoucherPage";
 
 const TransferTab = ({
@@ -17,6 +25,8 @@ const TransferTab = ({
   totalVoucherValue,
   isProcessing,
   handleTransfer,
+  remainingBalance,
+  companyBalance,
 }) => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -24,7 +34,7 @@ const TransferTab = ({
       <Card className="p-5">
         <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
           <Users size={18} className="text-primary-600" />
-          <h3 className="text-base font-bold text-gray-900">Select Agent</h3>
+          <h3 className="text-base font-bold text-gray-900">Select Agent </h3>
         </div>
 
         <div className="relative mb-4">
@@ -60,7 +70,7 @@ const TransferTab = ({
                 </div>
                 <div className="text-right">
                   <p className="text-xs font-medium text-gray-700">
-                    Assigned: {agent.assignedVouchers} vouchers
+                    Current Vouchers: {agent.assignedVouchers} vouchers
                   </p>
                 </div>
               </div>
@@ -72,27 +82,38 @@ const TransferTab = ({
         </div>
       </Card>
 
-      {/* Right Column - Select Quantity */}
+      {/* Right Column - Voucher Details */}
       <Card className="p-5">
         <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
           <Ticket size={18} className="text-primary-600" />
           <h3 className="text-base font-bold text-gray-900">Voucher Details</h3>
         </div>
 
-        <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700">
-              Voucher Type
-            </span>
-            <span className="text-xs bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full">
-              Basic CTPL
-            </span>
+        {/* Current Vouchers (Manager) - Company Balance */}
+        <div className="mb-6 p-4 bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl shadow-lg">
+          <div className="flex items-center gap-2 mb-2">
+            <Building2 size={16} className="text-primary-100" />
+            <p className="text-primary-100 text-sm font-medium">
+              Current Vouchers (Manager)
+            </p>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500">Value per voucher</span>
-            <span className="text-lg font-bold text-primary-600">
-              {formatCurrency(VOUCHER_VALUE)}
-            </span>
+            <div>
+              <p className="text-white text-2xl font-bold">
+                {remainingBalance} vouchers remaining
+              </p>
+              <p className="text-primary-100 text-xs mt-1">
+                Total company balance: {companyBalance} vouchers
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-primary-100 text-sm">
+                Running / Remaining Balance
+              </p>
+              <p className="text-white text-xl font-bold">
+                {formatCurrency(remainingBalance * VOUCHER_VALUE)}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -114,45 +135,33 @@ const TransferTab = ({
                 value={quantity}
                 onChange={(e) => {
                   const val = parseInt(e.target.value);
-                  if (!isNaN(val) && val >= 1) {
+                  if (!isNaN(val) && val >= 1 && val <= remainingBalance) {
                     setQuantity(val);
                   }
                 }}
                 className="w-20 text-center text-xl font-semibold text-gray-900 border-0 focus:outline-none focus:ring-0"
                 min="1"
+                max={remainingBalance}
               />
               <button
                 onClick={incrementQuantity}
-                className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+                disabled={quantity >= remainingBalance}
+                className="p-2 rounded-md hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Plus size={16} className="text-gray-600" />
               </button>
             </div>
-            <span className="text-sm text-gray-500">vouchers (no limit)</span>
-          </div>
-        </div>
-
-        <div className="mb-6 p-4 bg-gradient-to-r from-primary-50 to-blue-50 rounded-lg border border-primary-100">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Wallet size={18} className="text-primary-600" />
-              <span className="text-sm font-medium text-gray-700">
-                Running / Remaining Balance:
-              </span>
-            </div>
-            <span className="text-xl font-bold text-primary-600">
-              {formatCurrency(totalVoucherValue)}
+            <span className="text-sm text-gray-500">
+              vouchers (max: {remainingBalance} available)
             </span>
           </div>
-          <p className="text-xs text-gray-500 mt-2">
-            {quantity} voucher{quantity !== 1 ? "s" : ""} ×{" "}
-            {formatCurrency(VOUCHER_VALUE)} each
-          </p>
         </div>
 
         <Button
           onClick={handleTransfer}
-          disabled={!selectedAgent || isProcessing}
+          disabled={
+            !selectedAgent || isProcessing || quantity > remainingBalance
+          }
           className="w-full"
           size="lg"
         >

@@ -52,6 +52,10 @@ const TransferVoucherPage = () => {
   const [agents, setAgents] = useState(mockAgents);
   const [transferHistory, setTransferHistory] = useState([]);
 
+  // Company balance - this would come from backend/API
+  const [companyBalance, setCompanyBalance] = useState(100); // Total vouchers company has
+  const [remainingBalance, setRemainingBalance] = useState(100); // Remaining vouchers
+
   const filteredAgents = agents.filter(
     (agent) =>
       agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -60,7 +64,9 @@ const TransferVoucherPage = () => {
   );
 
   const incrementQuantity = () => {
-    setQuantity(quantity + 1);
+    if (quantity < remainingBalance) {
+      setQuantity(quantity + 1);
+    }
   };
 
   const decrementQuantity = () => {
@@ -74,6 +80,13 @@ const TransferVoucherPage = () => {
   const handleTransfer = async () => {
     if (!selectedAgent) {
       alert("Please select an agent");
+      return;
+    }
+
+    if (quantity > remainingBalance) {
+      alert(
+        `Insufficient balance. Only ${remainingBalance} vouchers available.`,
+      );
       return;
     }
 
@@ -93,6 +106,9 @@ const TransferVoucherPage = () => {
           : a,
       ),
     );
+
+    // Update company balance
+    setRemainingBalance(remainingBalance - quantity);
 
     const newTransfer = {
       id: transferHistory.length + 1,
@@ -116,6 +132,7 @@ const TransferVoucherPage = () => {
       quantity: quantity,
       totalValue: totalVoucherValue,
       newAssignedCount: newAssignedCount,
+      remainingBalance: remainingBalance - quantity,
     });
 
     setIsProcessing(false);
@@ -155,6 +172,8 @@ const TransferVoucherPage = () => {
           totalVoucherValue={totalVoucherValue}
           isProcessing={isProcessing}
           handleTransfer={handleTransfer}
+          remainingBalance={remainingBalance}
+          companyBalance={companyBalance}
         />
       )}
 

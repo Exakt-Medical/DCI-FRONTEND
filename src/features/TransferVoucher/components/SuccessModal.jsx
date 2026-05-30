@@ -54,6 +54,14 @@ const SuccessModal = ({
                   {transferSuccess.newAssignedCount} vouchers
                 </span>
               </div>
+              <div className="flex justify-between pt-2 border-t border-gray-200">
+                <span className="text-sm text-gray-600">
+                  Company Remaining Balance:
+                </span>
+                <span className="text-sm font-bold text-primary-600">
+                  {transferSuccess.remainingBalance} vouchers
+                </span>
+              </div>
             </div>
           </div>
 
