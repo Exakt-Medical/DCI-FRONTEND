@@ -170,13 +170,13 @@ export const AdminLayout = ({
         section: "LOGS",
         disabled: false,
       },
-      {
-        id: "ledger",
-        label: "Ledger",
-        icon: BookOpen,
-        section: "REPORTS",
-        disabled: false,
-      },
+      // {
+      //   id: "ledger",
+      //   label: "Ledger",
+      //   icon: BookOpen,
+      //   section: "REPORTS",
+      //   disabled: false,
+      // },
     ],
     manager: [
       {
@@ -256,14 +256,14 @@ export const AdminLayout = ({
         section: "LOGS",
         disabled: false,
       },
-      {
-        id: "ledger",
-        label: "Ledger",
-        icon: LogIn,
-        icon: BookOpen,
-        section: "REPORTS",
-        disabled: false,
-      },
+      // {
+      //   id: "ledger",
+      //   label: "Ledger",
+      //   icon: LogIn,
+      //   icon: BookOpen,
+      //   section: "REPORTS",
+      //   disabled: false,
+      // },
     ],
     agent: [
       {

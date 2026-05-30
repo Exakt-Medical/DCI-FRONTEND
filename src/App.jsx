@@ -182,7 +182,7 @@ function AppContent() {
     // Navigate to root-level thankyoupage with state
     navigate("/thankyoupage", {
       state: { selectedProduct, quantity },
-    }); 
+    });
   };
 
   // SHOW MAINTENANCE PAGE AS DEFAULT
@@ -208,7 +208,8 @@ function AppContent() {
           />
         );
       case "dashboard":
-        return role === "manager" ? <ManagerDashboard /> : <DashboardPage />;
+        // UPDATED: Both admin and manager use ManagerDashboard
+        return <ManagerDashboard />;
       case "tickets":
         if (role === "agent" || role === "subagent") {
           return (
@@ -406,7 +407,7 @@ function AppContent() {
         }
         return <TransactionLogsPage />;
       default:
-        return <DashboardPage />;
+        return <ManagerDashboard />; // Also changed default to ManagerDashboard
     }
   };
 
