@@ -13,15 +13,9 @@ export const verificationService = {
   // STEP 2 — POST /api/v1/vvip/{verificationId}/confirm
   confirm: (verificationId, { insuranceData, voucherCode }) =>
     api.post(`/v1/vvip/${verificationId}/confirm`, {
-      insuranceCode: insuranceData.selectedCode,
-      policyNumber: insuranceData.policyNumber,
       premiumType: insuranceData.premiumType,
-      prescribedPremiumFee: insuranceData.prescribedPremiumFee,
-      dst: insuranceData.dst,
-      vat: insuranceData.vat,
-      lgt: insuranceData.lgt,
-      validationFee: insuranceData.validationFee,
-      totalAmount: insuranceData.totalAmount,
       voucherCode: voucherCode ?? null,
     }),
+
+  getByCertNo: (certNo) => api.get(`/v1/vvip/certificate/${certNo}`),
 };

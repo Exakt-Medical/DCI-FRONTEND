@@ -29,6 +29,7 @@ import { TicketPage } from "./features/Tickets/TicketPage";
 import { MaintenancePage } from "./features/Maintenance/MaintenancePage";
 import { ThankYouPageWrapper } from "./features/voucher/components/ThankYouPageWrapper";
 import { useAlert } from "./hooks/useAlert";
+import { VerifyPage } from "./features/verification/components/VerifyPage";
 
 // Main App Content component
 function AppContent() {
@@ -457,6 +458,8 @@ function App() {
 
         {/* Root-level Thank You page route */}
         <Route path="/thankyoupage" element={<ThankYouPageWrapper />} />
+
+        <Route path="/verify/:authNo" element={<VerifyPage />} />
 
         {/* Main app routes */}
         <Route path="/vvip-access/*" element={<AppContent />} />
