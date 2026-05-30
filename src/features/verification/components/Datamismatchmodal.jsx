@@ -1,5 +1,14 @@
 import { useState } from "react";
-import { AlertCircle, X, Ticket, Paperclip, User, Car } from "lucide-react";
+import {
+  AlertCircle,
+  X,
+  Ticket,
+  Paperclip,
+  User,
+  Car,
+  Flag,
+  Check,
+} from "lucide-react";
 import { Button } from "../../../components/Button";
 
 const VEHICLE_MISMATCH_FIELDS = [
@@ -42,6 +51,8 @@ export const DataMismatchModal = ({
   isSubmitting,
 }) => {
   const [correctedValues, setCorrectedValues] = useState({});
+  // ✅ Track which fields have been flagged (input revealed)
+  const [flaggedFields, setFlaggedFields] = useState({});
   const [attachmentFile, setAttachmentFile] = useState({
     crAttachment: null,
     plateCertificationAttachment: null,
@@ -50,6 +61,22 @@ export const DataMismatchModal = ({
 
   const handleChange = (key, value) => {
     setCorrectedValues((prev) => ({ ...prev, [key]: value }));
+  };
+
+  // ✅ Toggle flagged state for a field
+  const handleToggleFlag = (key) => {
+    setFlaggedFields((prev) => {
+      const isCurrentlyFlagged = !!prev[key];
+      // If un-flagging, also clear the corrected value
+      if (isCurrentlyFlagged) {
+        setCorrectedValues((prevVals) => {
+          const updated = { ...prevVals };
+          delete updated[key];
+          return updated;
+        });
+      }
+      return { ...prev, [key]: !isCurrentlyFlagged };
+    });
   };
 
   const handleSubmit = () => {
@@ -61,15 +88,15 @@ export const DataMismatchModal = ({
       return {
         field: f.key,
         label: f.label,
-        actual: sourceData?.[f.dataKey] || "N/A", // ← LTO record value
-        expected: correctedValues[f.key].trim(), // ← user's correction
+        actual: sourceData?.[f.dataKey] || "N/A",
+        expected: correctedValues[f.key].trim(),
       };
     });
 
     if (mismatches.length === 0) return;
 
     onSubmit({
-      crAttachment: JSON.stringify(mismatches), // ← saved to cr_attachment column
+      crAttachment: JSON.stringify(mismatches),
       attachmentFile,
     });
   };
@@ -80,15 +107,17 @@ export const DataMismatchModal = ({
 
   const renderFieldRow = (field, sourceData) => {
     const submittedValue = sourceData?.[field.dataKey] || "—";
+    const isFlagged = !!flaggedFields[field.key];
     const hasCorrected = !!correctedValues[field.key]?.trim();
 
     return (
       <div
         key={field.key}
-        className={`grid grid-cols-[1fr_1fr] border-b border-gray-100 ${
-          hasCorrected ? "bg-green-50/30" : ""
+        className={`grid grid-cols-[1fr_1fr] border-b border-gray-100 transition-colors ${
+          hasCorrected ? "bg-green-50/30" : isFlagged ? "bg-red-50/20" : ""
         }`}
       >
+        {/* LTO Record column */}
         <div className="px-4 py-3 border-r border-gray-100 bg-red-50/20">
           <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">
             {field.label}
@@ -97,18 +126,42 @@ export const DataMismatchModal = ({
             {submittedValue}
           </p>
         </div>
-        <div className="px-4 py-3 flex items-center">
-          <input
-            type="text"
-            value={correctedValues[field.key] ?? ""}
-            onChange={(e) => handleChange(field.key, e.target.value)}
-            placeholder="Enter correct value…"
-            className={`w-full text-sm text-gray-900 bg-transparent border-b focus:outline-none placeholder-gray-300 transition-colors ${
-              hasCorrected
-                ? "border-green-400 text-green-800"
-                : "border-gray-300 focus:border-green-400"
-            }`}
-          />
+
+        {/* On Hand Record column */}
+        <div className="px-4 py-3 flex items-center gap-2">
+          {isFlagged ? (
+            // ✅ Show input + unflag button when flagged
+            <div className="flex items-center gap-2 w-full">
+              <input
+                type="text"
+                value={correctedValues[field.key] ?? ""}
+                onChange={(e) => handleChange(field.key, e.target.value)}
+                placeholder="Enter correct value…"
+                autoFocus
+                className={`flex-1 text-sm text-gray-900 bg-transparent border-b focus:outline-none placeholder-gray-300 transition-colors ${
+                  hasCorrected
+                    ? "border-green-400 text-green-800"
+                    : "border-gray-300 focus:border-primary-400"
+                }`}
+              />
+              <button
+                onClick={() => handleToggleFlag(field.key)}
+                className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
+                title="Remove flag"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ) : (
+            // ✅ Show "Flag Mismatch" button when not flagged
+            <button
+              onClick={() => handleToggleFlag(field.key)}
+              className="flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-red-500 hover:bg-red-50 px-2.5 py-1.5 rounded-lg transition-colors border border-dashed border-gray-200 hover:border-red-300"
+            >
+              <Flag size={11} />
+              Flag Mismatch
+            </button>
+          )}
         </div>
       </div>
     );
@@ -126,7 +179,8 @@ export const DataMismatchModal = ({
                 Report Data Mismatch
               </h2>
               <p className="text-xs text-red-500 mt-0.5">
-                Enter the correct value for any field that doesn't match
+                Click "Flag Mismatch" on any field that doesn't match, then
+                enter the correct value
               </p>
             </div>
           </div>
@@ -228,9 +282,10 @@ export const DataMismatchModal = ({
         <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 flex-shrink-0">
           <p className="text-xs text-gray-500">
             {filledCount === 0 ? (
-              "Fill in at least one correct value to submit."
+              "Flag at least one field with a mismatch to submit."
             ) : (
-              <span className="text-green-600 font-medium">
+              <span className="text-green-600 font-medium flex items-center gap-1">
+                <Check size={12} />
                 {filledCount} field{filledCount !== 1 ? "s" : ""} corrected
               </span>
             )}
