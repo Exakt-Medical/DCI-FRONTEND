@@ -61,6 +61,7 @@ const formatDate = (dateString) => {
   const date = new Date(dateString);
   if (isNaN(date.getTime())) return "—";
   return date.toLocaleDateString("en-US", {
+    timeZone: "Asia/Manila", // ✅ Add this line
     month: "short",
     day: "numeric",
     year: "numeric",

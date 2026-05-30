@@ -2,7 +2,15 @@ import { useState, useEffect, useCallback } from "react";
 import { useAlert } from "../../hooks/useAlert";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
-import { Search, Users, Plus, Upload, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import {
+  Search,
+  Users,
+  Plus,
+  Upload,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
 import { userService } from "../../services/userService";
 import { branchService } from "../../services/branchService";
 import { StatCard } from "./components/StatCard";
@@ -12,7 +20,6 @@ import { ViewUserModal } from "./components/ViewUserModal";
 import { DeleteConfirmModal } from "./components/DeleteConfirmModal";
 import { AccountPagination } from "./components/AccountPagination";
 import { UploadBulkModal } from "../../components/UploadBulkModal";
-
 
 const ROLE_TABS = ["All", "Managers", "Agents", "Sub-agents", "Admin"];
 
@@ -39,16 +46,21 @@ export const AccountPage = () => {
   const [sortDirection, setSortDirection] = useState("asc");
 
   const handleSort = (field) => {
-    setSortDirection((prev) => (sortField === field && prev === "asc" ? "desc" : "asc"));
+    setSortDirection((prev) =>
+      sortField === field && prev === "asc" ? "desc" : "asc",
+    );
     setSortField(field);
     setCurrentPage(1);
   };
 
   const SortIcon = ({ field }) => {
-    if (sortField !== field) return <ArrowUpDown size={12} className="inline ml-1 text-gray-300" />;
-    return sortDirection === "asc"
-      ? <ArrowUp size={12} className="inline ml-1 text-primary-600" />
-      : <ArrowDown size={12} className="inline ml-1 text-primary-600" />;
+    if (sortField !== field)
+      return <ArrowUpDown size={12} className="inline ml-1 text-gray-300" />;
+    return sortDirection === "asc" ? (
+      <ArrowUp size={12} className="inline ml-1 text-primary-600" />
+    ) : (
+      <ArrowDown size={12} className="inline ml-1 text-primary-600" />
+    );
   };
 
   const roleFilterMap = {
@@ -92,7 +104,10 @@ export const AccountPage = () => {
       user.branchName,
       user.managerBranchCompanyName,
       user.managerBranchName,
-    ].filter(Boolean).join(" ").toLowerCase();
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
 
     const matchesSearch =
       searchTerm === "" ||
@@ -114,16 +129,28 @@ export const AccountPage = () => {
   });
 
   const getSortValue = (user, field) => {
+    if (field === "voucherCount")
+      return 0; /* ← replace with real count when wired up */
     if (field === "branchName") {
       if (user.role === "ADMIN") return "head company, head branch";
-      if (["AGENT", "SUBAGENT"].includes(user.role)) return ((user.managerBranchCompanyName ? user.managerBranchCompanyName + " / " : "") + (user.managerBranchName || "") || "N/A").toLowerCase();
-      return ((user.branchCompanyName ? user.branchCompanyName + " / " : "") + (user.branchName || "") || "N/A").toLowerCase();
+      if (["AGENT", "SUBAGENT"].includes(user.role))
+        return (
+          (user.managerBranchCompanyName
+            ? user.managerBranchCompanyName + " / "
+            : "") + (user.managerBranchName || "") || "N/A"
+        ).toLowerCase();
+      return (
+        (user.branchCompanyName ? user.branchCompanyName + " / " : "") +
+          (user.branchName || "") || "N/A"
+      ).toLowerCase();
     }
     return (user[field] ?? "").toString().toLowerCase();
   };
 
   const sortedUsers = [...filteredUsers].sort((a, b) => {
-    const cmp = getSortValue(a, sortField).localeCompare(getSortValue(b, sortField));
+    const cmp = getSortValue(a, sortField).localeCompare(
+      getSortValue(b, sortField),
+    );
     return sortDirection === "asc" ? cmp : -cmp;
   });
   const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
@@ -174,7 +201,10 @@ export const AccountPage = () => {
         ...user,
         status: newStatus,
       });
-      await alert.success("Status Updated", `Account has been set to ${newStatus}.`);
+      await alert.success(
+        "Status Updated",
+        `Account has been set to ${newStatus}.`,
+      );
       await fetchData();
     } catch (err) {
       console.error("Toggle active failed", err);
@@ -204,10 +234,16 @@ export const AccountPage = () => {
 
       if (isEditing && selectedUser) {
         await userService.update(selectedUser.id, payload);
-        await alert.success("Updated", "Account has been updated successfully.");
+        await alert.success(
+          "Updated",
+          "Account has been updated successfully.",
+        );
       } else {
         await userService.create(payload);
-        await alert.success("Created", "Account has been created successfully.");
+        await alert.success(
+          "Created",
+          "Account has been created successfully.",
+        );
       }
       setIsFormModalOpen(false);
       setSelectedUser(null);
@@ -233,7 +269,17 @@ export const AccountPage = () => {
     return userService.bulkCreate(payload);
   };
 
-  const userTemplateHeaders = ["first_name", "last_name", "middle_initial", "ext_name", "username", "password", "email", "mobile", "role"];
+  const userTemplateHeaders = [
+    "first_name",
+    "last_name",
+    "middle_initial",
+    "ext_name",
+    "username",
+    "password",
+    "email",
+    "mobile",
+    "role",
+  ];
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -272,7 +318,10 @@ export const AccountPage = () => {
           value={totalUsers}
           icon={Users}
           color="gray"
-          onClick={() => { setActiveStatusTab("all"); setCurrentPage(1); }}
+          onClick={() => {
+            setActiveStatusTab("all");
+            setCurrentPage(1);
+          }}
           active={activeStatusTab === "all"}
         />
         <StatCard
@@ -280,7 +329,10 @@ export const AccountPage = () => {
           value={totalActive}
           icon={Users}
           color="green"
-          onClick={() => { setActiveStatusTab("active"); setCurrentPage(1); }}
+          onClick={() => {
+            setActiveStatusTab("active");
+            setCurrentPage(1);
+          }}
           active={activeStatusTab === "active"}
         />
         <StatCard
@@ -288,7 +340,10 @@ export const AccountPage = () => {
           value={totalInactive}
           icon={Users}
           color="red"
-          onClick={() => { setActiveStatusTab("inactive"); setCurrentPage(1); }}
+          onClick={() => {
+            setActiveStatusTab("inactive");
+            setCurrentPage(1);
+          }}
           active={activeStatusTab === "inactive"}
         />
       </div>
@@ -341,24 +396,47 @@ export const AccountPage = () => {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("username")}>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider"></th>
+                <th
+                  className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                  onClick={() => handleSort("username")}
+                >
                   Name <SortIcon field="username" />
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("role")}>
+                <th
+                  className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                  onClick={() => handleSort("role")}
+                >
                   Role <SortIcon field="role" />
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("managerName")}>
+                <th
+                  className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                  onClick={() => handleSort("managerName")}
+                >
                   Manager <SortIcon field="managerName" />
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("branchName")}>
+                <th
+                  className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                  onClick={() => handleSort("branchName")}
+                >
                   Branch <SortIcon field="branchName" />
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("status")}>
+                <th
+                  className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                  onClick={() => handleSort("status")}
+                >
                   Status <SortIcon field="status" />
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700" onClick={() => handleSort("dateCreated")}>
+                <th
+                  className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                  onClick={() => handleSort("voucherCount")}
+                >
+                  Vouchers <SortIcon field="voucherCount" />
+                </th>
+                <th
+                  className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+                  onClick={() => handleSort("dateCreated")}
+                >
                   Date Created <SortIcon field="dateCreated" />
                 </th>
               </tr>
@@ -366,19 +444,28 @@ export const AccountPage = () => {
             <tbody className="divide-y divide-gray-100">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                  <td
+                    colSpan={8}
+                    className="px-4 py-8 text-center text-gray-500"
+                  >
                     Loading users...
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-red-500">
+                  <td
+                    colSpan={8}
+                    className="px-4 py-8 text-center text-red-500"
+                  >
                     {error}
                   </td>
                 </tr>
               ) : paginatedUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                  <td
+                    colSpan={8}
+                    className="px-4 py-8 text-center text-gray-500"
+                  >
                     No users found
                   </td>
                 </tr>
@@ -392,6 +479,9 @@ export const AccountPage = () => {
                     onDelete={handleDeleteUser}
                     onToggleActive={handleToggleActive}
                     isViewer={isViewer}
+                    voucherCount={
+                      0
+                    } /* ← replace with real count when service is ready */
                   />
                 ))
               )}
@@ -401,15 +491,18 @@ export const AccountPage = () => {
 
         {/* Pagination */}
         <AccountPagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            totalItems={filteredUsers.length}
-            currentItems={paginatedUsers.length}
-            startIndex={startIndex}
-            itemsPerPage={itemsPerPage}
-            onItemsPerPageChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}
-          />
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          totalItems={filteredUsers.length}
+          currentItems={paginatedUsers.length}
+          startIndex={startIndex}
+          itemsPerPage={itemsPerPage}
+          onItemsPerPageChange={(val) => {
+            setItemsPerPage(val);
+            setCurrentPage(1);
+          }}
+        />
       </Card>
 
       {/* Modals */}
@@ -438,7 +531,10 @@ export const AccountPage = () => {
 
       <UploadBulkModal
         isOpen={isUploadModalOpen}
-        onClose={() => { setIsUploadModalOpen(false); fetchData(); }}
+        onClose={() => {
+          setIsUploadModalOpen(false);
+          fetchData();
+        }}
         onUpload={handleBulkUpload}
         templateHeaders={userTemplateHeaders}
         moduleName="Users"

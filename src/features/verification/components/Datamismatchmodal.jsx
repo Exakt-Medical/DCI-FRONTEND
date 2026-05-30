@@ -141,10 +141,10 @@ export const DataMismatchModal = ({
         {/* Column headers */}
         <div className="grid grid-cols-[1fr_1fr] border-b border-gray-200 flex-shrink-0">
           <div className="px-4 py-2 bg-red-50 text-xs font-semibold text-red-500 uppercase tracking-wide border-r border-gray-200">
-            LTO Record (Submitted)
+            LTO Record
           </div>
           <div className="px-4 py-2 bg-green-50 text-xs font-semibold text-green-600 uppercase tracking-wide">
-            Correct Value
+            On Hand Record
           </div>
         </div>
 
