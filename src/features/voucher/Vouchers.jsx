@@ -40,6 +40,8 @@ export default function Vouchers({
   const email = localStorage.getItem("email");
   const firstname = localStorage.getItem("firstname");
   const lastname = localStorage.getItem("lastname");
+  const companyId = localStorage.getItem("companyId");
+  const companyCode = localStorage.getItem("companyCode");
 
   // Primary color constant
   const primaryColor = "#1a3a6b";
@@ -115,11 +117,11 @@ export default function Vouchers({
       const callbackUrl = `${window.location.origin}/thankyoupage`;
 
       const paymentRequest = {
+        company_id: companyId ? Number(companyId) : 120,
+        company_code: companyCode ?? "000",
+        voucher_fee: selectedProduct ? selectedProduct.price : 0,
+        voucher_count: quantity,
         customer: {
-          contact: {
-            email: email ?? "",
-            mobile: "",
-          },
           first_name: firstname ?? "",
           last_name: lastname ?? "",
           billing_address: {
@@ -129,6 +131,10 @@ export default function Vouchers({
             city_municipality: "",
             state_province_region: "",
             country_code: "PH",
+          },
+          contact: {
+            email: email ?? "",
+            mobile: "",
           },
         },
         payment: {
@@ -149,9 +155,14 @@ export default function Vouchers({
 
       const response = await paymentsService.createTlpePayment(paymentRequest);
       const paymentLink = response?.data?.link;
+      const orderId = response?.data?.order_id;
 
       if (!paymentLink) {
         throw new Error("No payment link returned from the server.");
+      }
+
+      if (orderId != null) {
+        sessionStorage.setItem("pendingOrderId", String(orderId));
       }
 
       // Redirect in the same tab

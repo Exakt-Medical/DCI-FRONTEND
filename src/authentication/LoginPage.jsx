@@ -50,8 +50,16 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
     setError("");
     try {
       const response = await authService.login(form.username, form.password);
-      const { token, role, allowedToBuyVoucher, firstname, lastname, email } =
-        response.data;
+      const {
+        token,
+        role,
+        allowedToBuyVoucher,
+        firstname,
+        lastname,
+        email,
+        companyId,
+        companyCode,
+      } = response.data;
 
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
@@ -59,6 +67,9 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
       localStorage.setItem("firstname", firstname);
       localStorage.setItem("lastname", lastname);
       localStorage.setItem("username", form.username);
+      if (companyId != null)
+        localStorage.setItem("companyId", String(companyId));
+      if (companyCode != null) localStorage.setItem("companyCode", companyCode);
       localStorage.setItem(
         "authAllowedToBuyVoucher",
         String(!!allowedToBuyVoucher),
