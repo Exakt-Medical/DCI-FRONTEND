@@ -50,8 +50,8 @@ export default function Vouchers({
   // Only Basic CTPL product
   const BASIC_CTPL_PRODUCT = {
     id: "prod_001",
-    productName: "Basic CTPL",
-    description: "Basic coverage for third party liability as required by LTO",
+    productName: "Voucher",
+    // description: "Basic coverage for third party liability as required by LTO",
     price: 60,
     insuranceCode: "PRIVATE CARS (INCLUDING JEEPS AND AUVS)",
     validityDays: 365,
