@@ -28,6 +28,7 @@ import { TransactionLedger } from "./features/TransactionLedger/TransactionLedge
 import { TicketPage } from "./features/Tickets/TicketPage";
 import { MaintenancePage } from "./features/Maintenance/MaintenancePage";
 import { ThankYouPageWrapper } from "./features/voucher/components/ThankYouPageWrapper";
+import { InvoiceThankYouPage } from "./features/voucher/components/InvoiceThankYouPage";
 import { useAlert } from "./hooks/useAlert";
 import { VerifyPage } from "./features/verification/components/VerifyPage";
 
@@ -458,6 +459,9 @@ function App() {
 
         {/* Root-level Thank You page route */}
         <Route path="/thankyoupage" element={<ThankYouPageWrapper />} />
+
+        {/* Temporary route to manually preview the Invoice Thank You page */}
+        <Route path="/invoice-thankyou" element={<InvoiceThankYouPage />} />
 
         <Route path="/verify/:authNo" element={<VerifyPage />} />
 
