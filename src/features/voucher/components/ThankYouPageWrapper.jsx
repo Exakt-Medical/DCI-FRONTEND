@@ -37,6 +37,14 @@ export function ThankYouPageWrapper() {
 
       const mapResult = (result) => {
         const data = result?.data || result || {};
+        const statusCode = data.statusCode || "";
+        const paymentFailed =
+          result?.success === false ||
+          (typeof statusCode === "string" && statusCode.startsWith("ER"));
+        const failureMessage =
+          data.voucherStatusLabel ||
+          data.report?.result?.message ||
+          "Payment was not completed. Please contact support.";
         return {
           selectedProduct: {
             name:
@@ -46,6 +54,8 @@ export function ThankYouPageWrapper() {
             price: data.amountPaid ?? 0,
           },
           quantity: data.voucherCount || 1,
+          paymentFailed,
+          failureMessage,
         };
       };
 
@@ -176,6 +186,8 @@ export function ThankYouPageWrapper() {
       quantity={orderData.quantity}
       formatCurrency={formatCurrency}
       orderId={pendingOrderId ? Number(pendingOrderId) : null}
+      paymentFailed={orderData.paymentFailed ?? false}
+      failureMessage={orderData.failureMessage ?? ""}
     />
   );
 }
