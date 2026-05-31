@@ -26,7 +26,10 @@ const TransferVoucherPage = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [transferSuccess, setTransferSuccess] = useState(null);
+
+  // Transfer history — fetched from real backend endpoint
   const [transferHistory, setTransferHistory] = useState([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   // Agents
   const [agents, setAgents] = useState([]);
@@ -38,7 +41,7 @@ const TransferVoucherPage = () => {
   const [isLoadingVouchers, setIsLoadingVouchers] = useState(true);
   const [selectedVoucherIds, setSelectedVoucherIds] = useState([]);
 
-  // ✅ Pagination + search state
+  // Pagination + search state
   const [voucherSearch, setVoucherSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -50,25 +53,26 @@ const TransferVoucherPage = () => {
 
   const managerId = localStorage.getItem("userId");
 
-  // Fetch agents
-  useEffect(() => {
-    const fetchAgents = async () => {
-      try {
-        setIsLoadingAgents(true);
-        setAgentsError(null);
-        const data = await transferVoucherService.getAgentsWithVoucherCounts();
-        setAgents(data);
-      } catch (err) {
-        console.error("Failed to fetch agents:", err);
-        setAgentsError("Failed to load agents. Please try again.");
-      } finally {
-        setIsLoadingAgents(false);
-      }
-    };
-    fetchAgents();
+  // ─── Fetch agents ──────────────────────────────────────────────────────────
+  const fetchAgents = useCallback(async () => {
+    try {
+      setIsLoadingAgents(true);
+      setAgentsError(null);
+      const data = await transferVoucherService.getAgentsWithVoucherCounts();
+      setAgents(data);
+    } catch (err) {
+      console.error("Failed to fetch agents:", err);
+      setAgentsError("Failed to load agents. Please try again.");
+    } finally {
+      setIsLoadingAgents(false);
+    }
   }, []);
 
-  // ✅ Fetch paginated vouchers — re-runs on page or search change
+  useEffect(() => {
+    fetchAgents();
+  }, [fetchAgents]);
+
+  // ─── Fetch paginated vouchers ──────────────────────────────────────────────
   const fetchVouchers = useCallback(async () => {
     if (!managerId) return;
     try {
@@ -93,27 +97,46 @@ const TransferVoucherPage = () => {
     fetchVouchers();
   }, [fetchVouchers]);
 
-  // ✅ Reset to page 0 when search changes
+  // Reset to page 0 when search changes
   useEffect(() => {
     setCurrentPage(0);
   }, [voucherSearch]);
 
-  // Fetch manager balance separately
-  useEffect(() => {
-    const fetchBalance = async () => {
-      if (!managerId) return;
-      try {
-        const counts =
-          await transferVoucherService.getManagerBalance(managerId);
-        setCompanyBalance(counts.total ?? 0);
-        setRemainingBalance(counts.available ?? 0);
-      } catch (err) {
-        console.error("Failed to fetch balance:", err);
-      }
-    };
-    fetchBalance();
+  // ─── Fetch manager balance ─────────────────────────────────────────────────
+  const fetchBalance = useCallback(async () => {
+    if (!managerId) return;
+    try {
+      const counts = await transferVoucherService.getManagerBalance(managerId);
+      setCompanyBalance(counts.total ?? 0);
+      setRemainingBalance(counts.available ?? 0);
+    } catch (err) {
+      console.error("Failed to fetch balance:", err);
+    }
   }, [managerId]);
 
+  useEffect(() => {
+    fetchBalance();
+  }, [fetchBalance]);
+
+  // ─── Fetch transfer history from backend ───────────────────────────────────
+  const fetchHistory = useCallback(async () => {
+    if (!managerId) return;
+    try {
+      setIsLoadingHistory(true);
+      const data = await transferVoucherService.getTransferHistory(managerId);
+      setTransferHistory(data ?? []);
+    } catch (err) {
+      console.error("Failed to fetch transfer history:", err);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  }, [managerId]);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
+
+  // ─── Filtered agents for transfer tab search ───────────────────────────────
   const filteredAgents = agents.filter(
     (agent) =>
       agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -121,7 +144,7 @@ const TransferVoucherPage = () => {
       agent.branch.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-  // ✅ Toggle individual voucher, null = clear all
+  // ─── Voucher selection ─────────────────────────────────────────────────────
   const handleToggleVoucher = (voucherId) => {
     if (voucherId === null) {
       setSelectedVoucherIds([]);
@@ -136,6 +159,7 @@ const TransferVoucherPage = () => {
 
   const totalVoucherValue = selectedVoucherIds.length * VOUCHER_VALUE;
 
+  // ─── Transfer ──────────────────────────────────────────────────────────────
   const handleTransfer = async () => {
     if (!selectedAgent) {
       alert("Please select an agent");
@@ -156,58 +180,27 @@ const TransferVoucherPage = () => {
 
       const agent = agents.find((a) => a.id === selectedAgent);
       const quantity = selectedVoucherIds.length;
-      const newAssignedCount = (agent.assignedVouchers ?? 0) + quantity;
-
-      // Remove transferred vouchers from current page
-      setAvailableVouchers((prev) =>
-        prev.filter((v) => !selectedVoucherIds.includes(v.id)),
-      );
-
-      // Update agent count
-      setAgents(
-        agents.map((a) =>
-          a.id === selectedAgent
-            ? { ...a, assignedVouchers: newAssignedCount }
-            : a,
-        ),
-      );
-
-      setRemainingBalance((prev) => prev - quantity);
-      setTotalElements((prev) => prev - quantity);
-
-      const newTransfer = {
-        id: transferHistory.length + 1,
-        agentId: agent.id,
-        agentUserId: agent.userId,
-        toAgent: agent.name,
-        branch: agent.branch,
-        quantity,
-        voucherIds: [...selectedVoucherIds],
-        totalValue: totalVoucherValue,
-        transferDate: new Date().toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        status: "Completed",
-        referenceNumber: `TRF-${Date.now().toString().slice(-8)}`,
-      };
-      setTransferHistory([newTransfer, ...transferHistory]);
 
       setTransferSuccess({
         agent: agent.name,
         agentUserId: agent.userId,
         quantity,
         totalValue: totalVoucherValue,
-        newAssignedCount,
+        newAssignedCount: (agent.assignedVouchers ?? 0) + quantity,
         remainingBalance: remainingBalance - quantity,
       });
 
       setSelectedVoucherIds([]);
-      setShowSuccessModal(true);
       setSelectedAgent(null);
+      setShowSuccessModal(true);
+
+      // Re-fetch everything from the server so all tabs reflect real state
+      await Promise.all([
+        fetchAgents(),
+        fetchBalance(),
+        fetchVouchers(),
+        fetchHistory(),
+      ]);
     } catch (err) {
       console.error("Transfer failed:", err);
       alert(err.message || "Transfer failed. Please try again.");
@@ -268,7 +261,10 @@ const TransferVoucherPage = () => {
       )}
 
       {activeTab === "history" && (
-        <HistoryTab transferHistory={transferHistory} />
+        <HistoryTab
+          transferHistory={transferHistory}
+          isLoadingHistory={isLoadingHistory}
+        />
       )}
 
       <SuccessModal

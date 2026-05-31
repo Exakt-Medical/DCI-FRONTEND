@@ -57,6 +57,7 @@ export const transferVoucherService = {
           const counts = await this.getVoucherCounts(agent.id);
           return {
             ...agent,
+            // ✅ Option A: agents now hold vouchers as AVAILABLE so this is correct again
             assignedVouchers: counts.available ?? 0,
             voucherCounts: counts,
           };
@@ -87,13 +88,8 @@ export const transferVoucherService = {
     return handleResponse(res);
   },
 
-  /** GET /api/vouchers/by-user/:userId/available?page=0&size=20&search= */
-  async getAvailableVouchersPaginated(
-    userId,
-    page = 0,
-    size = 20,
-    search = "",
-  ) {
+  /** GET /api/vouchers/by-user/:userId/available?page=0&size=8&search= */
+  async getAvailableVouchersPaginated(userId, page = 0, size = 8, search = "") {
     const params = new URLSearchParams({ page, size, search });
     const res = await fetch(
       `${VOUCHER_URL}/by-user/${userId}/available?${params}`,
@@ -106,6 +102,18 @@ export const transferVoucherService = {
   /** GET /api/vouchers/count/by-user/:userId — for manager's own balance */
   async getManagerBalance(managerId) {
     const res = await fetch(`${VOUCHER_URL}/count/by-user/${managerId}`, {
+      headers: getAuthHeaders(),
+    });
+    return handleResponse(res);
+  },
+
+  /**
+   * GET /api/vouchers/transfer/history/:fromUserId
+   * Returns transfer history grouped by batch (one entry per transfer action).
+   * Shape: { referenceNumber, fromUserId, toUserId, quantity, voucherCodes, transferredAt }[]
+   */
+  async getTransferHistory(fromUserId) {
+    const res = await fetch(`${VOUCHER_URL}/transfer/history/${fromUserId}`, {
       headers: getAuthHeaders(),
     });
     return handleResponse(res);
