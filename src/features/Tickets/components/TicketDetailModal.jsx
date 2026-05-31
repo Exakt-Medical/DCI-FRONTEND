@@ -1218,7 +1218,7 @@ export const TicketDetailModal = ({
                   ) : (
                     <>
                       <Save size={14} />
-                      Save Corrections
+                      Save Ticket
                     </>
                   )}
                 </button>

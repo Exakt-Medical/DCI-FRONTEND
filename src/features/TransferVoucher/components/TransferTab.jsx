@@ -115,7 +115,10 @@ const TransferTab = ({
                   </div>
                   <div className="text-right">
                     <p className="text-xs font-medium text-gray-700">
-                      {agent.assignedVouchers ?? 0} vouchers
+                      Current Voucher: {agent.assignedVouchers ?? 0}{" "}
+                      {(agent.assignedVouchers ?? 0) === 1
+                        ? "voucher"
+                        : "vouchers"}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">
                       {agent.userId}
@@ -135,9 +138,6 @@ const TransferTab = ({
         <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
           <Ticket size={18} className="text-primary-600" />
           <h3 className="text-base font-bold text-gray-900">Select Quantity</h3>
-          <span className="ml-auto text-xs text-gray-400">
-            {remainingBalance} available
-          </span>
         </div>
 
         {/* Balance summary */}
@@ -151,12 +151,6 @@ const TransferTab = ({
                   {companyBalance} vouchers
                 </p>
               </div>
-            </div>
-            <div className="text-right">
-              <p className="text-primary-100 text-xs">Available Value</p>
-              <p className="text-white text-base font-bold">
-                {formatCurrency(remainingBalance * VOUCHER_VALUE)}
-              </p>
             </div>
           </div>
         </div>

@@ -651,19 +651,18 @@ export const VerificationPage = ({ onCertificate }) => {
       />
 
       {/* Vehicle Not Found — error + Submit Ticket button */}
-      {fetchError && (
-        <div className="flex justify-end mt-4">
-          <Button
-            variant="secondary"
-            className="flex items-center gap-2"
-            onClick={() => setShowTicketAttachmentModal(true)}
-          >
-            <Ticket size={16} />
-            Submit Ticket
-          </Button>
-        </div>
-      )}
-
+{fetchError && (
+  <div className="flex justify-end mt-4 mb-4">
+    <Button
+      variant="secondary"
+      className="flex items-center gap-2"
+      onClick={() => setShowTicketAttachmentModal(true)}
+    >
+      <Ticket size={16} />
+      Submit Ticket
+    </Button>
+  </div>
+)}
       {/* Vehicle found — info cards + Report Data Mismatch */}
       {isRecordFound && (
         <>
