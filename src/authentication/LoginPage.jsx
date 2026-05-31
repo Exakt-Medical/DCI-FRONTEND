@@ -25,7 +25,7 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
-  const [showDemoCredentials, setShowDemoCredentials] = useState(false); // ✅ Add this
+  const [showDemoCredentials, setShowDemoCredentials] = useState(false);
 
   useEffect(() => {
     const savedUsername = localStorage.getItem("rememberedUsername");
@@ -50,8 +50,16 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
     setError("");
     try {
       const response = await authService.login(form.username, form.password);
-      const { token, role, allowedToBuyVoucher, firstname, lastname, email } =
-        response.data;
+
+      const {
+        token,
+        role,
+        allowedToBuyVoucher,
+        firstname,
+        lastname,
+        email,
+        userId,
+      } = response.data;
 
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
@@ -63,6 +71,8 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
         "authAllowedToBuyVoucher",
         String(!!allowedToBuyVoucher),
       );
+      // ✅ Save userId so other pages can fetch user-specific data
+      localStorage.setItem("userId", userId);
 
       if (rememberMe) {
         localStorage.setItem("rememberedUsername", form.username);
@@ -229,7 +239,7 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
                 </button>
               </div>
 
-              {/* ✅ COLLAPSIBLE DEMO CREDENTIALS */}
+              {/* COLLAPSIBLE DEMO CREDENTIALS */}
               <div className="mt-5 pt-4 border-t border-gray-100">
                 <button
                   onClick={() => setShowDemoCredentials(!showDemoCredentials)}
