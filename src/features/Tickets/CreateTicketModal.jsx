@@ -152,65 +152,57 @@ export const CreateTicketModal = ({
     setFormData((prev) => ({ ...prev, subject: subjectText }));
   };
 
-  const uploadAttachments = async (referenceNumber, requestedBy) => {
-    const uploadedAttachments = [];
-
-    const hasFiles = Object.values(formData.attachments).some(
+const uploadAttachments = async (referenceNumber, requestedBy) => {
+  const hasFiles =
+    formData.attachment ||
+    Object.values(formData.attachments).some(
       (file) => file !== null,
     );
 
-    if (!hasFiles && !formData.attachment) {
-      console.log("No files to upload");
-      return uploadedAttachments;
-    }
+  if (!hasFiles) {
+    console.log("No files to upload");
+    return;
+  }
 
-    // Upload general attachment
-    if (formData.attachment) {
-      console.log("Uploading general attachment...");
-      const uploadFormData = new FormData();
-      uploadFormData.append("referenceNumber", referenceNumber);
-      uploadFormData.append("requestedBy", requestedBy);
-      uploadFormData.append("crAttachment", formData.attachment);
+  const uploadFormData = new FormData();
 
-      try {
-        const result = await attachmentApi.upload(uploadFormData);
-        uploadedAttachments.push(result);
-        console.log("General attachment uploaded successfully");
-      } catch (error) {
-        console.error("Failed to upload general attachment:", error);
-        throw new Error("Failed to upload attachment: " + error.message);
-      }
-    }
+  uploadFormData.append("referenceNumber", referenceNumber);
+  uploadFormData.append("requestedBy", requestedBy);
 
-    // Upload vehicle-specific attachments
-    const attachmentTypes = {
-      crAttachment: formData.attachments.crAttachment,
-      plateCertificationAttachment:
-        formData.attachments.plateCertificationAttachment,
-      actualPlateAttachment: formData.attachments.actualPlateAttachment,
-    };
+  // General attachment
+  if (formData.attachment) {
+    uploadFormData.append(
+      "generalAttachment",
+      formData.attachment,
+    );
+  }
 
-    for (const [type, file] of Object.entries(attachmentTypes)) {
-      if (file) {
-        console.log(`Uploading ${type}...`);
-        const uploadFormData = new FormData();
-        uploadFormData.append("referenceNumber", referenceNumber);
-        uploadFormData.append("requestedBy", requestedBy);
-        uploadFormData.append(type, file);
+  // Vehicle attachments
+  if (formData.attachments.crAttachment) {
+    uploadFormData.append(
+      "crAttachment",
+      formData.attachments.crAttachment,
+    );
+  }
 
-        try {
-          const result = await attachmentApi.upload(uploadFormData);
-          uploadedAttachments.push(result);
-          console.log(`${type} uploaded successfully`);
-        } catch (error) {
-          console.error(`Failed to upload ${type}:`, error);
-          throw new Error(`Failed to upload ${type}: ${error.message}`);
-        }
-      }
-    }
+  if (formData.attachments.plateCertificationAttachment) {
+    uploadFormData.append(
+      "plateCertificationAttachment",
+      formData.attachments.plateCertificationAttachment,
+    );
+  }
 
-    return uploadedAttachments;
-  };
+  if (formData.attachments.actualPlateAttachment) {
+    uploadFormData.append(
+      "actualPlateAttachment",
+      formData.attachments.actualPlateAttachment,
+    );
+  }
+
+  await attachmentApi.upload(uploadFormData);
+
+  console.log("All attachments uploaded successfully");
+};
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -249,7 +241,9 @@ export const CreateTicketModal = ({
 
     try {
       setUploadProgress("Creating ticket...");
-      const ticketResult = await onSubmit(formData);
+      const { attachment, attachments, ...ticketOnlyData } = formData;
+
+const ticketResult = await onSubmit(ticketOnlyData);
 
       const referenceNumber =
         ticketResult?.referenceNumber ||
