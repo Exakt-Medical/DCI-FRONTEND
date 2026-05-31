@@ -1,4 +1,4 @@
-// features/voucher/Vouchers.jsx (UPDATED - Only Basic CTPL)
+// features/voucher/Vouchers.jsx
 import { useState, useEffect } from "react";
 import { ProductCard } from "./components/ProductCard";
 import { PurchaseHistoryTable } from "./components/PurchaseHistoryTable";
@@ -45,11 +45,11 @@ export default function Vouchers({
   // Primary color constant
   const primaryColor = "#1a3a6b";
 
-  // Only Basic CTPL product
-  const BASIC_CTPL_PRODUCT = {
+  // Only Voucher product
+  const VOUCHER_PRODUCT = {
     id: "prod_001",
-    productName: "Basic CTPL",
-    description: "Basic coverage for third party liability as required by LTO",
+    productName: "Voucher",
+    description: "",
     price: 60,
     insuranceCode: "PRIVATE CARS (INCLUDING JEEPS AND AUVS)",
     validityDays: 365,
@@ -79,7 +79,7 @@ export default function Vouchers({
     const newPolicy = {
       id: `hist_${Date.now()}`,
       policyNumber: `POL-${new Date().getFullYear()}${Math.floor(Math.random() * 1000000)}`,
-      productName: "Basic CTPL",
+      productName: "Voucher",
       premium: 60 * selectedQuantity,
       expirationDate: new Date(
         new Date().setFullYear(new Date().getFullYear() + 1),
@@ -96,7 +96,7 @@ export default function Vouchers({
     const newAssignedVoucher = {
       id: `vch_${Date.now()}`,
       voucherCode: newPolicy.voucherCode,
-      productName: "Basic CTPL",
+      productName: "Voucher",
       premium: 60,
       status: "Available",
       assignedBy: "Self Purchase",
@@ -123,8 +123,8 @@ export default function Vouchers({
   };
 
   const loadProducts = async () => {
-    // Always use Basic CTPL product only
-    setProducts([BASIC_CTPL_PRODUCT]);
+    // Always use Voucher product only
+    setProducts([VOUCHER_PRODUCT]);
   };
 
   const loadPurchaseHistory = async () => {
@@ -186,7 +186,7 @@ export default function Vouchers({
       const newPolicy = {
         id: `hist_${Date.now()}`,
         policyNumber: `POL-${new Date().getFullYear()}${Math.floor(Math.random() * 1000000)}`,
-        productName: "Basic CTPL",
+        productName: "Voucher",
         premium: 60 * quantity,
         expirationDate: new Date(
           new Date().setFullYear(new Date().getFullYear() + 1),
@@ -206,7 +206,7 @@ export default function Vouchers({
         newVouchers.push({
           id: `vch_${Date.now()}_${i}`,
           voucherCode: `VCH-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
-          productName: "Basic CTPL",
+          productName: "Voucher",
           premium: 60,
           status: "Available",
           assignedBy: "Self Purchase",
@@ -254,14 +254,6 @@ export default function Vouchers({
 
   return (
     <div className="space-y-6">
-      <div className="border-b border-gray-200 pb-4">
-        <h1 className="text-xl font-semibold text-gray-900">CTPL Insurance</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Purchase Compulsory Third Party Liability insurance for LTO vehicle
-          registration
-        </p>
-      </div>
-
       <div className="border-b border-gray-200">
         <div className="flex gap-8">
           <button
