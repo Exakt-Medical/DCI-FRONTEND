@@ -587,23 +587,29 @@ export const VerificationPage = ({ onCertificate }) => {
         return;
       }
       const { certificateNo } = data;
+      const insuranceWithIssuer = {
+        ...insuranceData,
+        companyName: data.companyName || null,
+      };
+
       setShowFinalReview(false);
       await generateCertificatePDF({
         vehicle: vehicleData,
         owner: ownerData,
-        insurance: insuranceData,
+        insurance: insuranceWithIssuer,
         authNo: certificateNo,
       });
       onCertificate({
         vehicle: vehicleData,
         owner: ownerData,
-        insurance: insuranceData,
+        insurance: insuranceWithIssuer,
         authNo: certificateNo,
       });
       await success(
         "Certificate Issued!",
         `Certificate No: ${certificateNo} downloaded.`,
       );
+      handleResetForm();
     } catch (err) {
       close();
       await error("Submission Error", "Failed to submit final review.");

@@ -79,6 +79,40 @@ export const VerifyPage = () => {
       .filter(Boolean)
       .join(" ") || "—";
 
+  const validationDate =
+    new Date()
+      .toLocaleDateString("en-US", {
+        month: "long",
+        day: "2-digit",
+        year: "numeric",
+      })
+      .toUpperCase() +
+    " AT " +
+    new Date().toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+
+  const formatIssuedDate = (dateStr) => {
+    if (!dateStr) return "—";
+    const date = new Date(dateStr);
+    return (
+      date
+        .toLocaleDateString("en-US", {
+          month: "long",
+          day: "2-digit",
+          year: "numeric",
+        })
+        .toUpperCase() +
+      " AT " +
+      date.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      })
+    );
+  };
   const Field = ({ label, value }) => (
     <div className="bg-gray-50 rounded-lg p-3">
       <p className="text-[10px] text-gray-400 uppercase font-semibold mb-0.5">
@@ -142,12 +176,6 @@ export const VerifyPage = () => {
               </p>
               <p className="font-mono text-blue-300 font-bold">{authNo}</p>
             </div>
-            <div className="text-right">
-              <p className="text-white/40 text-[10px] uppercase tracking-widest">
-                Issued
-              </p>
-              <p className="text-white/80">{issuedDate || "—"}</p>
-            </div>
           </div>
         </div>
 
@@ -209,8 +237,8 @@ export const VerifyPage = () => {
           </div>
           <div className="grid grid-cols-1 gap-2">
             <Field label="DCI Authentication Code" value={authNo} />
-            <Field label="Date of Validation" value={issuedDate} />
-            <Field label="Issuer" value={issuer || "PREMIER INSURANCE CORP."} />
+            <Field label="Date of Validation" value={validationDate} />
+            <Field label="Issuer" value={issuer} />
           </div>
         </div>
 

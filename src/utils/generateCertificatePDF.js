@@ -239,7 +239,7 @@ export async function generateCertificatePDF({
   const inspectionRows = [
     ["DCI Authentication Code", authNo],
     ["Date of Validation", dateStr],
-    ["Issuer", insurance.insurer || "PREMIER INSURANCE CORP."],
+    ["Issuer", insurance.companyName || "—"],
   ];
 
   for (const [label, value] of inspectionRows) {
