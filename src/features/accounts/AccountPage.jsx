@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAlert } from "../../hooks/useAlert";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
+import { transferVoucherService } from "../../services/transferVoucherService";
 import {
   Search,
   Users,
@@ -71,23 +72,47 @@ export const AccountPage = () => {
     Admin: "ADMIN",
   };
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [usersRes, branchesRes] = await Promise.all([
-        userService.getAll(),
-        branchService.getAll(),
-      ]);
-      setUsers(usersRes.data);
-      setBranches(branchesRes.data);
-      setError(null);
-    } catch (err) {
-      setError("Failed to load data");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+const fetchData = useCallback(async () => {
+  try {
+    setLoading(true);
+
+    const [usersRes, branchesRes] = await Promise.all([
+      userService.getAll(),
+      branchService.getAll(),
+    ]);
+
+    const voucherRes =
+      await transferVoucherService.getAgentsWithVoucherCounts();
+
+    const agentsWithVoucherCounts = voucherRes?.data || voucherRes || [];
+
+    console.log("USERS:", usersRes.data);
+    console.log("VOUCHERS:", agentsWithVoucherCounts);
+
+    const usersWithVoucherCounts = usersRes.data.map((user) => {
+      const matchedAgent = agentsWithVoucherCounts.find(
+        (agent) =>
+          agent.email === user.email ||
+          agent.username === user.username ||
+          agent.name === user.username,
+      );
+
+      return {
+        ...user,
+        assignedVouchers: matchedAgent?.assignedVouchers ?? 0,
+      };
+    });
+
+    setUsers(usersWithVoucherCounts);
+    setBranches(branchesRes.data);
+    setError(null);
+  } catch (err) {
+    setError("Failed to load data");
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+}, []);
 
   useEffect(() => {
     fetchData();
@@ -479,9 +504,7 @@ export const AccountPage = () => {
                     onDelete={handleDeleteUser}
                     onToggleActive={handleToggleActive}
                     isViewer={isViewer}
-                    voucherCount={
-                      0
-                    } /* ← replace with real count when service is ready */
+                    voucherCount={user.assignedVouchers ?? 0}/* ← replace with real count when service is ready */
                   />
                 ))
               )}
