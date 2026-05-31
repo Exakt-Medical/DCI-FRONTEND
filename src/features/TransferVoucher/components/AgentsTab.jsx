@@ -3,7 +3,7 @@ import { Card } from "../../../components/Card";
 import { Button } from "../../../components/Button";
 import { Users, RefreshCw, X, Tag, Shield, Calendar } from "lucide-react";
 
-const AgentsTab = ({ agents }) => {
+const AgentsTab = ({ agents, transferHistory = [] }) => {
   const [selectedAgent, setSelectedAgent] = useState(null);
 
   const handleOpenModal = (agent) => {
@@ -12,6 +12,33 @@ const AgentsTab = ({ agents }) => {
 
   const handleCloseModal = () => {
     setSelectedAgent(null);
+  };
+
+  const getAgentVouchers = () => {
+    if (!selectedAgent) return [];
+
+    const matchedVouchers = transferHistory.filter((voucher) => {
+      return (
+        String(voucher.toUserId) === String(selectedAgent.userId) ||
+        String(voucher.agentUserId) === String(selectedAgent.userId) ||
+        String(voucher.transferredToUserId) === String(selectedAgent.userId) ||
+        String(voucher.transferredTo) === String(selectedAgent.userId) ||
+        String(voucher.currentUserId) === String(selectedAgent.userId) ||
+        String(voucher.toAgentName) === String(selectedAgent.name) ||
+        String(voucher.agent) === String(selectedAgent.name) ||
+        String(voucher.transferredToName) === String(selectedAgent.name)
+      );
+    });
+
+    if (matchedVouchers.length > 0) {
+      return matchedVouchers;
+    }
+
+    return Array.from({
+      length: selectedAgent.assignedVouchers ?? 0,
+    }).map((_, index) => ({
+      voucherCodes: [`Voucher ${index + 1}`],
+    }));
   };
 
   return (
@@ -112,52 +139,58 @@ const AgentsTab = ({ agents }) => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                  {Array.from({
-                    length: selectedAgent.assignedVouchers ?? 0,
-                  }).map((_, index) => (
-                    <div
-                      key={index}
-                      className="bg-white border rounded-2xl p-5 shadow-sm"
-                    >
-                      <div className="flex items-start justify-between">
-                        <h3 className="text-xl font-bold text-gray-900">
-                          Basic CTPL
-                        </h3>
+                  {getAgentVouchers().flatMap((voucher, voucherIndex) =>
+                    (voucher.voucherCodes || []).map((code, codeIndex) => (
+                      <div
+                        key={`${voucherIndex}-${codeIndex}`}
+                        className="bg-white border rounded-2xl p-5 shadow-sm"
+                      >
+                        <div className="flex items-start justify-between">
+                          <h3 className="text-xl font-bold text-gray-900">
+                            Basic CTPL
+                          </h3>
 
-                        <span className="bg-primary-100 text-primary-700 px-3 py-1 rounded-xl font-bold">
-                          ₱60.00
-                        </span>
-                      </div>
-
-                      <p className="mt-4 text-gray-600 text-sm leading-relaxed">
-                        Basic coverage for third party liability as required by
-                        LTO
-                      </p>
-
-                      <div className="mt-4 space-y-3 text-sm text-gray-600">
-                        <div className="flex items-center gap-2">
-                          <Tag size={15} />
-                          <span>PRIVATE CARS (INCLUDING JEEPS AND AUVS)</span>
+                          <span className="bg-primary-100 text-primary-700 px-3 py-1 rounded-xl font-bold">
+                            ₱60.00
+                          </span>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          <Calendar size={15} />
-                          <span>365 days coverage</span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <Shield size={15} />
-                          <span>Third Party Liability</span>
-                        </div>
-                      </div>
-
-                      <div className="mt-5 bg-primary-50 border border-primary-100 rounded-xl p-3 text-center">
-                        <p className="text-sm text-primary-700 font-semibold">
-                          Voucher {index + 1}
+                        <p className="mt-4 text-gray-600 text-sm leading-relaxed">
+                          Basic coverage for third party liability as required
+                          by LTO
                         </p>
+
+                        <div className="mt-4 space-y-3 text-sm text-gray-600">
+                          <div className="flex items-center gap-2">
+                            <Tag size={15} />
+                            <span>
+                              PRIVATE CARS (INCLUDING JEEPS AND AUVS)
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <Calendar size={15} />
+                            <span>365 days coverage</span>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <Shield size={15} />
+                            <span>Third Party Liability</span>
+                          </div>
+                        </div>
+
+                        <div className="mt-5 bg-primary-50 border border-primary-100 rounded-xl p-4">
+                          <p className="text-xs text-gray-500 mb-1 uppercase tracking-wide">
+                            Voucher Code
+                          </p>
+
+                          <p className="text-sm text-primary-700 font-bold break-all">
+                            {code}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )),
+                  )}
                 </div>
               )}
             </div>
