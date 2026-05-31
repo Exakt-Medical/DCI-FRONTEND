@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card } from "../../../components/Card";
 import { Button } from "../../../components/Button";
-import { Users, RefreshCw, X, Tag, Shield, Calendar } from "lucide-react";
+import { Users, RefreshCw, X } from "lucide-react";
 
 const AgentsTab = ({ agents, transferHistory = [] }) => {
   const [selectedAgent, setSelectedAgent] = useState(null);
@@ -21,12 +21,18 @@ const AgentsTab = ({ agents, transferHistory = [] }) => {
       return (
         String(voucher.toUserId) === String(selectedAgent.userId) ||
         String(voucher.agentUserId) === String(selectedAgent.userId) ||
-        String(voucher.transferredToUserId) === String(selectedAgent.userId) ||
-        String(voucher.transferredTo) === String(selectedAgent.userId) ||
-        String(voucher.currentUserId) === String(selectedAgent.userId) ||
-        String(voucher.toAgentName) === String(selectedAgent.name) ||
-        String(voucher.agent) === String(selectedAgent.name) ||
-        String(voucher.transferredToName) === String(selectedAgent.name)
+        String(voucher.transferredToUserId) ===
+          String(selectedAgent.userId) ||
+        String(voucher.transferredTo) ===
+          String(selectedAgent.userId) ||
+        String(voucher.currentUserId) ===
+          String(selectedAgent.userId) ||
+        String(voucher.toAgentName) ===
+          String(selectedAgent.name) ||
+        String(voucher.agent) ===
+          String(selectedAgent.name) ||
+        String(voucher.transferredToName) ===
+          String(selectedAgent.name)
       );
     });
 
@@ -47,7 +53,9 @@ const AgentsTab = ({ agents, transferHistory = [] }) => {
         <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
           <div className="flex items-center gap-2">
             <Users size={18} className="text-primary-600" />
-            <h3 className="text-base font-bold text-gray-900">Agent List</h3>
+            <h3 className="text-base font-bold text-gray-900">
+              Agent List
+            </h3>
           </div>
 
           <Button
@@ -66,12 +74,15 @@ const AgentsTab = ({ agents, transferHistory = [] }) => {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600">
                   Agent Name
                 </th>
+
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600">
                   Email
                 </th>
+
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600">
                   Branch
                 </th>
+
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600">
                   Assigned Vouchers
                 </th>
@@ -120,7 +131,10 @@ const AgentsTab = ({ agents, transferHistory = [] }) => {
                 <h2 className="text-lg font-bold text-gray-900">
                   Voucher Details
                 </h2>
-                <p className="text-sm text-gray-500">{selectedAgent.name}</p>
+
+                <p className="text-sm text-gray-500">
+                  {selectedAgent.name}
+                </p>
               </div>
 
               <button
@@ -139,57 +153,24 @@ const AgentsTab = ({ agents, transferHistory = [] }) => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                  {getAgentVouchers().flatMap((voucher, voucherIndex) =>
-                    (voucher.voucherCodes || []).map((code, codeIndex) => (
-                      <div
-                        key={`${voucherIndex}-${codeIndex}`}
-                        className="bg-white border rounded-2xl p-5 shadow-sm"
-                      >
-                        <div className="flex items-start justify-between">
-                          <h3 className="text-xl font-bold text-gray-900">
-                            Basic CTPL
-                          </h3>
+                  {getAgentVouchers().flatMap(
+                    (voucher, voucherIndex) =>
+                      (voucher.voucherCodes || []).map(
+                        (code, codeIndex) => (
+                          <div
+                            key={`${voucherIndex}-${codeIndex}`}
+                            className="bg-primary-50 border border-primary-100 rounded-2xl p-5"
+                          >
+                            <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide">
+                              Voucher Code
+                            </p>
 
-                          <span className="bg-primary-100 text-primary-700 px-3 py-1 rounded-xl font-bold">
-                            ₱60.00
-                          </span>
-                        </div>
-
-                        <p className="mt-4 text-gray-600 text-sm leading-relaxed">
-                          Basic coverage for third party liability as required
-                          by LTO
-                        </p>
-
-                        <div className="mt-4 space-y-3 text-sm text-gray-600">
-                          <div className="flex items-center gap-2">
-                            <Tag size={15} />
-                            <span>
-                              PRIVATE CARS (INCLUDING JEEPS AND AUVS)
-                            </span>
+                            <p className="text-lg text-primary-700 font-bold break-all">
+                              {code}
+                            </p>
                           </div>
-
-                          <div className="flex items-center gap-2">
-                            <Calendar size={15} />
-                            <span>365 days coverage</span>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <Shield size={15} />
-                            <span>Third Party Liability</span>
-                          </div>
-                        </div>
-
-                        <div className="mt-5 bg-primary-50 border border-primary-100 rounded-xl p-4">
-                          <p className="text-xs text-gray-500 mb-1 uppercase tracking-wide">
-                            Voucher Code
-                          </p>
-
-                          <p className="text-sm text-primary-700 font-bold break-all">
-                            {code}
-                          </p>
-                        </div>
-                      </div>
-                    )),
+                        ),
+                      ),
                   )}
                 </div>
               )}
