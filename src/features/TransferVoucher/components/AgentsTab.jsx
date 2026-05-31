@@ -1,68 +1,170 @@
+import { useState } from "react";
 import { Card } from "../../../components/Card";
 import { Button } from "../../../components/Button";
-import { Users, RefreshCw } from "lucide-react";
+import { Users, RefreshCw, X, Tag, Shield, Calendar } from "lucide-react";
 
 const AgentsTab = ({ agents }) => {
-  return (
-    <Card className="p-5">
-      <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
-        <div className="flex items-center gap-2">
-          <Users size={18} className="text-primary-600" />
-          <h3 className="text-base font-bold text-gray-900">Agent List</h3>
-        </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => window.location.reload()}
-        >
-          <RefreshCw size={12} className="mr-1" /> Refresh
-        </Button>
-      </div>
+  const [selectedAgent, setSelectedAgent] = useState(null);
 
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600">
-                Agent Name
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600">
-                Email
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600">
-                Branch
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600">
-                Assigned Vouchers
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {agents.map((agent) => (
-              <tr
-                key={agent.id}
-                className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-              >
-                <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                  {agent.name}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-600">
-                  {agent.email}
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-600">
-                  {agent.branch}
-                </td>
-                <td className="px-4 py-3">
-                  <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-primary-100 text-primary-700">
-                    {agent.assignedVouchers} vouchers
-                  </span>
-                </td>
+  const handleOpenModal = (agent) => {
+    setSelectedAgent(agent);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedAgent(null);
+  };
+
+  return (
+    <>
+      <Card className="p-5">
+        <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <Users size={18} className="text-primary-600" />
+            <h3 className="text-base font-bold text-gray-900">Agent List</h3>
+          </div>
+
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => window.location.reload()}
+          >
+            <RefreshCw size={12} className="mr-1" /> Refresh
+          </Button>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600">
+                  Agent Name
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600">
+                  Email
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600">
+                  Branch
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600">
+                  Assigned Vouchers
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </Card>
+            </thead>
+
+            <tbody>
+              {agents.map((agent) => (
+                <tr
+                  key={agent.id}
+                  className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                >
+                  <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                    {agent.name}
+                  </td>
+
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {agent.email}
+                  </td>
+
+                  <td className="px-4 py-3 text-sm text-gray-600">
+                    {agent.branch}
+                  </td>
+
+                  <td className="px-4 py-3">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenModal(agent)}
+                      className="inline-flex px-3 py-1.5 text-xs font-medium rounded-lg bg-primary-100 text-primary-700 hover:bg-primary-200 transition-all cursor-pointer"
+                    >
+                      {agent.assignedVouchers ?? 0} vouchers
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {selectedAgent && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-6">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-5xl max-h-[85vh] overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">
+                  Voucher Details
+                </h2>
+                <p className="text-sm text-gray-500">{selectedAgent.name}</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="p-1 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <X size={18} className="text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto max-h-[75vh]">
+              {(selectedAgent.assignedVouchers ?? 0) === 0 ? (
+                <div className="text-center py-10 text-gray-500">
+                  No vouchers available
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                  {Array.from({
+                    length: selectedAgent.assignedVouchers ?? 0,
+                  }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="bg-white border rounded-2xl p-5 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between">
+                        <h3 className="text-xl font-bold text-gray-900">
+                          Basic CTPL
+                        </h3>
+
+                        <span className="bg-primary-100 text-primary-700 px-3 py-1 rounded-xl font-bold">
+                          ₱60.00
+                        </span>
+                      </div>
+
+                      <p className="mt-4 text-gray-600 text-sm leading-relaxed">
+                        Basic coverage for third party liability as required by
+                        LTO
+                      </p>
+
+                      <div className="mt-4 space-y-3 text-sm text-gray-600">
+                        <div className="flex items-center gap-2">
+                          <Tag size={15} />
+                          <span>PRIVATE CARS (INCLUDING JEEPS AND AUVS)</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Calendar size={15} />
+                          <span>365 days coverage</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Shield size={15} />
+                          <span>Third Party Liability</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-5 bg-primary-50 border border-primary-100 rounded-xl p-3 text-center">
+                        <p className="text-sm text-primary-700 font-semibold">
+                          Voucher {index + 1}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

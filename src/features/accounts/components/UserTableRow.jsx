@@ -8,7 +8,7 @@ export const UserTableRow = ({
   onDelete,
   onToggleActive,
   isViewer,
-  voucherCount = 0,
+  voucherCount = user.assignedVouchers ?? 0,
 }) => {
   const getBranchSubtitle = () => {
     if (

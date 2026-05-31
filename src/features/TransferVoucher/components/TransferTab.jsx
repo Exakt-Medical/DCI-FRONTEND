@@ -114,9 +114,10 @@ const TransferTab = ({
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs font-medium text-gray-700">
-                      {agent.assignedVouchers ?? 0} vouchers
-                    </p>
+                  <p className="text-xs font-medium text-gray-700">
+                  Current Voucher: {agent.assignedVouchers ?? 0}{" "}
+                  {(agent.assignedVouchers ?? 0) === 1 ? "voucher" : "vouchers"}
+                </p>
                     <p className="text-xs text-gray-400 mt-0.5">
                       {agent.userId}
                     </p>
