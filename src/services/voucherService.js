@@ -9,5 +9,4 @@ export const voucherService = {
   getHistory: () => api.get("/vouchers/history"),
   validate: (voucherCode) => api.post("/vouchers/validate", { voucherCode }),
   redeem: (voucherCode) => api.post("/vouchers/redeem", { voucherCode }),
-  process: (id) => api.post("/vouchers/process", { orderId: id }),
 };

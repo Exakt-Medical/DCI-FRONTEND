@@ -225,14 +225,9 @@ export default function Vouchers({
 
       const response = await paymentsService.createTlpePayment(paymentRequest);
       const paymentLink = response?.data?.link;
-      const orderId = response?.data?.order_id;
 
       if (!paymentLink) {
         throw new Error("No payment link returned from the server.");
-      }
-
-      if (orderId != null) {
-        sessionStorage.setItem("pendingOrderId", String(orderId));
       }
 
       // Redirect in the same tab

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { voucherService } from "../../../services/voucherService";
 
 export function ThankYouPage({
   selectedProduct,
@@ -32,14 +31,6 @@ export function ThankYouPage({
 
   const handleManualRedirect = async () => {
     setIsRedirecting(true);
-    try {
-      if (orderId != null) {
-        await voucherService.process(orderId);
-        sessionStorage.removeItem("pendingOrderId");
-      }
-    } catch (err) {
-      console.error("Failed to process order:", err);
-    }
     navigate("/vvip-access/verification");
   };
 
