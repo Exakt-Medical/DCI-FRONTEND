@@ -18,7 +18,6 @@ const handleResponse = async (res) => {
   return res.json();
 };
 
-// Maps UserResponse from backend to the shape the frontend expects
 const mapUser = (u) => ({
   id: u.id,
   userId: u.userId,
@@ -42,33 +41,12 @@ const mapUser = (u) => ({
 export const transferVoucherService = {
   // ─── Users ────────────────────────────────────────────────────────────────
 
-  /** GET /api/users/by-role/AGENT */
   async getAgents() {
     const res = await fetch(`${BASE_URL}/by-role/AGENT`, {
       headers: getAuthHeaders(),
     });
     const data = await handleResponse(res);
     return data.map(mapUser);
-  },
-
-  // ─── Vouchers ─────────────────────────────────────────────────────────────
-
-  /** GET /api/vouchers/count/by-user/:userId */
-  async getVoucherCounts(userId) {
-    const res = await fetch(`${VOUCHER_URL}/count/by-user/${userId}`, {
-      headers: getAuthHeaders(),
-    });
-    return handleResponse(res);
-    // Returns: { total, available, transferred, redeemed }
-  },
-
-  /** GET /api/vouchers/by-user/:userId/status/AVAILABLE */
-  async getAvailableVouchers(userId) {
-    const res = await fetch(
-      `${VOUCHER_URL}/by-user/${userId}/status/AVAILABLE`,
-      { headers: getAuthHeaders() },
-    );
-    return handleResponse(res);
   },
 
   async getAgentsWithVoucherCounts() {
@@ -99,13 +77,30 @@ export const transferVoucherService = {
     return agentsWithCounts;
   },
 
-  async transfer(fromUserId, toUserId, quantity) {
-    const res = await fetch(`${VOUCHER_URL}/transfer/from/${fromUserId}`, {
-      method: "POST",
+  // ─── Vouchers ─────────────────────────────────────────────────────────────
+
+  /** GET /api/vouchers/count/by-user/:userId */
+  async getVoucherCounts(userId) {
+    const res = await fetch(`${VOUCHER_URL}/count/by-user/${userId}`, {
       headers: getAuthHeaders(),
-      body: JSON.stringify({ toUserId, quantity }),
     });
     return handleResponse(res);
+  },
+
+  /** GET /api/vouchers/by-user/:userId/available?page=0&size=20&search= */
+  async getAvailableVouchersPaginated(
+    userId,
+    page = 0,
+    size = 20,
+    search = "",
+  ) {
+    const params = new URLSearchParams({ page, size, search });
+    const res = await fetch(
+      `${VOUCHER_URL}/by-user/${userId}/available?${params}`,
+      { headers: getAuthHeaders() },
+    );
+    return handleResponse(res);
+    // Returns Spring Page: { content, totalPages, totalElements, number, size }
   },
 
   /** GET /api/vouchers/count/by-user/:userId — for manager's own balance */
@@ -114,6 +109,18 @@ export const transferVoucherService = {
       headers: getAuthHeaders(),
     });
     return handleResponse(res);
-    // Returns: { total, available, transferred, redeemed }
+  },
+
+  /**
+   * POST /api/vouchers/transfer/from/:fromUserId
+   * Transfers specific vouchers by ID from manager to agent.
+   */
+  async transfer(fromUserId, toUserId, voucherIds) {
+    const res = await fetch(`${VOUCHER_URL}/transfer/from/${fromUserId}`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ toUserId, voucherIds }),
+    });
+    return handleResponse(res);
   },
 };
