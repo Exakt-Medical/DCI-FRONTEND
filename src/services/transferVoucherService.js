@@ -57,7 +57,7 @@ export const transferVoucherService = {
           const counts = await this.getVoucherCounts(agent.id);
           return {
             ...agent,
-            // ✅ Option A: agents now hold vouchers as AVAILABLE so this is correct again
+            // Option A: agents hold vouchers as AVAILABLE
             assignedVouchers: counts.available ?? 0,
             voucherCounts: counts,
           };
@@ -80,7 +80,6 @@ export const transferVoucherService = {
 
   // ─── Vouchers ─────────────────────────────────────────────────────────────
 
-  /** GET /api/vouchers/count/by-user/:userId */
   async getVoucherCounts(userId) {
     const res = await fetch(`${VOUCHER_URL}/count/by-user/${userId}`, {
       headers: getAuthHeaders(),
@@ -88,18 +87,6 @@ export const transferVoucherService = {
     return handleResponse(res);
   },
 
-  /** GET /api/vouchers/by-user/:userId/available?page=0&size=8&search= */
-  async getAvailableVouchersPaginated(userId, page = 0, size = 8, search = "") {
-    const params = new URLSearchParams({ page, size, search });
-    const res = await fetch(
-      `${VOUCHER_URL}/by-user/${userId}/available?${params}`,
-      { headers: getAuthHeaders() },
-    );
-    return handleResponse(res);
-    // Returns Spring Page: { content, totalPages, totalElements, number, size }
-  },
-
-  /** GET /api/vouchers/count/by-user/:userId — for manager's own balance */
   async getManagerBalance(managerId) {
     const res = await fetch(`${VOUCHER_URL}/count/by-user/${managerId}`, {
       headers: getAuthHeaders(),
@@ -107,11 +94,8 @@ export const transferVoucherService = {
     return handleResponse(res);
   },
 
-  /**
-   * GET /api/vouchers/transfer/history/:fromUserId
-   * Returns transfer history grouped by batch (one entry per transfer action).
-   * Shape: { referenceNumber, fromUserId, toUserId, quantity, voucherCodes, transferredAt }[]
-   */
+  // ─── Transfer History ─────────────────────────────────────────────────────
+
   async getTransferHistory(fromUserId) {
     const res = await fetch(`${VOUCHER_URL}/transfer/history/${fromUserId}`, {
       headers: getAuthHeaders(),
@@ -119,15 +103,17 @@ export const transferVoucherService = {
     return handleResponse(res);
   },
 
+  // ─── Transfer by quantity (backend picks which vouchers) ──────────────────
+
   /**
    * POST /api/vouchers/transfer/from/:fromUserId
-   * Transfers specific vouchers by ID from manager to agent.
+   * Sends quantity only — backend picks the first N available vouchers.
    */
-  async transfer(fromUserId, toUserId, voucherIds) {
+  async transferByQuantity(fromUserId, toUserId, quantity) {
     const res = await fetch(`${VOUCHER_URL}/transfer/from/${fromUserId}`, {
       method: "POST",
       headers: getAuthHeaders(),
-      body: JSON.stringify({ toUserId, voucherIds }),
+      body: JSON.stringify({ toUserId, quantity }),
     });
     return handleResponse(res);
   },
