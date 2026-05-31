@@ -25,11 +25,6 @@ import { attachmentService } from "../../services/attachmentService";
 // Helpers
 // ---------------------------------------------------------------------------
 
-const getPurchaseHistory = () => {
-  const stored = localStorage.getItem("ctpl_purchase_history");
-  return stored ? JSON.parse(stored) : [];
-};
-
 const insuranceFeeMap = {
   "PRIVATE CARS (INCLUDING JEEPS AND AUVS)": {
     prescribedPremiumFee: "449.40",
@@ -508,40 +503,62 @@ export const VerificationPage = ({ onCertificate }) => {
   // STEP 2 — Voucher validation
   // ---------------------------------------------------------------------------
 
-  const validateVoucher = (voucherCode) => {
+  const validateVoucher = async (voucherCode) => {
     if (!voucherCode.trim()) {
       setVoucherError("Please enter a voucher code");
       return;
     }
     setIsValidatingVoucher(true);
     setVoucherError(null);
-    setTimeout(() => {
-      const purchaseHistory = getPurchaseHistory();
-      const voucher = purchaseHistory.find(
-        (v) =>
-          v.voucherCode === voucherCode.toUpperCase() &&
-          v.status === "Active" &&
-          new Date(v.expirationDate) > new Date(),
-      );
-      if (voucher) {
-        setValidatedVoucher(voucher);
-        const fees =
-          insuranceFeeMap[voucher.insuranceCode] ||
-          insuranceFeeMap["PRIVATE CARS (INCLUDING JEEPS AND AUVS)"];
-        const newData = {
-          selectedCode: voucher.insuranceCode,
-          policyNumber: voucher.policyNumber,
-          premiumType: voucher.insuranceCode,
-          ...fees,
-        };
-        setInsuranceData({ ...newData, totalAmount: calculateTotal(newData) });
-        setVoucherError(null);
-      } else {
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/v1/vvip/validate-voucher", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ voucherCode: voucherCode.toUpperCase() }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setVoucherError(data.error || "Invalid or expired voucher code.");
         setValidatedVoucher(null);
-        setVoucherError("Invalid or expired voucher code.");
+        return;
       }
+
+      // Voucher valid — store it
+      setValidatedVoucher({
+        voucherCode: data.voucherCode,
+        remainingVouchers: data.remainingVouchers,
+        ownerUsername: data.ownerUsername,
+        expiresAt: data.expiresAt,
+      });
+
+      // Populate fee breakdown from vehicle classification
+      const classificationKey = vehicleData.classification
+        ? (Object.keys(insuranceFeeMap).find((k) =>
+            k.toUpperCase().includes(vehicleData.classification.toUpperCase()),
+          ) ?? "PRIVATE CARS (INCLUDING JEEPS AND AUVS)")
+        : "PRIVATE CARS (INCLUDING JEEPS AND AUVS)";
+
+      const fees = insuranceFeeMap[classificationKey];
+      const newData = {
+        selectedCode: classificationKey,
+        premiumType: classificationKey,
+        policyNumber: data.voucherCode,
+        ...fees,
+      };
+      setInsuranceData({ ...newData, totalAmount: calculateTotal(newData) });
+      setVoucherError(null);
+    } catch (e) {
+      setVoucherError("Network error. Please try again.");
+    } finally {
       setIsValidatingVoucher(false);
-    }, 800);
+    }
   };
 
   // ---------------------------------------------------------------------------
@@ -570,19 +587,6 @@ export const VerificationPage = ({ onCertificate }) => {
         return;
       }
       const { certificateNo } = data;
-      if (validatedVoucher) {
-        const purchaseHistory = getPurchaseHistory();
-        const updated = purchaseHistory.map((v) =>
-          v.voucherCode === validatedVoucher.voucherCode
-            ? {
-                ...v,
-                status: "Redeemed",
-                redeemedOn: new Date().toLocaleDateString(),
-              }
-            : v,
-        );
-        localStorage.setItem("ctpl_purchase_history", JSON.stringify(updated));
-      }
       setShowFinalReview(false);
       await generateCertificatePDF({
         vehicle: vehicleData,
@@ -651,18 +655,18 @@ export const VerificationPage = ({ onCertificate }) => {
       />
 
       {/* Vehicle Not Found — error + Submit Ticket button */}
-{fetchError && (
-  <div className="flex justify-end mt-4 mb-4">
-    <Button
-      variant="secondary"
-      className="flex items-center gap-2"
-      onClick={() => setShowTicketAttachmentModal(true)}
-    >
-      <Ticket size={16} />
-      Submit Ticket
-    </Button>
-  </div>
-)}
+      {fetchError && (
+        <div className="flex justify-end mt-4 mb-4">
+          <Button
+            variant="secondary"
+            className="flex items-center gap-2"
+            onClick={() => setShowTicketAttachmentModal(true)}
+          >
+            <Ticket size={16} />
+            Submit Ticket
+          </Button>
+        </div>
+      )}
       {/* Vehicle found — info cards + Report Data Mismatch */}
       {isRecordFound && (
         <>
