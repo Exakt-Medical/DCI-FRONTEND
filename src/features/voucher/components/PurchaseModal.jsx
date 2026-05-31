@@ -10,38 +10,46 @@ export function PurchaseModal({
   selectedQuantity = 1,
   onQuantityChange,
 }) {
+  const [showRequestInvoice, setShowRequestInvoice] = useState(false);
+  const MAX_VOUCHERS = 800;
+  const REQUEST_INVOICE_THRESHOLD = 801;
+
   const handleQuantityChange = (e) => {
-    // Disabled for now - future bulk purchase feature
-    // const newQuantity = parseInt(e.target.value) || 1;
-    // if (onQuantityChange) {
-    //   onQuantityChange(
-    //     Math.max(1, Math.min(newQuantity, selectedProduct.stock || 999)),
-    //   );
-    // }
+    let newQuantity = parseInt(e.target.value) || 1;
+    // Allow any quantity, but track if it's above threshold for invoice request
+    if (onQuantityChange) {
+      onQuantityChange(newQuantity);
+    }
   };
 
   const handleIncrement = () => {
-    // Disabled for now - future bulk purchase feature
-    // if (onQuantityChange) {
-    //   onQuantityChange(
-    //     Math.min(selectedQuantity + 1, selectedProduct.stock || 999),
-    //   );
-    // }
+    if (onQuantityChange) {
+      const newQuantity = selectedQuantity + 1;
+      onQuantityChange(newQuantity);
+    }
   };
 
   const handleDecrement = () => {
-    // Disabled for now - future bulk purchase feature
-    // if (onQuantityChange) {
-    //   onQuantityChange(Math.max(selectedQuantity - 1, 1));
-    // }
+    if (onQuantityChange && selectedQuantity > 1) {
+      onQuantityChange(selectedQuantity - 1);
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onConfirm(1); // Force quantity to 1 for now
+    if (selectedQuantity >= REQUEST_INVOICE_THRESHOLD) {
+      // Show invoice request modal or handle invoice request
+      setShowRequestInvoice(true);
+      // You can implement custom logic here for invoice request
+      alert(
+        `Please request an invoice for ${selectedQuantity} vouchers. Our sales team will contact you.`,
+      );
+    } else {
+      onConfirm(selectedQuantity);
+    }
   };
 
-  const totalAmount = selectedProduct.price * 1; // Force quantity to 1 for now
+  const totalAmount = selectedProduct.price * selectedQuantity;
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center">
@@ -49,7 +57,7 @@ export function PurchaseModal({
         <div className="border-b border-gray-200 px-6 py-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold text-gray-900">
-              Purchase {selectedProduct.name}
+              Purchase {selectedProduct.productName}
             </h2>
             <button
               onClick={onClose}
@@ -76,24 +84,28 @@ export function PurchaseModal({
           {/* Product Info */}
           <div className="mb-6">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-600">Price per ticket:</span>
+              <span className="text-gray-600">Price per voucher:</span>
               <span className="text-lg font-semibold text-primary-600">
                 {formatCurrency(selectedProduct.price)}
               </span>
             </div>
           </div>
 
-          {/* Quantity Selector - Disabled but visible for future bulk purchase */}
+          {/* Quantity Selector */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Quantity{" "}
+              Quantity
             </label>
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={handleDecrement}
-                disabled={true} // Disabled for now
-                className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center bg-gray-100 opacity-50 cursor-not-allowed transition-colors"
+                disabled={selectedQuantity <= 1}
+                className={`w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center transition-colors ${
+                  selectedQuantity <= 1
+                    ? "bg-gray-100 opacity-50 cursor-not-allowed"
+                    : "bg-white hover:bg-gray-50 cursor-pointer"
+                }`}
               >
                 <svg
                   className="w-5 h-5"
@@ -112,19 +124,16 @@ export function PurchaseModal({
 
               <input
                 type="number"
-                value={1} // Fixed value for now
+                value={selectedQuantity}
                 onChange={handleQuantityChange}
                 min="1"
-                max="1" // Max set to 1 for now
-                disabled={true} // Disabled for now
-                className="w-20 text-center px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
+                className="w-20 text-center px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
 
               <button
                 type="button"
                 onClick={handleIncrement}
-                disabled={true} // Disabled for now
-                className="w-10 h-10 rounded-lg border border-gray-300 flex items-center justify-center bg-gray-100 opacity-50 cursor-not-allowed transition-colors"
+                className="w-10 h-10 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 transition-colors flex items-center justify-center cursor-pointer"
               >
                 <svg
                   className="w-5 h-5"
@@ -140,9 +149,15 @@ export function PurchaseModal({
                   />
                 </svg>
               </button>
-
-              <span className="text-sm text-gray-400">Max: 1</span>
             </div>
+
+            {/* Warning message for exceeding max */}
+            {selectedQuantity > MAX_VOUCHERS && (
+              <p className="text-xs text-amber-600 mt-2">
+                ⚠️ For bulk orders exceeding {MAX_VOUCHERS} vouchers, please
+                request an invoice.
+              </p>
+            )}
           </div>
 
           {/* Total Amount */}
@@ -154,22 +169,38 @@ export function PurchaseModal({
                   {formatCurrency(totalAmount)}
                 </span>
                 <p className="text-xs text-gray-500">
-                  (1 ticket × {formatCurrency(selectedProduct.price)})
+                  ({selectedQuantity} voucher{selectedQuantity !== 1 ? "s" : ""}{" "}
+                  × {formatCurrency(selectedProduct.price)})
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Proceed Button */}
-          <button
-            onClick={handleSubmit}
-            disabled={isProcessing}
-            className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isProcessing
-              ? "Processing..."
-              : `Proceed to Payment (${formatCurrency(totalAmount)})`}
-          </button>
+          {/* Conditional Button: Proceed to Payment OR Request Invoice */}
+          {selectedQuantity >= REQUEST_INVOICE_THRESHOLD ? (
+            <button
+              onClick={handleSubmit}
+              disabled={isProcessing}
+              className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isProcessing ? "Processing..." : "Request Invoice"}
+            </button>
+          ) : (
+            <button
+              onClick={handleSubmit}
+              disabled={isProcessing}
+              className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isProcessing
+                ? "Processing..."
+                : `Proceed to Payment (${formatCurrency(totalAmount)})`}
+            </button>
+          )}
+
+          <p className="text-xs text-gray-400 text-center mt-3">
+            Max {MAX_VOUCHERS} vouchers for online payment. For{" "}
+            {REQUEST_INVOICE_THRESHOLD}+ vouchers, please request an invoice.
+          </p>
         </div>
       </div>
     </div>
