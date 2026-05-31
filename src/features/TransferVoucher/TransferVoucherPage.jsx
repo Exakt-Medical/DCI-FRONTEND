@@ -192,10 +192,11 @@ const TransferVoucherPage = () => {
 
       {activeTab === "agents" && (
         <AgentsTab
-          agents={agents}
-          isLoadingAgents={isLoadingAgents}
-          agentsError={agentsError}
-        />
+  agents={agents}
+  transferHistory={transferHistory}
+  isLoadingAgents={isLoadingAgents}
+  agentsError={agentsError}
+/>
       )}
 
       {activeTab === "history" && (
