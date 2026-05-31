@@ -24,13 +24,22 @@ export function AuthProvider({ children }) {
       localStorage.setItem("token", data.token);
       localStorage.setItem("role", data.role);
       localStorage.setItem("username", data.username);
+      localStorage.setItem("email", data.email ?? "");
+      localStorage.setItem("firstname", data.firstname ?? "");
+      localStorage.setItem("lastname", data.lastname ?? "");
+      if (data.companyId != null)
+        localStorage.setItem("companyId", String(data.companyId));
+      if (data.companyCode != null)
+        localStorage.setItem("companyCode", data.companyCode);
       setToken(data.token);
       setRole(data.role);
       setUser({ token: data.token, role: data.role });
       return data.role;
     } catch (error) {
       throw new Error(
-        error.response?.data?.message || error.response?.data?.error || "Login failed"
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          "Login failed",
       );
     } finally {
       setLoading(false);
@@ -41,6 +50,11 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     localStorage.removeItem("username");
+    localStorage.removeItem("email");
+    localStorage.removeItem("firstname");
+    localStorage.removeItem("lastname");
+    localStorage.removeItem("companyId");
+    localStorage.removeItem("companyCode");
     setToken(null);
     setRole(null);
     setUser(null);
@@ -48,7 +62,15 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, role, loading, login, logout, isAuthenticated: !!token }}
+      value={{
+        user,
+        token,
+        role,
+        loading,
+        login,
+        logout,
+        isAuthenticated: !!token,
+      }}
     >
       {children}
     </AuthContext.Provider>
