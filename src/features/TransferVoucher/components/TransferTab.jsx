@@ -4,82 +4,14 @@ import { Spinner } from "../../../components/Spinner";
 import {
   Users,
   Ticket,
-  Search,
   Send,
+  Search,
   Building2,
   AlertCircle,
-  Calendar,
-  Hash,
-  CheckSquare,
-  Square,
-  ChevronLeft,
-  ChevronRight,
-  X,
+  Minus,
+  Plus,
 } from "lucide-react";
 import { VOUCHER_VALUE, formatCurrency } from "../TransferVoucherPage";
-
-// ✅ Individual voucher card
-const VoucherCard = ({ voucher, isSelected, onToggle }) => {
-  const isExpired =
-    voucher.expiresAt && new Date(voucher.expiresAt) < new Date();
-  const expiresAt = voucher.expiresAt
-    ? new Date(voucher.expiresAt + "+08:00").toLocaleDateString("en-PH", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        timeZone: "Asia/Manila",
-      })
-    : "No expiry";
-
-  return (
-    <div
-      onClick={() => !isExpired && onToggle(voucher.id)}
-      className={`relative p-3 rounded-xl border-2 cursor-pointer transition-all select-none ${
-        isExpired
-          ? "border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed"
-          : isSelected
-            ? "border-primary-500 bg-primary-50 shadow-sm"
-            : "border-gray-200 bg-white hover:border-primary-300 hover:shadow-sm"
-      }`}
-    >
-      {/* Selected / unselected icon */}
-      <div className="absolute top-2 right-2">
-        {isExpired ? (
-          <span className="text-[10px] font-semibold bg-red-100 text-red-500 px-1.5 py-0.5 rounded-full">
-            Expired
-          </span>
-        ) : isSelected ? (
-          <CheckSquare size={15} className="text-primary-500" />
-        ) : (
-          <Square size={15} className="text-gray-300" />
-        )}
-      </div>
-
-      {/* Voucher code */}
-      <div className="flex items-center gap-1.5 mb-2 pr-5">
-        <Hash size={11} className="text-primary-400 flex-shrink-0" />
-        <p className="text-xs font-mono font-bold text-gray-900 tracking-wide truncate">
-          {voucher.voucherCode}
-        </p>
-      </div>
-
-      {/* Expiry */}
-      <div className="flex items-center gap-1.5 mb-2">
-        <Calendar size={10} className="text-gray-400 flex-shrink-0" />
-        <p
-          className={`text-[10px] ${isExpired ? "text-red-400" : "text-gray-400"}`}
-        >
-          {expiresAt}
-        </p>
-      </div>
-
-      {/* Value */}
-      <p className="text-xs font-semibold text-primary-600">
-        {formatCurrency(VOUCHER_VALUE)}
-      </p>
-    </div>
-  );
-};
 
 const TransferTab = ({
   agents,
@@ -93,19 +25,27 @@ const TransferTab = ({
   handleTransfer,
   remainingBalance,
   companyBalance,
-  // Voucher props
-  availableVouchers,
-  isLoadingVouchers,
-  selectedVoucherIds,
-  onToggleVoucher,
-  // Pagination props
-  voucherSearch,
-  setVoucherSearch,
-  currentPage,
-  totalPages,
-  totalElements,
-  onPageChange,
+  // Quantity props (replaces voucher card selection)
+  quantity,
+  setQuantity,
 }) => {
+  const handleDecrement = () => setQuantity((q) => Math.max(1, q - 1));
+  const handleIncrement = () =>
+    setQuantity((q) => Math.min(remainingBalance, q + 1));
+
+  const handleInputChange = (e) => {
+    const val = parseInt(e.target.value, 10);
+    if (isNaN(val) || val < 1) {
+      setQuantity(1);
+    } else if (val > remainingBalance) {
+      setQuantity(remainingBalance);
+    } else {
+      setQuantity(val);
+    }
+  };
+
+  const totalValue = quantity * VOUCHER_VALUE;
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       {/* ── Left: Select Agent ──────────────────────────────────────────── */}
@@ -190,18 +130,18 @@ const TransferTab = ({
         </div>
       </Card>
 
-      {/* ── Right: Voucher Cards ─────────────────────────────────────────── */}
+      {/* ── Right: Quantity + Transfer ───────────────────────────────────── */}
       <Card className="p-5">
         <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
           <Ticket size={18} className="text-primary-600" />
-          <h3 className="text-base font-bold text-gray-900">My Vouchers</h3>
+          <h3 className="text-base font-bold text-gray-900">Select Quantity</h3>
           <span className="ml-auto text-xs text-gray-400">
             {remainingBalance} available
           </span>
         </div>
 
         {/* Balance summary */}
-        <div className="mb-4 p-3 bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl shadow-sm">
+        <div className="mb-6 p-3 bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Building2 size={14} className="text-primary-100" />
@@ -221,123 +161,65 @@ const TransferTab = ({
           </div>
         </div>
 
-        {/* Search voucher code */}
-        <div className="relative mb-3">
-          <Search
-            size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-          />
-          <input
-            type="text"
-            value={voucherSearch}
-            onChange={(e) => setVoucherSearch(e.target.value)}
-            placeholder="Search voucher code..."
-            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 pl-8 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
-          {voucherSearch && (
-            <button
-              onClick={() => setVoucherSearch("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              <X size={14} />
-            </button>
-          )}
-        </div>
+        {/* Quantity stepper */}
+        <div className="flex flex-col items-center gap-4 py-8">
+          <p className="text-sm font-medium text-gray-600">
+            Number of vouchers to transfer
+          </p>
 
-        {/* Selected vouchers summary */}
-        {selectedVoucherIds.length > 0 && (
-          <div className="mb-3 flex items-center justify-between bg-primary-50 border border-primary-200 rounded-lg px-3 py-2">
-            <p className="text-sm font-medium text-primary-700">
-              {selectedVoucherIds.length} selected
-              <span className="text-primary-500 ml-1 font-normal">
-                · {formatCurrency(selectedVoucherIds.length * VOUCHER_VALUE)}
-              </span>
-            </p>
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => onToggleVoucher(null)}
-              className="text-xs text-primary-400 hover:text-primary-600 flex items-center gap-1"
+              onClick={handleDecrement}
+              disabled={quantity <= 1 || remainingBalance === 0}
+              className="w-11 h-11 rounded-xl border-2 border-gray-200 flex items-center justify-center text-gray-600 hover:border-primary-400 hover:text-primary-600 hover:bg-primary-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
             >
-              <X size={12} /> Clear
+              <Minus size={18} />
+            </button>
+
+            <input
+              type="number"
+              value={quantity}
+              onChange={handleInputChange}
+              min={1}
+              max={remainingBalance}
+              disabled={remainingBalance === 0}
+              className="w-24 h-11 text-center text-xl font-bold text-gray-900 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 disabled:opacity-40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+
+            <button
+              onClick={handleIncrement}
+              disabled={quantity >= remainingBalance || remainingBalance === 0}
+              className="w-11 h-11 rounded-xl border-2 border-gray-200 flex items-center justify-center text-gray-600 hover:border-primary-400 hover:text-primary-600 hover:bg-primary-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            >
+              <Plus size={18} />
             </button>
           </div>
-        )}
 
-        {/* Voucher cards grid */}
-        <div className="min-h-48">
-          {isLoadingVouchers ? (
-            <div className="flex items-center justify-center py-10 gap-2 text-gray-400">
-              <Spinner size="sm" />
-              <span className="text-sm">Loading vouchers...</span>
-            </div>
-          ) : availableVouchers.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-gray-400">
-              <Ticket size={32} className="mb-2 opacity-30" />
-              <p className="text-sm">No available vouchers</p>
+          {/* Transfer value preview */}
+          {remainingBalance > 0 ? (
+            <div className="text-center">
+              <p className="text-xs text-gray-400">Total transfer value</p>
+              <p className="text-lg font-bold text-primary-600">
+                {formatCurrency(totalValue)}
+              </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-2">
-              {availableVouchers.map((voucher) => (
-                <VoucherCard
-                  key={voucher.id}
-                  voucher={voucher}
-                  isSelected={selectedVoucherIds.includes(voucher.id)}
-                  onToggle={onToggleVoucher}
-                />
-              ))}
+            <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-4 py-2 text-red-600 text-sm">
+              <AlertCircle size={15} />
+              No available vouchers to transfer
             </div>
           )}
         </div>
 
-        {/* ✅ Pagination controls */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
-            <p className="text-xs text-gray-400">
-              Page {currentPage + 1} of {totalPages}
-              <span className="ml-1">({totalElements} total)</span>
-            </p>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => onPageChange(currentPage - 1)}
-                disabled={currentPage === 0}
-                className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronLeft size={14} className="text-gray-600" />
-              </button>
-              {/* Page number pills */}
-              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                const page =
-                  Math.max(0, Math.min(currentPage - 2, totalPages - 5)) + i;
-                return (
-                  <button
-                    key={page}
-                    onClick={() => onPageChange(page)}
-                    className={`w-7 h-7 text-xs rounded-lg border transition-colors ${
-                      page === currentPage
-                        ? "bg-primary-500 border-primary-500 text-white font-medium"
-                        : "border-gray-200 text-gray-600 hover:bg-gray-50"
-                    }`}
-                  >
-                    {page + 1}
-                  </button>
-                );
-              })}
-              <button
-                onClick={() => onPageChange(currentPage + 1)}
-                disabled={currentPage >= totalPages - 1}
-                className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                <ChevronRight size={14} className="text-gray-600" />
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Transfer button */}
-        <div className="mt-4 pt-4 border-t border-gray-100">
+        <div className="mt-auto pt-4 border-t border-gray-100">
           <Button
             onClick={handleTransfer}
             disabled={
-              !selectedAgent || isProcessing || selectedVoucherIds.length === 0
+              !selectedAgent ||
+              isProcessing ||
+              remainingBalance === 0 ||
+              quantity < 1
             }
             className="w-full"
             size="lg"
@@ -347,11 +229,7 @@ const TransferTab = ({
             ) : (
               <>
                 <Send size={16} className="mr-2" />
-                Transfer{" "}
-                {selectedVoucherIds.length > 0
-                  ? selectedVoucherIds.length
-                  : ""}{" "}
-                Voucher{selectedVoucherIds.length !== 1 ? "s" : ""} to Agent
+                Transfer {quantity} Voucher{quantity !== 1 ? "s" : ""} to Agent
               </>
             )}
           </Button>

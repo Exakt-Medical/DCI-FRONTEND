@@ -17,8 +17,6 @@ export const formatCurrency = (amount) => {
   }).format(amount || 0);
 };
 
-const PAGE_SIZE = 8;
-
 const TransferVoucherPage = () => {
   const [activeTab, setActiveTab] = useState("transfer");
   const [selectedAgent, setSelectedAgent] = useState(null);
@@ -27,7 +25,10 @@ const TransferVoucherPage = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [transferSuccess, setTransferSuccess] = useState(null);
 
-  // Transfer history — fetched from real backend endpoint
+  // Quantity replaces selectedVoucherIds
+  const [quantity, setQuantity] = useState(1);
+
+  // Transfer history
   const [transferHistory, setTransferHistory] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
@@ -35,17 +36,6 @@ const TransferVoucherPage = () => {
   const [agents, setAgents] = useState([]);
   const [isLoadingAgents, setIsLoadingAgents] = useState(true);
   const [agentsError, setAgentsError] = useState(null);
-
-  // Vouchers
-  const [availableVouchers, setAvailableVouchers] = useState([]);
-  const [isLoadingVouchers, setIsLoadingVouchers] = useState(true);
-  const [selectedVoucherIds, setSelectedVoucherIds] = useState([]);
-
-  // Pagination + search state
-  const [voucherSearch, setVoucherSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
 
   // Manager balance
   const [companyBalance, setCompanyBalance] = useState(0);
@@ -72,36 +62,6 @@ const TransferVoucherPage = () => {
     fetchAgents();
   }, [fetchAgents]);
 
-  // ─── Fetch paginated vouchers ──────────────────────────────────────────────
-  const fetchVouchers = useCallback(async () => {
-    if (!managerId) return;
-    try {
-      setIsLoadingVouchers(true);
-      const result = await transferVoucherService.getAvailableVouchersPaginated(
-        managerId,
-        currentPage,
-        PAGE_SIZE,
-        voucherSearch,
-      );
-      setAvailableVouchers(result.content ?? []);
-      setTotalPages(result.totalPages ?? 0);
-      setTotalElements(result.totalElements ?? 0);
-    } catch (err) {
-      console.error("Failed to fetch vouchers:", err);
-    } finally {
-      setIsLoadingVouchers(false);
-    }
-  }, [managerId, currentPage, voucherSearch]);
-
-  useEffect(() => {
-    fetchVouchers();
-  }, [fetchVouchers]);
-
-  // Reset to page 0 when search changes
-  useEffect(() => {
-    setCurrentPage(0);
-  }, [voucherSearch]);
-
   // ─── Fetch manager balance ─────────────────────────────────────────────────
   const fetchBalance = useCallback(async () => {
     if (!managerId) return;
@@ -118,7 +78,7 @@ const TransferVoucherPage = () => {
     fetchBalance();
   }, [fetchBalance]);
 
-  // ─── Fetch transfer history from backend ───────────────────────────────────
+  // ─── Fetch transfer history ────────────────────────────────────────────────
   const fetchHistory = useCallback(async () => {
     if (!managerId) return;
     try {
@@ -136,7 +96,7 @@ const TransferVoucherPage = () => {
     fetchHistory();
   }, [fetchHistory]);
 
-  // ─── Filtered agents for transfer tab search ───────────────────────────────
+  // ─── Filtered agents ───────────────────────────────────────────────────────
   const filteredAgents = agents.filter(
     (agent) =>
       agent.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -144,63 +104,49 @@ const TransferVoucherPage = () => {
       agent.branch.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
-  // ─── Voucher selection ─────────────────────────────────────────────────────
-  const handleToggleVoucher = (voucherId) => {
-    if (voucherId === null) {
-      setSelectedVoucherIds([]);
-      return;
-    }
-    setSelectedVoucherIds((prev) =>
-      prev.includes(voucherId)
-        ? prev.filter((id) => id !== voucherId)
-        : [...prev, voucherId],
-    );
-  };
-
-  const totalVoucherValue = selectedVoucherIds.length * VOUCHER_VALUE;
-
   // ─── Transfer ──────────────────────────────────────────────────────────────
   const handleTransfer = async () => {
     if (!selectedAgent) {
       alert("Please select an agent");
       return;
     }
-    if (selectedVoucherIds.length === 0) {
-      alert("Please select at least one voucher to transfer");
+    if (quantity < 1) {
+      alert("Please select at least 1 voucher to transfer");
+      return;
+    }
+    if (quantity > remainingBalance) {
+      alert(
+        `Insufficient vouchers. You only have ${remainingBalance} available.`,
+      );
       return;
     }
 
     setIsProcessing(true);
     try {
-      await transferVoucherService.transfer(
+      // Send quantity only — backend picks which vouchers to transfer
+      await transferVoucherService.transferByQuantity(
         managerId,
         selectedAgent,
-        selectedVoucherIds,
+        quantity,
       );
 
       const agent = agents.find((a) => a.id === selectedAgent);
-      const quantity = selectedVoucherIds.length;
 
       setTransferSuccess({
         agent: agent.name,
         agentUserId: agent.userId,
         quantity,
-        totalValue: totalVoucherValue,
+        totalValue: quantity * VOUCHER_VALUE,
         newAssignedCount: (agent.assignedVouchers ?? 0) + quantity,
         remainingBalance: remainingBalance - quantity,
       });
 
-      setSelectedVoucherIds([]);
+      setQuantity(1);
       setSelectedAgent(null);
       setShowSuccessModal(true);
 
-      // Re-fetch everything from the server so all tabs reflect real state
-      await Promise.all([
-        fetchAgents(),
-        fetchBalance(),
-        fetchVouchers(),
-        fetchHistory(),
-      ]);
+      // Re-fetch everything from the server
+      await Promise.all([fetchAgents(), fetchBalance(), fetchHistory()]);
     } catch (err) {
       console.error("Transfer failed:", err);
       alert(err.message || "Transfer failed. Please try again.");
@@ -239,16 +185,8 @@ const TransferVoucherPage = () => {
           handleTransfer={handleTransfer}
           remainingBalance={remainingBalance}
           companyBalance={companyBalance}
-          availableVouchers={availableVouchers}
-          isLoadingVouchers={isLoadingVouchers}
-          selectedVoucherIds={selectedVoucherIds}
-          onToggleVoucher={handleToggleVoucher}
-          voucherSearch={voucherSearch}
-          setVoucherSearch={setVoucherSearch}
-          currentPage={currentPage}
-          totalPages={totalPages}
-          totalElements={totalElements}
-          onPageChange={setCurrentPage}
+          quantity={quantity}
+          setQuantity={setQuantity}
         />
       )}
 
