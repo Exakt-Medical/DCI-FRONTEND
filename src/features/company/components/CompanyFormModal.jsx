@@ -14,6 +14,7 @@ export const CompanyFormModal = ({
     companyName: "",
     provider: "",
     address: "",
+    email: "",
     status: "ACTIVE",
   });
 
@@ -24,6 +25,7 @@ export const CompanyFormModal = ({
         companyName: company.companyName || "",
         provider: company.provider || "",
         address: company.address || "",
+        email: company.email || "",
         status: company.status || "ACTIVE",
       });
     } else {
@@ -32,6 +34,7 @@ export const CompanyFormModal = ({
         companyName: "",
         provider: "",
         address: "",
+        email: "",
         status: "ACTIVE",
       });
     }
@@ -144,6 +147,21 @@ export const CompanyFormModal = ({
                 required
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                 placeholder="Enter company name"
+              />
+            </div>
+
+            <div className="space-y-2 md:col-span-2">
+              <label className="block text-sm font-semibold text-gray-700">
+                Company Email
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                placeholder="Enter company email"
               />
             </div>
 

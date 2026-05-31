@@ -19,11 +19,11 @@ export const AssignedVouchersTable = ({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  // Removed 'assignedBy' from search criteria
   const filteredVouchers = assignedVouchers.filter(
     (voucher) =>
       voucher.voucherCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      voucher.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      voucher.assignedBy?.toLowerCase().includes(searchTerm.toLowerCase()),
+      voucher.productName?.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   if (assignedVouchers.length === 0) {
@@ -48,7 +48,7 @@ export const AssignedVouchersTable = ({
   }
 
   const getStatusVariant = (status) => {
-    if (status === "Active") return "Active";
+    if (status === "Available") return "Active";
     if (status === "Used") return "Used";
     if (status === "Expired") return "Expired";
     return "default";
@@ -64,7 +64,7 @@ export const AssignedVouchersTable = ({
         />
         <input
           type="text"
-          placeholder="Search by voucher code, product, or assigned by..."
+          placeholder="Search by voucher code or product..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -73,15 +73,18 @@ export const AssignedVouchersTable = ({
 
       {/* Stats Summary - Bento Grid Style with Animations */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Active Card */}
+        {/* Available Card */}
         <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-100 shadow-lg p-5 hover:shadow-xl transition-all group">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                Active
+                Available
               </p>
               <p className="text-3xl font-black text-gray-900 mt-2 tracking-tight">
-                {assignedVouchers.filter((v) => v.status === "Active").length}
+                {
+                  assignedVouchers.filter((v) => v.status === "Available")
+                    .length
+                }
               </p>
             </div>
             <div className="w-8 h-8 rounded-full bg-primary-500/10 flex items-center justify-center group-hover:bg-primary-500/20 transition-colors">
@@ -185,15 +188,9 @@ export const AssignedVouchersTable = ({
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Premium
                 </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Assigned By
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Assigned Date
-                </th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Expiry Date
-                </th>
+                {/* Removed Assigned By Column Header */}
+                {/* Removed Assigned Date Column Header */}
+                {/* Removed Expiry Date Column Header */}
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
@@ -219,15 +216,9 @@ export const AssignedVouchersTable = ({
                   <td className="px-4 py-3 text-gray-600">
                     {formatCurrency(voucher.premium)}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {voucher.assignedBy}
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">
-                    {voucher.assignedDate}
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">
-                    {voucher.expiryDate}
-                  </td>
+                  {/* Removed Assigned By Data Cell */}
+                  {/* Removed Assigned Date Data Cell */}
+                  {/* Removed Expiry Date Data Cell */}
                   <td className="px-4 py-3">
                     <StatusBadge status={getStatusVariant(voucher.status)}>
                       {voucher.status}
@@ -238,9 +229,9 @@ export const AssignedVouchersTable = ({
                       onClick={() =>
                         handleCopy(voucher.voucherCode, voucher.id)
                       }
-                      disabled={voucher.status !== "Active"}
+                      disabled={voucher.status !== "Available"}
                       className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-lg transition-colors ${
-                        voucher.status === "Active"
+                        voucher.status === "Available"
                           ? "text-primary-600 hover:text-primary-700 hover:bg-primary-50 cursor-pointer"
                           : "text-gray-400 cursor-not-allowed"
                       }`}
