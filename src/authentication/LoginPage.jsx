@@ -59,6 +59,8 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
         lastname,
         email,
         userId,
+        companyId,
+        companyCode,
       } = response.data;
 
       localStorage.setItem("token", token);
@@ -67,6 +69,9 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
       localStorage.setItem("firstname", firstname);
       localStorage.setItem("lastname", lastname);
       localStorage.setItem("username", form.username);
+      if (companyId != null)
+        localStorage.setItem("companyId", String(companyId));
+      if (companyCode != null) localStorage.setItem("companyCode", companyCode);
       localStorage.setItem(
         "authAllowedToBuyVoucher",
         String(!!allowedToBuyVoucher),

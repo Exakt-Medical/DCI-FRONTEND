@@ -18,7 +18,7 @@ export const ProductCard = ({ product, formatCurrency, onPurchase }) => {
 
       <p className="text-sm text-gray-600 mb-3">{product.description}</p>
 
-      <div className="space-y-2 mb-4">
+      {/* <div className="space-y-2 mb-4">
         <div className="flex items-center gap-2 text-xs text-gray-500">
           <Tag size={12} />
           <span>{product.insuranceCode}</span>
@@ -31,7 +31,7 @@ export const ProductCard = ({ product, formatCurrency, onPurchase }) => {
           <Shield size={12} />
           <span>{product.coverage}</span>
         </div>
-      </div>
+      </div> */}
 
       <Button
         onClick={() => onPurchase(product)}

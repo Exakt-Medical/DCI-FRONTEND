@@ -1,4 +1,4 @@
-// features/voucher/Vouchers.jsx
+// features/voucher/Vouchers.jsx (UPDATED - Only Basic CTPL)
 import { useState, useEffect } from "react";
 import { ProductCard } from "./components/ProductCard";
 import { PurchaseHistoryTable } from "./components/PurchaseHistoryTable";
@@ -41,15 +41,17 @@ export default function Vouchers({
   const email = localStorage.getItem("email");
   const firstname = localStorage.getItem("firstname");
   const lastname = localStorage.getItem("lastname");
+  const companyId = localStorage.getItem("companyId");
+  const companyCode = localStorage.getItem("companyCode");
 
   // Primary color constant
   const primaryColor = "#1a3a6b";
 
-  // Only Voucher product
-  const VOUCHER_PRODUCT = {
+  // Only Basic CTPL product
+  const BASIC_CTPL_PRODUCT = {
     id: "prod_001",
     productName: "Voucher",
-    description: "",
+    // description: "Basic coverage for third party liability as required by LTO",
     price: 60,
     insuranceCode: "PRIVATE CARS (INCLUDING JEEPS AND AUVS)",
     validityDays: 365,
@@ -79,7 +81,7 @@ export default function Vouchers({
     const newPolicy = {
       id: `hist_${Date.now()}`,
       policyNumber: `POL-${new Date().getFullYear()}${Math.floor(Math.random() * 1000000)}`,
-      productName: "Voucher",
+      productName: "Basic CTPL",
       premium: 60 * selectedQuantity,
       expirationDate: new Date(
         new Date().setFullYear(new Date().getFullYear() + 1),
@@ -96,7 +98,7 @@ export default function Vouchers({
     const newAssignedVoucher = {
       id: `vch_${Date.now()}`,
       voucherCode: newPolicy.voucherCode,
-      productName: "Voucher",
+      productName: "Basic CTPL",
       premium: 60,
       status: "Available",
       assignedBy: "Self Purchase",
@@ -123,8 +125,8 @@ export default function Vouchers({
   };
 
   const loadProducts = async () => {
-    // Always use Voucher product only
-    setProducts([VOUCHER_PRODUCT]);
+    // Always use Basic CTPL product only
+    setProducts([BASIC_CTPL_PRODUCT]);
   };
 
   const loadPurchaseHistory = async () => {
@@ -181,54 +183,65 @@ export default function Vouchers({
     setPaymentError(null);
     setIsProcessing(true);
 
-    // For demo purposes, simulate payment success
-    setTimeout(() => {
-      const newPolicy = {
-        id: `hist_${Date.now()}`,
-        policyNumber: `POL-${new Date().getFullYear()}${Math.floor(Math.random() * 1000000)}`,
-        productName: "Voucher",
-        premium: 60 * quantity,
-        expirationDate: new Date(
-          new Date().setFullYear(new Date().getFullYear() + 1),
-        )
-          .toISOString()
-          .split("T")[0],
-        status: "Available",
-        voucherCode: `VCH-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
-        purchaseDate: new Date().toISOString().split("T")[0],
-        transactionId: `TXN-${Date.now()}`,
-        quantity: quantity,
+    try {
+      const callbackUrl = `${window.location.origin}/thankyoupage`;
+
+      const paymentRequest = {
+        company_id: companyId ? Number(companyId) : 120,
+        company_code: companyCode ?? "000",
+        voucher_fee: selectedProduct ? selectedProduct.price : 0,
+        voucher_count: quantity,
+        customer: {
+          first_name: firstname ?? "",
+          last_name: lastname ?? "",
+          billing_address: {
+            line1: "",
+            line2: "",
+            zip: "",
+            city_municipality: "",
+            state_province_region: "",
+            country_code: "PH",
+          },
+          contact: {
+            email: email ?? "",
+            mobile: "",
+          },
+        },
+        payment: {
+          description: selectedProduct
+            ? `Payment for ${selectedProduct.productName}`
+            : "Payment for a product",
+          amount: selectedProduct
+            ? String(selectedProduct.price * quantity)
+            : "100",
+          currency: "PHP",
+          merchant_reference_id: `VVIPCTPL${Date.now()}`,
+        },
+        route: {
+          callback_url: callbackUrl,
+          notify_user: true,
+        },
       };
 
-      // Create multiple voucher codes if quantity > 1
-      const newVouchers = [];
-      for (let i = 0; i < quantity; i++) {
-        newVouchers.push({
-          id: `vch_${Date.now()}_${i}`,
-          voucherCode: `VCH-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
-          productName: "Voucher",
-          premium: 60,
-          status: "Available",
-          assignedBy: "Self Purchase",
-          assignedDate: new Date().toISOString().split("T")[0],
-          expiryDate: newPolicy.expirationDate,
-          assignedTo: email || "user@example.com",
-        });
+      const response = await paymentsService.createTlpePayment(paymentRequest);
+      const paymentLink = response?.data?.link;
+
+      if (!paymentLink) {
+        throw new Error("No payment link returned from the server.");
       }
 
-      setPurchaseHistory((prev) => [newPolicy, ...prev]);
-      setAssignedVouchers((prev) => [...newVouchers, ...prev]);
-
-      // Save to localStorage
-      const updatedHistory = [newPolicy, ...purchaseHistory];
-      const updatedVouchers = [...newVouchers, ...assignedVouchers];
-      localStorage.setItem("purchaseHistory", JSON.stringify(updatedHistory));
-      localStorage.setItem("assignedVouchers", JSON.stringify(updatedVouchers));
-
-      setPurchasedPolicy(newPolicy);
-      setShowSuccessModal(true);
+      // Redirect in the same tab
+      window.location.href = paymentLink;
+    } catch (error) {
+      console.error("Payment failed:", error);
+      setPaymentError(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Payment initiation failed. Please try again.",
+      );
+    } finally {
       setIsProcessing(false);
-    }, 2000);
+    }
   };
 
   const copyToClipboard = (text) => {
@@ -254,6 +267,14 @@ export default function Vouchers({
 
   return (
     <div className="space-y-6">
+      <div className="border-b border-gray-200 pb-4">
+        <h1 className="text-xl font-semibold text-gray-900">CTPL Insurance</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Purchase Compulsory Third Party Liability insurance for LTO vehicle
+          registration
+        </p>
+      </div>
+
       <div className="border-b border-gray-200">
         <div className="flex gap-8">
           <button

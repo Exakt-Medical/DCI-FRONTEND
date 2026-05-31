@@ -29,33 +29,88 @@ export function ThankYouPageWrapper() {
       return;
     }
 
-    // If merchant callback with transaction_id is present, call backend stream
-    const transactionId = searchParams.get("transaction_id") || searchParams.get("transactionId");
+    // If TLPE redirected with a transactionId, pull payment status from backend
+    const transactionId =
+      searchParams.get("transaction_id") || searchParams.get("transactionId");
     if (transactionId) {
-      const stop = merchantService.streamPaymentResult(transactionId, {
-        onMessage: (result) => {
-          const data = result?.data || result || {};
+      let cancelled = false;
 
-          // Map backend summary to the existing ThankYouPage props
-          const selectedProduct = {
-            name: data.voucherDescription || data.merchantReference || "Voucher",
+      const mapResult = (result) => {
+        const data = result?.data || result || {};
+        const statusCode = data.statusCode || "";
+        const paymentFailed =
+          result?.success === false ||
+          (typeof statusCode === "string" && statusCode.startsWith("ER"));
+        const failureMessage =
+          data.voucherStatusLabel ||
+          data.report?.result?.message ||
+          "Payment was not completed. Please contact support.";
+        return {
+          selectedProduct: {
+            name:
+              data.voucherDescription ||
+              data.merchantReference ||
+              "CTPL Insurance",
             price: data.amountPaid ?? 0,
-          };
+          },
+          quantity: data.voucherCount || 1,
+          paymentFailed,
+          failureMessage,
+        };
+      };
 
-          const quantity = data.voucherCount || 1;
+      // Primary: pull strategy — call GET /summary/{transactionId} directly.
+      // TLPE's /report API is available immediately after redirect, so no webhook needed.
+      const fetchWithRetry = async (retries = 3, delayMs = 2000) => {
+        for (let attempt = 1; attempt <= retries; attempt++) {
+          try {
+            const result = await merchantService.fetchSummary(transactionId);
+            if (cancelled) return;
+            setOrderData(mapResult(result));
+            setLoading(false);
+            return;
+          } catch (err) {
+            console.warn(
+              `fetchSummary attempt ${attempt} failed:`,
+              err.message,
+            );
+            if (attempt < retries && !cancelled) {
+              await new Promise((res) => setTimeout(res, delayMs));
+            }
+          }
+        }
 
-          setOrderData({ selectedProduct, quantity });
-          setLoading(false);
-          setError(null);
-        },
-        onError: (err) => {
-          console.error("Merchant callback stream failed:", err);
-          setError(err.message || "Unable to verify payment. Please contact support.");
-          setLoading(false);
-        },
-      });
+        if (cancelled) return;
 
-      return () => stop();
+        // Fallback: open SSE stream and wait for webhook-pushed result
+        console.warn(
+          "fetchSummary exhausted retries — falling back to SSE stream",
+        );
+        const stop = merchantService.streamPaymentResult(transactionId, {
+          onMessage: (result) => {
+            if (cancelled) return;
+            setOrderData(mapResult(result));
+            setLoading(false);
+            setError(null);
+          },
+          onError: (err) => {
+            if (cancelled) return;
+            console.error("SSE fallback also failed:", err);
+            setError("Unable to verify payment. Please contact support.");
+            setLoading(false);
+          },
+        });
+        // store stop so cleanup can call it
+        stopRef = stop;
+      };
+
+      let stopRef = null;
+      fetchWithRetry();
+
+      return () => {
+        cancelled = true;
+        stopRef?.();
+      };
     }
 
     // Fallback: Get order ID from URL
@@ -123,11 +178,16 @@ export function ThankYouPageWrapper() {
     );
   }
 
+  const pendingOrderId = sessionStorage.getItem("pendingOrderId");
+
   return (
     <ThankYouPage
       selectedProduct={orderData.selectedProduct}
       quantity={orderData.quantity}
       formatCurrency={formatCurrency}
+      orderId={pendingOrderId ? Number(pendingOrderId) : null}
+      paymentFailed={orderData.paymentFailed ?? false}
+      failureMessage={orderData.failureMessage ?? ""}
     />
   );
 }
