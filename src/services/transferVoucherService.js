@@ -1,5 +1,5 @@
 const BASE_URL = "/api/users";
-const VOUCHER_URL = "/api/vouchers";
+const VOUCHER_URL = "/api/voucher-transfer";
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem("token");
@@ -50,32 +50,20 @@ export const transferVoucherService = {
   },
 
   async getAgentsWithVoucherCounts() {
+    // ✅ 2 requests total instead of 1 + N
+    // First fetch all agents, then one batch call for all their counts
     const agents = await this.getAgents();
-    const agentsWithCounts = await Promise.all(
-      agents.map(async (agent) => {
-        try {
-          const counts = await this.getVoucherCounts(agent.id);
-          return {
-            ...agent,
-            // Option A: agents hold vouchers as AVAILABLE
-            assignedVouchers: counts.available ?? 0,
-            voucherCounts: counts,
-          };
-        } catch {
-          return {
-            ...agent,
-            assignedVouchers: 0,
-            voucherCounts: {
-              total: 0,
-              available: 0,
-              transferred: 0,
-              redeemed: 0,
-            },
-          };
-        }
-      }),
-    );
-    return agentsWithCounts;
+
+    if (agents.length === 0) return [];
+
+    const userIds = agents.map((a) => a.id);
+    const countsMap = await this.countBatch(userIds);
+    // countsMap is { [userId]: availableCount } — agents with 0 vouchers won't appear, default to 0
+
+    return agents.map((agent) => ({
+      ...agent,
+      assignedVouchers: countsMap[agent.id] ?? 0,
+    }));
   },
 
   // ─── Vouchers ─────────────────────────────────────────────────────────────
@@ -83,6 +71,20 @@ export const transferVoucherService = {
   async getVoucherCounts(userId) {
     const res = await fetch(`${VOUCHER_URL}/count/by-user/${userId}`, {
       headers: getAuthHeaders(),
+    });
+    return handleResponse(res);
+  },
+
+  /**
+   * POST /api/vouchers/count/batch
+   * Sends all agent IDs at once, gets back { userId: availableCount } map.
+   * Replaces N individual getVoucherCounts() calls.
+   */
+  async countBatch(userIds) {
+    const res = await fetch(`${VOUCHER_URL}/count/batch`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(userIds),
     });
     return handleResponse(res);
   },
@@ -103,12 +105,8 @@ export const transferVoucherService = {
     return handleResponse(res);
   },
 
-  // ─── Transfer by quantity (backend picks which vouchers) ──────────────────
+  // ─── Transfer by quantity ─────────────────────────────────────────────────
 
-  /**
-   * POST /api/vouchers/transfer/from/:fromUserId
-   * Sends quantity only — backend picks the first N available vouchers.
-   */
   async transferByQuantity(fromUserId, toUserId, quantity) {
     const res = await fetch(`${VOUCHER_URL}/transfer/from/${fromUserId}`, {
       method: "POST",
