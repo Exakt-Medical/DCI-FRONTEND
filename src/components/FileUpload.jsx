@@ -1,5 +1,5 @@
-import { useRef } from "react";
-import { Upload, Image, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { Upload, Image, FileText, X } from "lucide-react";
 
 export const FileUpload = ({
   label,
@@ -10,9 +10,11 @@ export const FileUpload = ({
   hint,
 }) => {
   const ref = useRef();
+  const [imgError, setImgError] = useState(false);
 
   const handleRemove = (e) => {
     e.stopPropagation();
+    setImgError(false);
     onFile(null, null);
   };
 
@@ -31,11 +33,13 @@ export const FileUpload = ({
       >
         {preview ? (
           <div className="relative">
-            <img
-              src={preview}
-              alt="preview"
-              className="w-16 h-16 object-cover rounded-lg"
-            />
+            {imgError ? (
+              <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center text-gray-500">
+                <FileText size={24} />
+              </div>
+            ) : (
+              <img src={preview} alt="preview" className="w-16 h-16 object-cover rounded-lg" onError={() => setImgError(true)} />
+            )}
             <button
               onClick={handleRemove}
               className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600 transition-colors"
@@ -62,12 +66,13 @@ export const FileUpload = ({
         accept={accept}
         className="hidden"
         onChange={(e) => {
+          setImgError(false);
           const f = e.target.files[0];
           if (f) {
             const url = URL.createObjectURL(f);
             onFile(f, url);
           }
-          e.target.value = ""; // Reset input
+          setTimeout(() => { e.target.value = ""; }, 100);
         }}
       />
     </div>

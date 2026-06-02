@@ -1,5 +1,7 @@
 import { useState, useRef } from "react";
-import { X, Upload, Download, FileSpreadsheet, CheckCircle, AlertCircle } from "lucide-react";
+import { X, Upload, Download, FileSpreadsheet, CheckCircle, AlertCircle, Loader } from "lucide-react";
+
+const BATCH_SIZE = 500;
 
 export const UploadBulkModal = ({ isOpen, onClose, onUpload, templateHeaders, moduleName }) => {
   const [file, setFile] = useState(null);
@@ -7,6 +9,7 @@ export const UploadBulkModal = ({ isOpen, onClose, onUpload, templateHeaders, mo
   const [preview, setPreview] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState(null);
+  const [progress, setProgress] = useState({ current: 0, total: 0, batch: 0, totalBatches: 0 });
   const fileRef = useRef(null);
 
   const downloadTemplate = () => {
@@ -67,25 +70,77 @@ export const UploadBulkModal = ({ isOpen, onClose, onUpload, templateHeaders, mo
     reader.readAsText(f);
   };
 
+  const uploadBatch = async (batch, batchIndex) => {
+    const batchResult = await onUpload(batch);
+    return batchResult;
+  };
+
   const handleUpload = async () => {
     if (!file || allData.length === 0) return;
     setUploading(true);
     setResult(null);
+
+    const totalRecords = allData.length;
+    const totalBatches = Math.ceil(totalRecords / BATCH_SIZE);
+    let succeeded = 0;
+    let failed = 0;
+    let errorMessages = [];
+
     try {
-      const response = await onUpload(allData);
-      setResult({ type: "success", message: `Successfully uploaded ${response.data?.length || allData.length} records.` });
-      setFile(null);
-      setAllData([]);
-      setPreview([]);
-      if (fileRef.current) fileRef.current.value = "";
+      for (let i = 0; i < totalBatches; i++) {
+        const start = i * BATCH_SIZE;
+        const end = Math.min(start + BATCH_SIZE, totalRecords);
+        const batch = allData.slice(start, end);
+
+        setProgress({
+          current: start,
+          total: totalRecords,
+          batch: i + 1,
+          totalBatches,
+        });
+
+        try {
+          const response = await uploadBatch(batch, i);
+          succeeded += (response.data?.length || batch.length);
+        } catch (err) {
+          const msg = err.response?.data?.error || err.message || `Batch ${i + 1} failed`;
+          failed += batch.length;
+          errorMessages.push(`Batch ${i + 1}: ${msg}`);
+        }
+      }
+
+      setProgress({
+        current: totalRecords,
+        total: totalRecords,
+        batch: totalBatches,
+        totalBatches,
+      });
+
+      if (failed === 0) {
+        setResult({ type: "success", message: `Successfully uploaded all ${succeeded} records.` });
+        setFile(null);
+        setAllData([]);
+        setPreview([]);
+        if (fileRef.current) fileRef.current.value = "";
+      } else {
+        const summary = `${succeeded} succeeded, ${failed} failed.`;
+        const details = errorMessages.slice(0, 3).join("; ");
+        setResult({
+          type: "error",
+          message: `Upload completed with errors. ${summary}${details ? " " + details : ""}`,
+          partial: true,
+        });
+      }
     } catch (err) {
-      setResult({ type: "error", message: err.response?.data?.error || err.message || "Upload failed" });
+      setResult({ type: "error", message: err.message || "Upload failed unexpectedly" });
     } finally {
       setUploading(false);
     }
   };
 
   if (!isOpen) return null;
+
+  const progressPercent = progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 0;
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -112,7 +167,8 @@ export const UploadBulkModal = ({ isOpen, onClose, onUpload, templateHeaders, mo
           <div className="flex gap-3">
             <button
               onClick={downloadTemplate}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 border border-primary-300 rounded-xl hover:bg-primary-50 transition-colors"
+              disabled={uploading}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 border border-primary-300 rounded-xl hover:bg-primary-50 transition-colors disabled:opacity-50"
             >
               <Download size={16} /> Download Template
             </button>
@@ -127,6 +183,7 @@ export const UploadBulkModal = ({ isOpen, onClose, onUpload, templateHeaders, mo
               type="file"
               accept=".csv,.txt"
               onChange={handleFileChange}
+              disabled={uploading}
               className="mt-3 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-600 hover:file:bg-primary-100"
             />
           </div>
@@ -137,7 +194,26 @@ export const UploadBulkModal = ({ isOpen, onClose, onUpload, templateHeaders, mo
             </div>
           )}
 
-          {preview.length > 0 && (
+          {uploading && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Loader size={16} className="animate-spin text-primary-500" />
+                <span>
+                  Uploading {progress.current} of {progress.total} records
+                  {progress.totalBatches > 1 && ` (batch ${progress.batch} of ${progress.totalBatches})`}
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div
+                  className="bg-primary-500 h-2.5 rounded-full transition-all duration-300"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+              <p className="text-xs text-gray-400 text-right">{progressPercent}%</p>
+            </div>
+          )}
+
+          {preview.length > 0 && !uploading && (
             <div>
               <p className="text-sm font-semibold text-gray-700 mb-2">Preview (first {preview.length} rows):</p>
               <div className="overflow-x-auto border border-gray-200 rounded-lg">
@@ -165,11 +241,11 @@ export const UploadBulkModal = ({ isOpen, onClose, onUpload, templateHeaders, mo
           )}
 
           {result && (
-            <div className={`rounded-lg p-3 text-sm flex items-center gap-2 ${
+            <div className={`rounded-lg p-3 text-sm flex items-start gap-2 ${
               result.type === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"
             }`}>
-              {result.type === "success" ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
-              {result.message}
+              {result.type === "success" ? <CheckCircle size={16} className="shrink-0 mt-0.5" /> : <AlertCircle size={16} className="shrink-0 mt-0.5" />}
+              <span>{result.message}</span>
             </div>
           )}
 
@@ -177,7 +253,8 @@ export const UploadBulkModal = ({ isOpen, onClose, onUpload, templateHeaders, mo
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+              disabled={uploading}
+              className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-50"
             >
               Close
             </button>
@@ -186,7 +263,11 @@ export const UploadBulkModal = ({ isOpen, onClose, onUpload, templateHeaders, mo
               disabled={!file || allData.length === 0 || uploading}
               className="px-5 py-2.5 text-sm font-medium text-white bg-primary-500 rounded-xl hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              {uploading ? "Uploading..." : `Upload ${allData.length} Records`}
+              {uploading ? (
+                <>Uploading... {progressPercent}%</>
+              ) : (
+                `Upload ${allData.length} Records`
+              )}
             </button>
           </div>
         </div>

@@ -11,7 +11,6 @@ import {
   Shield,
   CreditCard,
   Ticket,
-  ArrowLeftRight,
   BookOpen,
   HelpCircle, // Add for tickets icon
 } from "lucide-react";
@@ -229,13 +228,6 @@ export const navConfig = {
       id: "vouchers",
       label: "Vouchers",
       icon: Ticket,
-      section: "VOUCHERS",
-      disabled: false,
-    },
-    {
-      id: "transfer-vouchers",
-      label: "Transfer",
-      icon: ArrowLeftRight,
       section: "VOUCHERS",
       disabled: false,
     },

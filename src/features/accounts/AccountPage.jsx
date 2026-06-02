@@ -22,11 +22,11 @@ import { DeleteConfirmModal } from "./components/DeleteConfirmModal";
 import { AccountPagination } from "./components/AccountPagination";
 import { UploadBulkModal } from "../../components/UploadBulkModal";
 
-const ROLE_TABS = ["All", "Managers", "Agents", "Sub-agents", "Admin"];
+const ROLE_TABS = ["All", "Citizens", "Agents", "Admin"];
 
 export const AccountPage = () => {
   const role = localStorage.getItem("role");
-  const isViewer = role === "VIEWER";
+  const isViewer = false;
   const alert = useAlert();
   const [users, setUsers] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -66,9 +66,8 @@ export const AccountPage = () => {
 
   const roleFilterMap = {
     All: "all",
-    Managers: "MANAGER",
-    Agents: "AGENT",
-    "Sub-agents": "SUBAGENT",
+    Citizens: "CITIZEN",
+    Agents: "AGENT_FIXER",
     Admin: "ADMIN",
   };
 
@@ -158,7 +157,7 @@ const fetchData = useCallback(async () => {
       return 0; /* ← replace with real count when wired up */
     if (field === "branchName") {
       if (user.role === "ADMIN") return "head company, head branch";
-      if (["AGENT", "SUBAGENT"].includes(user.role))
+      if (["AGENT_FIXER"].includes(user.role))
         return (
           (user.managerBranchCompanyName
             ? user.managerBranchCompanyName + " / "
@@ -247,10 +246,7 @@ const fetchData = useCallback(async () => {
         email: userData.email || null,
         mobile: userData.mobile || "",
         role: userData.role,
-        branchId: userData.branchId ? parseInt(userData.branchId) : null,
-        managerId: userData.managerId ? parseInt(userData.managerId) : null,
         status: userData.status,
-        allowedToBuyVoucher: userData.allowedToBuyVoucher,
       };
 
       if (!isEditing) {

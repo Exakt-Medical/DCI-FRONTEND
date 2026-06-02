@@ -11,14 +11,10 @@ export const UserTableRow = ({
   voucherCount = user.assignedVouchers ?? 0,
 }) => {
   const getBranchSubtitle = () => {
-    if (
-      user.role === "ADMIN" ||
-      user.role === "SUPPORT" ||
-      user.role === "VIEWER"
-    ) {
+    if (user.role === "ADMIN" || user.role === "HPG" || user.role === "LTO") {
       return "—";
     }
-    if (user.role === "AGENT" || user.role === "SUBAGENT") {
+    if (user.role === "AGENT_FIXER") {
       return user.managerBranchCompanyName && user.managerBranchName
         ? `${user.managerBranchCompanyName} / ${user.managerBranchName}`
         : "N/A / N/A";
@@ -30,7 +26,7 @@ export const UserTableRow = ({
 
   const getBranchDisplay = () => {
     if (user.role === "ADMIN") return "Head Company, Head Branch";
-    if (["AGENT", "SUBAGENT"].includes(user.role)) {
+    if (user.role === "AGENT_FIXER") {
       return user.managerBranchCompanyName && user.managerBranchName
         ? `${user.managerBranchCompanyName} / ${user.managerBranchName}`
         : "N/A";
@@ -112,7 +108,7 @@ export const UserTableRow = ({
       {/* Manager */}
       <td className="px-4 py-3">
         <span className="text-sm text-gray-700">
-          {["AGENT", "SUBAGENT"].includes(user.role)
+          {["AGENT_FIXER"].includes(user.role)
             ? user.managerName || "N/A"
             : "N/A"}
         </span>

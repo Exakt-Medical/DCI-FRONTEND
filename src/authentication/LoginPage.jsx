@@ -54,7 +54,6 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
       const {
         token,
         role,
-        allowedToBuyVoucher,
         firstname,
         lastname,
         email,
@@ -72,10 +71,6 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
       if (companyId != null)
         localStorage.setItem("companyId", String(companyId));
       if (companyCode != null) localStorage.setItem("companyCode", companyCode);
-      localStorage.setItem(
-        "authAllowedToBuyVoucher",
-        String(!!allowedToBuyVoucher),
-      );
       // ✅ Save userId so other pages can fetch user-specific data
       localStorage.setItem("userId", userId);
 
@@ -89,7 +84,7 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
         localStorage.setItem("rememberMe", "false");
       }
 
-      onLogin(role.toLowerCase(), { allowedToBuyVoucher });
+      onLogin(role.toLowerCase(), {});
     } catch (err) {
       const msg = err.response?.data?.error || "Invalid username or password";
       setError(msg);
@@ -123,7 +118,7 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
                   />
                 </div>
                 <h1 className="text-xl font-bold text-gray-900">
-                  Vehicle Verification Insurance Program
+                  DCI Clearance Verification System
                 </h1>
                 <h1 className="text-xl font-bold text-gray-900">Mindanao</h1>
               </div>
@@ -244,6 +239,16 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
                 </button>
               </div>
 
+              {/* Register as Citizen */}
+              <div className="mt-4">
+                <button
+                  onClick={onRegisterClick}
+                  className="w-full border border-primary-500 text-primary-500 hover:bg-primary-50 font-medium py-2.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
+                >
+                  Register as Citizen
+                </button>
+              </div>
+
               {/* COLLAPSIBLE DEMO CREDENTIALS */}
               <div className="mt-5 pt-4 border-t border-gray-100">
                 <button
@@ -266,28 +271,16 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
                       admin / admin123
                     </div>
                     <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
-                      manager1 / manager123
+                      citizen / citizen123
                     </div>
                     <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
-                      manager2 / manager123
+                      agent / agent123
                     </div>
                     <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
-                      agent1 / agent123
+                      hpg / hpg123
                     </div>
                     <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
-                      agent2 / agent123
-                    </div>
-                    <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
-                      subagent1 / subagent123
-                    </div>
-                    <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
-                      subagent2 / subagent123
-                    </div>
-                    <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
-                      viewer1 / viewer123
-                    </div>
-                    <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
-                      viewer2 / viewer123
+                      lto / lto123
                     </div>
                   </div>
                 )}
@@ -297,7 +290,7 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
             {/* Footer */}
             <div className="border-t border-gray-100 px-6 py-3 bg-gray-50">
               <p className="text-center text-[10px] text-gray-400">
-                © 2026 Vehicle Verification Insurance Program. All rights
+                © 2026 DCI Clearance Verification System. All rights
                 reserved.
               </p>
             </div>

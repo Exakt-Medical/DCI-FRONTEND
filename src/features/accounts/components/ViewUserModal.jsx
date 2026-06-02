@@ -1,5 +1,5 @@
 import { Button } from "../../../components/Button";
-import { X, Mail, Building, User as UserIcon, Calendar, Smartphone, ShieldCheck } from "lucide-react";
+import { X, Mail, Building, User as UserIcon, Calendar, Smartphone } from "lucide-react";
 import { formatDateTime } from "../../../utils/formatDate";
 
 export const ViewUserModal = ({ isOpen, onClose, user }) => {
@@ -11,10 +11,10 @@ export const ViewUserModal = ({ isOpen, onClose, user }) => {
   };
 
   const getCompanyBranch = () => {
-    if (user.role === "ADMIN" || user.role === "SUPPORT" || user.role === "VIEWER") {
+    if (user.role === "ADMIN" || user.role === "HPG" || user.role === "LTO") {
       return "Not assigned";
     }
-    if (user.role === "AGENT" || user.role === "SUBAGENT") {
+    if (user.role === "AGENT_FIXER") {
       return user.managerBranchCompanyName && user.managerBranchName
         ? `${user.managerBranchCompanyName} / ${user.managerBranchName}`
         : "Not assigned";
@@ -94,14 +94,6 @@ export const ViewUserModal = ({ isOpen, onClose, user }) => {
               <div>
                 <p className="text-xs text-gray-500">Manager</p>
                 <p className="text-sm text-gray-900">{user.managerName || "None"}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <ShieldCheck size={16} className="text-gray-400" />
-              <div>
-                <p className="text-xs text-gray-500">Buy Voucher Allowed</p>
-                <p className="text-sm text-gray-900">{user.isBuyVoucherAllowed ? "Yes" : "No"}</p>
               </div>
             </div>
 

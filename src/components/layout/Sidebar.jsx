@@ -33,9 +33,9 @@ export function Sidebar({
           {isSidebarOpen && (
             <div className="flex flex-col">
               <span className="text-sm font-semibold text-gray-800">
-                VVIP Portal
+                DCI Clearance
               </span>
-              <span className="text-xs text-gray-500">Mindanao</span>
+              <span className="text-xs text-gray-500">Verification System</span>
             </div>
           )}
         </div>

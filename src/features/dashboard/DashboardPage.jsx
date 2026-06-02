@@ -14,7 +14,15 @@ import {
   Calendar,
 } from "lucide-react";
 
-export const DashboardPage = () => {
+const welcomeMessages = {
+  citizen: "Welcome, Citizen! File a clearance request for your vehicle.",
+  agent_fixer: "Welcome, Agent/Fixer! Manage clearance requests for your clients.",
+  hpg: "Welcome, HPG! Verify vehicles and manage tickets.",
+  lto: "Welcome, LTO! Look up certificates and manage tickets.",
+  admin: "Welcome, Admin! Manage the DCI Clearance system.",
+};
+
+export const DashboardPage = ({ role }) => {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState(null);
@@ -91,7 +99,7 @@ export const DashboardPage = () => {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Welcome back. Here's what's happening today.
+          {welcomeMessages[role] || "Welcome back. Here's what's happening today."}
         </p>
       </div>
 

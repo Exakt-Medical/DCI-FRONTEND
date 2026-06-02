@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "../../../components/Button";
 import { Input } from "../../../components/Input";
-import Switch from "../../../components/Switch";
+
 import { X, UserPlus, Edit2 } from "lucide-react";
 
 export const UserFormModal = ({
@@ -22,11 +22,9 @@ export const UserFormModal = ({
     extName: "",
     email: "",
     mobile: "",
-    role: "AGENT",
+    role: "CITIZEN",
     branchId: "",
-    managerId: "",
     status: "ACTIVE",
-    allowedToBuyVoucher: false,
   });
 
   useEffect(() => {
@@ -40,11 +38,9 @@ export const UserFormModal = ({
         extName: user.extName || "",
         email: user.email || "",
         mobile: user.mobile || "",
-        role: user.role || "AGENT",
-        branchId: user.branchId ? String(user.branchId) : "",
-        managerId: user.managerId ? String(user.managerId) : "",
+        role: user.role || "CITIZEN",
+        branchId: "",
         status: user.status || "ACTIVE",
-        allowedToBuyVoucher: user.isBuyVoucherAllowed ?? user.allowedToBuyVoucher ?? false,
       });
     } else {
       setFormData({
@@ -56,11 +52,9 @@ export const UserFormModal = ({
         extName: "",
         email: "",
         mobile: "",
-        role: "AGENT",
+        role: "CITIZEN",
         branchId: "",
-        managerId: "",
         status: "ACTIVE",
-        allowedToBuyVoucher: false,
       });
     }
   }, [user, isEditing, isOpen]);
@@ -70,11 +64,9 @@ export const UserFormModal = ({
     onSave(formData);
   };
 
-  const isAgentOrSubagent = formData.role === "AGENT" || formData.role === "SUBAGENT";
+  const isAgentOrSubagent = false;
 
-  const filteredManagers = allUsers.filter(
-    (u) => u.role === "MANAGER" && u.status === "ACTIVE" && String(u.branchId) === formData.branchId,
-  );
+  const filteredManagers = [];
 
   if (!isOpen) return null;
 
@@ -249,57 +241,8 @@ export const UserFormModal = ({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                Branch
-              </label>
-              <select
-                value={formData.branchId}
-                onChange={(e) =>
-                  setFormData({ ...formData, branchId: e.target.value, managerId: "" })
-                }
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-              >
-                <option value="">Select Branch</option>
-                {branches.map((branch) => (
-                  <option key={branch.id} value={branch.id}>
-                    {branch.branchName}
-                  </option>
-                ))}
-              </select>
-            </div>
 
-            {isAgentOrSubagent && (
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-gray-700">
-                  Manager
-                </label>
-                <select
-                  value={formData.managerId}
-                  onChange={(e) =>
-                    setFormData({ ...formData, managerId: e.target.value })
-                  }
-                  disabled={!formData.branchId}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <option value="">
-                    {formData.branchId ? "Select Manager" : "Select branch first"}
-                  </option>
-                  {filteredManagers.map((mgr) => {
-                    const mgrName = [mgr.firstName, mgr.lastName].filter(Boolean).join(" ") || mgr.username;
-                    return (
-                      <option key={mgr.id} value={mgr.id}>
-                        {mgrName}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3">
             <div className="space-y-2">
               <label className="block text-sm font-semibold text-gray-700">
                 Role
@@ -311,23 +254,10 @@ export const UserFormModal = ({
                 }}
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
               >
-                <option value="MANAGER">Manager</option>
-                <option value="AGENT">Agent</option>
-                <option value="SUBAGENT">Sub Agent</option>
+              <option value="CITIZEN">Citizen</option>
+                <option value="AGENT_FIXER">Agent/Fixer</option>
                 <option value="ADMIN">Admin</option>
-                <option value="VIEWER">Viewer</option>
               </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-gray-700">
-                Allowed to Buy Voucher
-              </label>
-              <Switch
-                checked={!!formData.allowedToBuyVoucher}
-                onChange={(val) => setFormData({ ...formData, allowedToBuyVoucher: val })}
-                ariaLabel="Allowed to buy voucher"
-              />
             </div>
           </div>
 

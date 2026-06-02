@@ -34,7 +34,6 @@ const mapUser = (u) => ({
   managerId: u.managerId,
   managerName: u.managerName ?? "—",
   status: u.status,
-  isBuyVoucherAllowed: u.isBuyVoucherAllowed ?? false,
   assignedVouchers: 0,
 });
 
@@ -42,7 +41,7 @@ export const transferVoucherService = {
   // ─── Users ────────────────────────────────────────────────────────────────
 
   async getAgents() {
-    const res = await fetch(`${BASE_URL}/by-role/AGENT`, {
+    const res = await fetch(`${BASE_URL}/by-role/AGENT_FIXER`, {
       headers: getAuthHeaders(),
     });
     const data = await handleResponse(res);
