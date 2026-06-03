@@ -41,7 +41,7 @@ export const LtoLookupPage = () => {
     setTimeout(() => {
       setIsSearching(false);
       setSearched(true);
-      if (certNo.toUpperCase().includes("CERT")) {
+      if (certNo === "DCI-CERT-12345678") {
         setCertificate(MOCK_CERTIFICATE);
         setError("");
       } else {
