@@ -17,6 +17,7 @@ import { AgentVoucherRequestPage } from "./features/voucher-request/AgentVoucher
 import { ClearanceRequestPage } from "./features/clearance-request/ClearanceRequestPage";
 import { ClearanceRequestFlow } from "./features/clearance-request/ClearanceRequestFlow";
 import { AgentClearanceRequestPage } from "./features/clearance-request/AgentClearanceRequestPage";
+import { CertificateRequestFlow } from "./features/certificate-request/CertificateRequestFlow";
 import { HpgVerifyPage } from "./features/hpg/HpgVerifyPage";
 import { LtoLookupPage } from "./features/lto/LtoLookupPage";
 import { ProfilePage } from "./features/Profile/ProfilePage";
@@ -29,6 +30,10 @@ import { PlaceholderPage } from "./features/placeholder/PlaceholderPage";
 import { MaintenancePage } from "./features/Maintenance/MaintenancePage";
 
 import { useAlert } from "./hooks/useAlert";
+
+const getDefaultPageForRole = (currentRole) => {
+  return currentRole === "citizen" ? "requests" : "dashboard";
+};
 
 function AppContent() {
   const { success } = useAlert();
@@ -52,7 +57,12 @@ function AppContent() {
     return null;
   });
 
-  const [page, setPage] = useState("dashboard");
+  const [page, setPage] = useState(() => getDefaultPageForRole(role));
+  const [requestRecords, setRequestRecords] = useState(() => {
+    const saved = localStorage.getItem("certificateRequests");
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [selectedRequest, setSelectedRequest] = useState(null);
   const [userProfile, setUserProfile] = useState(() => {
     const saved = localStorage.getItem("userProfile");
     return saved ? JSON.parse(saved) : { name: "", email: "" };
@@ -73,17 +83,28 @@ function AppContent() {
     }
   }, [page, navigate, hasAccess, view]);
 
+  useEffect(() => {
+    localStorage.setItem("certificateRequests", JSON.stringify(requestRecords));
+  }, [requestRecords]);
+
+  useEffect(() => {
+    if (role === "citizen" && page === "dashboard") {
+      setPage("requests");
+    }
+  }, [role, page]);
+
   const handleLogin = (userRole, userData) => {
+    const landingPage = getDefaultPageForRole(userRole);
     setRole(userRole);
     setView(userRole);
-    setPage("dashboard");
+    setPage(landingPage);
     localStorage.setItem("authRole", userRole);
     localStorage.setItem("authView", userRole);
     if (userData) {
       setUserProfile(userData);
       localStorage.setItem("userProfile", JSON.stringify(userData));
     }
-    navigate("/dci-access/dashboard");
+    navigate(`/dci-access/${landingPage}`);
   };
 
   const handleLogout = () => {
@@ -96,12 +117,44 @@ function AppContent() {
     navigate("/dci-access");
   };
 
-  const handleNavigate = (p) => {
+  const handleNavigate = (p, request) => {
     setPage(p);
+    setSelectedRequest(request || null);
   };
 
   const handleMyProfile = () => {
     setPage("profile");
+  };
+
+  const upsertRequestRecord = (record) => {
+    setRequestRecords((prev) => {
+      const next = prev.some((item) => item.requestId === record.requestId)
+        ? prev.map((item) => (item.requestId === record.requestId ? { ...item, ...record } : item))
+        : [record, ...prev];
+      return next;
+    });
+  };
+
+  const handleRequestSave = (record) => {
+    if (!record?.requestId) return;
+    upsertRequestRecord(record);
+  };
+
+  const handleCertificateComplete = (payload) => {
+    if (!payload?.requestId) return;
+    upsertRequestRecord({
+      requestId: payload.requestId,
+      voucherReferenceNo: payload.voucherCode || "",
+      clearanceReferenceNo: payload.certificateNo || "",
+      plateNumber: payload.vehicle?.plateNumber || payload.orCr?.plateNumber || "",
+      voucherStatus: "VOUCHER_ISSUED",
+      clearanceStatus: "CERTIFICATE_ISSUED",
+      currentStep: 6,
+      certificateNo: payload.certificateNo || "",
+      dateCreated: payload.dateCreated || new Date().toISOString().split("T")[0],
+    });
+    setSelectedRequest(null);
+    setPage("requests");
   };
 
   if (!hasAccess) {
@@ -117,13 +170,26 @@ function AppContent() {
       case "profile":
         return <ProfilePage user={userProfile} role={role} onLogout={handleLogout} />;
       case "dashboard":
+        if (role === "citizen") {
+          return <MyRequestsPage role={role} onNavigate={handleNavigate} requests={requestRecords} />;
+        }
         return <DashboardPage role={role} />;
       case "requests":
-        return <MyRequestsPage role={role} onNavigate={handleNavigate} />;
+        return <MyRequestsPage role={role} onNavigate={handleNavigate} requests={requestRecords} />;
       case "voucher-requests":
         if (role === "citizen") return <VoucherRequestPage onNavigate={handleNavigate} />;
         if (role === "agent_fixer") return <AgentVoucherRequestPage onNavigate={handleNavigate} />;
         return <PlaceholderPage title="Access Denied" />;
+      case "new-certificate-request":
+        return (
+          <CertificateRequestFlow
+            role={role}
+            initialRequest={selectedRequest}
+            onSaveRequest={handleRequestSave}
+            onComplete={handleCertificateComplete}
+            onCancel={() => setPage("requests")}
+          />
+        );
       case "new-voucher-request":
         return <VoucherRequestFlow role={role} onComplete={() => setPage("requests")} onCancel={() => setPage("requests")} />;
       case "clearance-requests":
@@ -153,6 +219,9 @@ function AppContent() {
       case "accesslogs":
         return <AccessLogsPage />;
       default:
+        if (role === "citizen") {
+          return <MyRequestsPage role={role} onNavigate={handleNavigate} requests={requestRecords} />;
+        }
         return <DashboardPage role={role} />;
     }
   };

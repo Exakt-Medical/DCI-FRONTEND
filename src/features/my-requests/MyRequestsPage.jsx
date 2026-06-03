@@ -1,38 +1,140 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
 import {
-  FileText, Plus, Eye, Search, CheckCircle, Clock, XCircle, Download
+  FileText, Plus, Eye, Search, CheckCircle, Clock, Download, CreditCard
 } from "lucide-react";
 
-const voucherDone = (s) => s === "VOUCHER_ISSUED";
-const clearanceDone = (s) => s === "CERTIFICATE_ISSUED";
+const getVoucherStatus = (request) => {
+  if (request?.voucherStatus) return request.voucherStatus;
+  if (request?.status === "VOUCHER_ISSUED" || request?.status === "HPG_VERIFIED" || request?.status === "CERTIFICATE_ISSUED") {
+    return "VOUCHER_ISSUED";
+  }
+  return request?.status || "";
+};
 
-const StepBadge = ({ label, done, children }) => (
-  <div className="flex items-center gap-2">
+const getClearanceStatus = (request) => {
+  if (request?.clearanceStatus) return request.clearanceStatus;
+  if (request?.status === "CERTIFICATE_ISSUED") {
+    return "CERTIFICATE_ISSUED";
+  }
+  return "";
+};
+
+const voucherDone = (request) => getVoucherStatus(request) === "VOUCHER_ISSUED";
+const clearanceDone = (request) => getClearanceStatus(request) === "CERTIFICATE_ISSUED";
+
+const summaryCardStyles = {
+  all: {
+    icon: FileText,
+    iconColor: "text-slate-600",
+    iconBg: "bg-slate-500/10",
+    active: "ring-2 ring-slate-500 bg-slate-50",
+  },
+  completed: {
+    icon: CheckCircle,
+    iconColor: "text-emerald-600",
+    iconBg: "bg-emerald-500/10",
+    active: "ring-2 ring-emerald-500 bg-emerald-50",
+  },
+  voucher: {
+    icon: CreditCard,
+    iconColor: "text-blue-600",
+    iconBg: "bg-blue-500/10",
+    active: "ring-2 ring-blue-500 bg-blue-50",
+  },
+  clearance: {
+    icon: FileText,
+    iconColor: "text-indigo-600",
+    iconBg: "bg-indigo-500/10",
+    active: "ring-2 ring-indigo-500 bg-indigo-50",
+  },
+};
+
+const StatusBadge = ({ done }) => (
+  <div className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium">
     {done ? (
-      <CheckCircle size={16} className="text-green-600 shrink-0" />
+      <>
+        <CheckCircle size={14} className="text-green-600 shrink-0" />
+        <span className="text-green-700">Completed</span>
+      </>
     ) : (
-      <Clock size={16} className="text-gray-300 shrink-0" />
+      <>
+        <Clock size={14} className="text-amber-600 shrink-0" />
+        <span className="text-amber-700">Pending</span>
+      </>
     )}
-    <span className={`text-xs ${done ? "text-green-700 font-medium" : "text-gray-400"}`}>
-      {label}
-    </span>
-    {children}
   </div>
 );
 
-export const MyRequestsPage = ({ role, onNavigate }) => {
-  const [search, setSearch] = useState("");
-  const [requests, setRequests] = useState([]);
+const isCompletedRequest = (request) => voucherDone(request) && clearanceDone(request);
 
-  const filtered = requests.filter(
-    (r) =>
-      (r.voucherReferenceNo || "").toLowerCase().includes(search.toLowerCase()) ||
-      (r.clearanceReferenceNo || "").toLowerCase().includes(search.toLowerCase()) ||
-      (r.plateNumber || "").toLowerCase().includes(search.toLowerCase()),
-  );
+const matchesFilter = (request, filter) => {
+  switch (filter) {
+    case "completed":
+      return isCompletedRequest(request);
+    case "voucher":
+      return !voucherDone(request);
+    case "clearance":
+      return voucherDone(request) && !clearanceDone(request);
+    case "all":
+    default:
+      return true;
+  }
+};
+
+const getDateValue = (dateCreated) => {
+  const timestamp = Date.parse(dateCreated || "");
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+};
+
+export const MyRequestsPage = ({ requests = [], onNavigate }) => {
+  const [search, setSearch] = useState("");
+  const [activeFilter, setActiveFilter] = useState("all");
+
+  const filtered = useMemo(() => {
+    return requests
+      .filter(
+        (request) =>
+          matchesFilter(request, activeFilter) && (
+            (request.voucherReferenceNo || "").toLowerCase().includes(search.toLowerCase()) ||
+            (request.clearanceReferenceNo || "").toLowerCase().includes(search.toLowerCase()) ||
+            (request.plateNumber || "").toLowerCase().includes(search.toLowerCase()) ||
+            (request.requestId || "").toLowerCase().includes(search.toLowerCase())
+          ),
+      )
+      .sort((left, right) => getDateValue(right.dateCreated) - getDateValue(left.dateCreated));
+  }, [requests, search, activeFilter]);
+
+  const summaryCards = useMemo(() => [
+    {
+      id: "all",
+      label: "All Requests",
+      value: requests.length,
+      description: "Show every request in one list",
+    },
+    {
+      id: "completed",
+      label: "Completed Requests",
+      value: requests.filter((request) => isCompletedRequest(request)).length,
+      description: "Voucher and clearance already issued",
+    },
+    {
+      id: "voucher",
+      label: "Pending Voucher",
+      value: requests.filter((request) => !voucherDone(request)).length,
+      description: "Still waiting on voucher issuance",
+    },
+    {
+      id: "clearance",
+      label: "Pending Clearance",
+      value: requests.filter((request) => voucherDone(request) && !clearanceDone(request)).length,
+      description: "Voucher done, clearance still in progress",
+    },
+  ], [requests]);
+
+  const activeCard = summaryCards.find((card) => card.id === activeFilter);
 
   const handleDownload = (certNo) => {
     const blob = new Blob([`Clearance Certificate: ${certNo}`], { type: "text/plain" });
@@ -50,12 +152,43 @@ export const MyRequestsPage = ({ role, onNavigate }) => {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">My Requests</h1>
           <p className="text-sm text-gray-500">
-            Track your voucher and clearance requests at a glance
+            Track your request progress and bring pending items to the top
           </p>
         </div>
-        <Button onClick={() => onNavigate?.("new-voucher-request")}>
+        <Button onClick={() => onNavigate?.("new-certificate-request")}>
           <Plus size={16} /> New Request
         </Button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
+        {summaryCards.map((card) => {
+          const styles = summaryCardStyles[card.id];
+          const isActive = activeFilter === card.id;
+          const Icon = styles.icon;
+
+          return (
+            <button
+              key={card.id}
+              type="button"
+              onClick={() => setActiveFilter(card.id)}
+              className={[
+                "bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-100 shadow-lg p-6 text-left transition-all",
+                isActive ? styles.active : "hover:shadow-xl hover:scale-[1.02]",
+              ].join(" ")}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{card.label}</p>
+                  <p className="text-4xl font-black text-gray-900 mt-2 tracking-tight">{card.value}</p>
+                  <p className="text-sm text-gray-500 mt-2">{card.description}</p>
+                </div>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${styles.iconBg}`}>
+                  <Icon size={18} className={styles.iconColor} />
+                </div>
+              </div>
+            </button>
+          );
+        })}
       </div>
 
       <Card className="p-5">
@@ -63,8 +196,13 @@ export const MyRequestsPage = ({ role, onNavigate }) => {
           <FileText size={18} className="text-[#0059b5]" />
           <h3 className="text-base font-bold text-gray-900">All Requests</h3>
           <span className="text-xs text-gray-400 ml-auto">
-            {filtered.length} record{filtered.length !== 1 && "s"}
+            Showing {activeCard?.label?.toLowerCase()}
           </span>
+          {activeFilter !== "all" && (
+            <Button variant="ghost" size="sm" onClick={() => setActiveFilter("all")}>
+              Show All
+            </Button>
+          )}
         </div>
 
         <div className="mb-4">
@@ -89,8 +227,8 @@ export const MyRequestsPage = ({ role, onNavigate }) => {
                 <tr className="border-b border-gray-200 text-left">
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Reference</th>
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Plate No.</th>
-                  <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Step 1: Voucher</th>
-                  <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Step 2: Clearance</th>
+                  <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Voucher</th>
+                  <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Clearance</th>
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Date</th>
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Actions</th>
                 </tr>
@@ -100,7 +238,7 @@ export const MyRequestsPage = ({ role, onNavigate }) => {
                   <tr key={req.voucherRequestId || req.clearanceRequestId} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-3">
                       <span className="font-mono text-xs font-medium text-gray-900">
-                        {req.voucherReferenceNo || req.clearanceReferenceNo}
+                        {req.requestId || req.voucherReferenceNo || req.clearanceReferenceNo}
                       </span>
                       {req.clearanceReferenceNo && req.voucherReferenceNo && (
                         <div className="text-[10px] text-gray-400 font-mono mt-0.5">{req.clearanceReferenceNo}</div>
@@ -108,11 +246,12 @@ export const MyRequestsPage = ({ role, onNavigate }) => {
                     </td>
                     <td className="py-3 text-gray-700">{req.plateNumber || "—"}</td>
                     <td className="py-3">
-                      <StepBadge label="Voucher Request" done={voucherDone(req.voucherStatus)} />
+                      <StatusBadge done={voucherDone(req)} />
                     </td>
                     <td className="py-3">
-                      <StepBadge label="Clearance Request" done={clearanceDone(req.clearanceStatus)}>
-                        {clearanceDone(req.clearanceStatus) && req.certificateNo && (
+                      <div className="flex items-center gap-2">
+                        <StatusBadge done={clearanceDone(req)} />
+                        {clearanceDone(req) && req.certificateNo && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -123,17 +262,14 @@ export const MyRequestsPage = ({ role, onNavigate }) => {
                             <Download size={12} />
                           </Button>
                         )}
-                      </StepBadge>
+                      </div>
                     </td>
                     <td className="py-3 text-gray-500 text-xs">{req.dateCreated || "—"}</td>
                     <td className="py-3">
                       <div className="flex items-center gap-1">
-                        {req.voucherRequestId && (
-                          <Button variant="ghost" size="sm"
-                            onClick={() => onNavigate?.("new-clearance-request", req)} title="Proceed to Clearance">
-                            <Eye size={14} />
-                          </Button>
-                        )}
+                        <Button variant="ghost" size="sm" onClick={() => onNavigate?.("new-certificate-request", req)} title="Open Request">
+                          <Eye size={14} />
+                        </Button>
                       </div>
                     </td>
                   </tr>
