@@ -3,7 +3,8 @@ import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
 import { Spinner } from "../../components/Spinner";
-import { Shield, Search, CheckCircle, Car, User } from "lucide-react";
+import { Shield, Search, CheckCircle, Car, User, ScanLine } from "lucide-react";
+import { HpgQrScannerModal } from "./HpgQrScannerModal";
 
 const MOCK_VEHICLE_DATA = {
   plateNumber: "ABC1234",
@@ -19,11 +20,21 @@ const MOCK_VEHICLE_DATA = {
 
 export const HpgVerifyPage = () => {
   const [voucherCode, setVoucherCode] = useState("");
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
   const [vehicleData, setVehicleData] = useState(null);
   const [error, setError] = useState("");
   const [markedVerified, setMarkedVerified] = useState(false);
+
+  const handleQrScan = (scannedVoucherCode) => {
+    setVoucherCode(scannedVoucherCode);
+    setError("");
+    setVerified(false);
+    setVehicleData(null);
+    setMarkedVerified(false);
+    setIsScannerOpen(false);
+  };
 
   const handleVerify = () => {
     if (!voucherCode.trim()) {
@@ -88,6 +99,14 @@ export const HpgVerifyPage = () => {
               onKeyDown={(e) => e.key === "Enter" && handleVerify()}
             />
           </div>
+          <Button
+            variant="outline"
+            onClick={() => setIsScannerOpen(true)}
+            disabled={isVerifying}
+          >
+            <ScanLine size={16} />
+            Scan QR
+          </Button>
           <Button
             onClick={handleVerify}
             disabled={isVerifying || !voucherCode.trim()}
@@ -220,6 +239,12 @@ export const HpgVerifyPage = () => {
           </div>
         </>
       )}
+
+      <HpgQrScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScan={handleQrScan}
+      />
     </div>
   );
 };

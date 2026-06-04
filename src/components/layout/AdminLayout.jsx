@@ -37,12 +37,10 @@ export const AdminLayout = ({
       { id: "new-voucher-request", label: "New Voucher", icon: CreditCard, section: "REQUESTS", disabled: false },
     ],
     hpg: [
-      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, section: "MAIN", disabled: false },
       { id: "verification", label: "Verify Vehicle", icon: Shield, section: "VERIFICATION", disabled: false },
       { id: "tickets", label: "Tickets", icon: Ticket, section: "SUPPORT", disabled: false },
     ],
     lto: [
-      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, section: "MAIN", disabled: false },
       { id: "certificate-lookup", label: "Cert Lookup", icon: Search, section: "CERTIFICATE", disabled: false },
       { id: "tickets", label: "Tickets", icon: Ticket, section: "SUPPORT", disabled: false },
     ],
