@@ -3,12 +3,7 @@ import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
 import { Users, Eye, Search, Upload, FileText } from "lucide-react";
-
-const STATUS_STYLES = {
-  MVC_MEC_UPLOADED: { bg: "bg-teal-100", text: "text-teal-700", dot: "bg-teal-500" },
-  HPG_VERIFICATION: { bg: "bg-orange-100", text: "text-orange-700", dot: "bg-orange-500" },
-  CERTIFICATE_ISSUED: { bg: "bg-green-100", text: "text-green-700", dot: "bg-green-500" },
-};
+import { getClearanceStatusStyle } from "../../constants/clearanceRequestConfig";
 
 const QUICK_ACTIONS = {
   MVC_MEC_UPLOADED: { label: "Upload MVC/MEC", icon: Upload, action: "upload-mvc" },
@@ -67,7 +62,7 @@ export const AgentClearanceRequestPage = ({ onNavigate }) => {
                 </thead>
                 <tbody>
                   {requests.map((req) => {
-                    const style = STATUS_STYLES[req.status] || STATUS_STYLES.MVC_MEC_UPLOADED;
+                    const style = getClearanceStatusStyle(req.status);
                     const quickAction = QUICK_ACTIONS[req.status];
                     return (
                       <tr key={req.id} className="border-b border-gray-100 hover:bg-gray-50">

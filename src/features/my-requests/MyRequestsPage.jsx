@@ -3,12 +3,16 @@ import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
 import {
-  FileText, Plus, Eye, Search, CheckCircle, Clock, Download, CreditCard
+  FileText, Plus, Eye, Search, CheckCircle, Clock, Download, CreditCard,
 } from "lucide-react";
 
 const getVoucherStatus = (request) => {
   if (request?.voucherStatus) return request.voucherStatus;
-  if (request?.status === "VOUCHER_ISSUED" || request?.status === "HPG_VERIFIED" || request?.status === "CERTIFICATE_ISSUED") {
+  if (
+    request?.status === "VOUCHER_ISSUED" ||
+    request?.status === "HPG_VERIFIED" ||
+    request?.status === "CERTIFICATE_ISSUED"
+  ) {
     return "VOUCHER_ISSUED";
   }
   return request?.status || "";
@@ -89,50 +93,53 @@ const getDateValue = (dateCreated) => {
   return Number.isNaN(timestamp) ? 0 : timestamp;
 };
 
-export const MyRequestsPage = ({ requests = [], onNavigate }) => {
+export const MyRequestsPage = ({ role, requests = [], onNavigate }) => {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
+  const isAgent = role === "agent_fixer";
 
   const filtered = useMemo(() => {
     return requests
       .filter(
         (request) =>
-          matchesFilter(request, activeFilter) && (
-            (request.voucherReferenceNo || "").toLowerCase().includes(search.toLowerCase()) ||
+          matchesFilter(request, activeFilter) &&
+          ((request.voucherReferenceNo || "").toLowerCase().includes(search.toLowerCase()) ||
             (request.clearanceReferenceNo || "").toLowerCase().includes(search.toLowerCase()) ||
             (request.plateNumber || "").toLowerCase().includes(search.toLowerCase()) ||
-            (request.requestId || "").toLowerCase().includes(search.toLowerCase())
-          ),
+            (request.requestId || "").toLowerCase().includes(search.toLowerCase())),
       )
       .sort((left, right) => getDateValue(right.dateCreated) - getDateValue(left.dateCreated));
   }, [requests, search, activeFilter]);
 
-  const summaryCards = useMemo(() => [
-    {
-      id: "all",
-      label: "All Requests",
-      value: requests.length,
-      description: "Show every request in one list",
-    },
-    {
-      id: "completed",
-      label: "Completed Requests",
-      value: requests.filter((request) => isCompletedRequest(request)).length,
-      description: "Voucher and clearance already issued",
-    },
-    {
-      id: "voucher",
-      label: "Pending Voucher",
-      value: requests.filter((request) => !voucherDone(request)).length,
-      description: "Still waiting on voucher issuance",
-    },
-    {
-      id: "clearance",
-      label: "Pending Clearance",
-      value: requests.filter((request) => voucherDone(request) && !clearanceDone(request)).length,
-      description: "Voucher done, clearance still in progress",
-    },
-  ], [requests]);
+  const summaryCards = useMemo(
+    () => [
+      {
+        id: "all",
+        label: "All Requests",
+        value: requests.length,
+        description: "Show every request in one list",
+      },
+      {
+        id: "completed",
+        label: "Completed Requests",
+        value: requests.filter((request) => isCompletedRequest(request)).length,
+        description: "Voucher and clearance already issued",
+      },
+      {
+        id: "voucher",
+        label: "Pending Voucher",
+        value: requests.filter((request) => !voucherDone(request)).length,
+        description: "Still waiting on voucher issuance",
+      },
+      {
+        id: "clearance",
+        label: "Pending Clearance",
+        value: requests.filter((request) => voucherDone(request) && !clearanceDone(request)).length,
+        description: "Voucher done, clearance still in progress",
+      },
+    ],
+    [requests],
+  );
 
   const activeCard = summaryCards.find((card) => card.id === activeFilter);
 
@@ -146,16 +153,36 @@ export const MyRequestsPage = ({ requests = [], onNavigate }) => {
     URL.revokeObjectURL(url);
   };
 
+  const handleCreateRequest = () => {
+    onNavigate?.(isAgent ? "new-voucher-request" : "new-clearance-request");
+  };
+
+  const handleOpenRequest = (req) => {
+    if (!isAgent) {
+      onNavigate?.("new-clearance-request", req);
+      return;
+    }
+
+    if (voucherDone(req) && !clearanceDone(req)) {
+      onNavigate?.("new-clearance-request", req);
+      return;
+    }
+
+    onNavigate?.("new-voucher-request", req);
+  };
+
   return (
     <div className="max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">My Requests</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">{isAgent ? "Client Requests" : "My Requests"}</h1>
           <p className="text-sm text-gray-500">
-            Track your request progress and bring pending items to the top
+            {isAgent
+              ? "Manage your clients from voucher issuance to certificate completion"
+              : "Track your request progress and bring pending items to the top"}
           </p>
         </div>
-        <Button onClick={() => onNavigate?.("new-certificate-request")}>
+        <Button onClick={handleCreateRequest}>
           <Plus size={16} /> New Request
         </Button>
       </div>
@@ -195,9 +222,7 @@ export const MyRequestsPage = ({ requests = [], onNavigate }) => {
         <div className="flex items-center gap-3 mb-4 pb-2 border-b border-gray-200">
           <FileText size={18} className="text-[#0059b5]" />
           <h3 className="text-base font-bold text-gray-900">All Requests</h3>
-          <span className="text-xs text-gray-400 ml-auto">
-            Showing {activeCard?.label?.toLowerCase()}
-          </span>
+          <span className="text-xs text-gray-400 ml-auto">Showing {activeCard?.label?.toLowerCase()}</span>
           {activeFilter !== "all" && (
             <Button variant="ghost" size="sm" onClick={() => setActiveFilter("all")}>
               Show All
@@ -235,7 +260,7 @@ export const MyRequestsPage = ({ requests = [], onNavigate }) => {
               </thead>
               <tbody>
                 {filtered.map((req) => (
-                  <tr key={req.voucherRequestId || req.clearanceRequestId} className="border-b border-gray-100 hover:bg-gray-50">
+                  <tr key={req.requestId || req.voucherReferenceNo || req.clearanceReferenceNo} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-3">
                       <span className="font-mono text-xs font-medium text-gray-900">
                         {req.requestId || req.voucherReferenceNo || req.clearanceReferenceNo}
@@ -244,7 +269,7 @@ export const MyRequestsPage = ({ requests = [], onNavigate }) => {
                         <div className="text-[10px] text-gray-400 font-mono mt-0.5">{req.clearanceReferenceNo}</div>
                       )}
                     </td>
-                    <td className="py-3 text-gray-700">{req.plateNumber || "—"}</td>
+                    <td className="py-3 text-gray-700">{req.plateNumber || "-"}</td>
                     <td className="py-3">
                       <StatusBadge done={voucherDone(req)} />
                     </td>
@@ -264,10 +289,10 @@ export const MyRequestsPage = ({ requests = [], onNavigate }) => {
                         )}
                       </div>
                     </td>
-                    <td className="py-3 text-gray-500 text-xs">{req.dateCreated || "—"}</td>
+                    <td className="py-3 text-gray-500 text-xs">{req.dateCreated || "-"}</td>
                     <td className="py-3">
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => onNavigate?.("new-certificate-request", req)} title="Open Request">
+                        <Button variant="ghost" size="sm" onClick={() => handleOpenRequest(req)} title="Open Request">
                           <Eye size={14} />
                         </Button>
                       </div>

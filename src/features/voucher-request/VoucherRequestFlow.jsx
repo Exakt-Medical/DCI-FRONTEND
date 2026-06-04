@@ -5,7 +5,7 @@ import { Input } from "../../components/Input";
 import { FileUpload } from "../../components/FileUpload";
 import DCI_LOGO from "../../assets/DCI-LOGO.png";
 import {
-  Car, CreditCard, Ticket, Upload, FileText, CheckCircle,
+  CreditCard, Ticket, Upload, CheckCircle,
   ChevronLeft, ChevronRight, X, AlertTriangle
 } from "lucide-react";
 
@@ -16,7 +16,10 @@ const emptyVehicle = {
   make: "", series: "", yearModel: "", color: "", ownerName: "", ownerAddress: "",
 };
 
-export const VoucherRequestFlow = ({ role, onComplete, onCancel }) => {
+const makeRequestId = () => `REQ-${Date.now()}-${String(Math.random()).slice(2, 6)}`;
+
+export const VoucherRequestFlow = ({ role, initialRequest, onSaveRequest, onComplete, onCancel }) => {
+  const isAgent = role === "agent_fixer";
   const [step, setStep] = useState(1);
   const [orFile, setOrFile] = useState(null);
   const [orPreview, setOrPreview] = useState(null);
@@ -32,11 +35,50 @@ export const VoucherRequestFlow = ({ role, onComplete, onCancel }) => {
   const [processingPayment, setProcessingPayment] = useState(false);
   const [voucherCode, setVoucherCode] = useState("");
   const [voucherAssigned, setVoucherAssigned] = useState(false);
+  const [batchRows, setBatchRows] = useState(() => {
+    if (!isAgent) return [];
+    if (initialRequest?.requestId) {
+      return [initialRequest];
+    }
+    return [];
+  });
 
   const updateOrCr = (field, value) => setOrCr((p) => ({ ...p, [field]: value }));
   const updateCrCr = (field, value) => setCrCr((p) => ({ ...p, [field]: value }));
 
   const plateMismatch = orCr.plateNumber && crCr.plateNumber && orCr.plateNumber !== crCr.plateNumber;
+
+  const clearEntryForm = () => {
+    setOrFile(null);
+    setOrPreview(null);
+    setOrNumber("");
+    setOrDate("");
+    setOrAmount("");
+    setOrCr(emptyVehicle);
+    setCrFile(null);
+    setCrPreview(null);
+    setCrNumber("");
+    setCrCr(emptyVehicle);
+  };
+
+  const buildDraftRecord = (requestId) => ({
+    requestId,
+    role,
+    dateCreated: new Date().toISOString().split("T")[0],
+    currentStep: 1,
+    status: "DRAFT",
+    voucherStatus: "DRAFT",
+    clearanceStatus: "",
+    plateNumber: orCr.plateNumber || crCr.plateNumber || "",
+    orNumber,
+    orDate,
+    orAmount,
+    crNumber,
+    orCr,
+    crCr,
+    orPreview,
+    crPreview,
+  });
 
   const handleOrUpload = (file, preview) => {
     setOrFile(file);
@@ -91,14 +133,51 @@ export const VoucherRequestFlow = ({ role, onComplete, onCancel }) => {
     setTimeout(() => {
       setProcessingPayment(false);
       setPaymentDone(true);
-      const code = "VCH-" + String(Date.now()).slice(-8);
-      setVoucherCode(code);
-      setVoucherAssigned(true);
+      if (isAgent) {
+        const now = new Date().toISOString().split("T")[0];
+        const issued = batchRows.map((row, idx) => {
+          const code = `VCH-${String(Date.now() + idx).slice(-8)}`;
+          const updated = {
+            ...row,
+            currentStep: 3,
+            dateCreated: row.dateCreated || now,
+            status: "VOUCHER_ISSUED",
+            voucherStatus: "VOUCHER_ISSUED",
+            voucherReferenceNo: code,
+            voucherCode: code,
+            paymentDone: true,
+            voucherAssigned: true,
+          };
+          onSaveRequest?.(updated);
+          return updated;
+        });
+        setBatchRows(issued);
+        setVoucherAssigned(issued.length > 0);
+      } else {
+        const code = "VCH-" + String(Date.now()).slice(-8);
+        setVoucherCode(code);
+        setVoucherAssigned(true);
+      }
     }, 2000);
+  };
+
+  const handleAddToBatch = () => {
+    if (!isAgent) return;
+    const orOk = orCr.plateNumber && orCr.ownerName && orCr.plateNumber !== "Extracting...";
+    const crOk = crCr.plateNumber && crCr.ownerName && crCr.plateNumber !== "Extracting...";
+    const match = orCr.plateNumber === crCr.plateNumber;
+    if (!(orOk && crOk && match)) return;
+
+    const requestId = makeRequestId();
+    const draft = buildDraftRecord(requestId);
+    onSaveRequest?.(draft);
+    setBatchRows((prev) => [draft, ...prev]);
+    clearEntryForm();
   };
 
   const canNext = () => {
     if (step === 1) {
+      if (isAgent) return batchRows.length > 0;
       const orOk = orCr.plateNumber && orCr.ownerName && orCr.plateNumber !== "Extracting...";
       const crOk = crCr.plateNumber && crCr.ownerName && crCr.plateNumber !== "Extracting...";
       const match = orCr.plateNumber === crCr.plateNumber;
@@ -118,7 +197,35 @@ export const VoucherRequestFlow = ({ role, onComplete, onCancel }) => {
   };
 
   const finish = () => {
-    onComplete?.({ voucherCode, orCr, crCr, orNumber, orDate, orAmount, crNumber });
+    if (isAgent) {
+      onComplete?.({ rows: batchRows });
+      return;
+    }
+
+    const requestId = initialRequest?.requestId || makeRequestId();
+    const record = {
+      requestId,
+      role,
+      dateCreated: initialRequest?.dateCreated || new Date().toISOString().split("T")[0],
+      currentStep: 3,
+      status: "VOUCHER_ISSUED",
+      voucherStatus: "VOUCHER_ISSUED",
+      voucherReferenceNo: voucherCode,
+      voucherCode,
+      paymentDone,
+      voucherAssigned,
+      plateNumber: orCr.plateNumber || crCr.plateNumber || "",
+      orNumber,
+      orDate,
+      orAmount,
+      crNumber,
+      orCr,
+      crCr,
+      orPreview,
+      crPreview,
+    };
+    onSaveRequest?.(record);
+    onComplete?.(record);
   };
 
   const VehicleFields = ({ values, onChange }) => (
@@ -224,6 +331,46 @@ export const VoucherRequestFlow = ({ role, onComplete, onCancel }) => {
                   </p>
                 </div>
               )}
+
+              {isAgent && (
+                <Card className="mt-4 p-4 border border-blue-100 bg-blue-50/40">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">Bulk Staging</p>
+                      <p className="text-xs text-gray-600">Add each OR/CR pair to the queue before paying once.</p>
+                    </div>
+                    <Button onClick={handleAddToBatch} disabled={!orCr.plateNumber || !crCr.plateNumber || plateMismatch}>
+                      Add To Batch
+                    </Button>
+                  </div>
+                  {batchRows.length === 0 ? (
+                    <p className="text-sm text-gray-500">No staged entries yet.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-blue-100 text-left">
+                            <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request ID</th>
+                            <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Plate</th>
+                            <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Owner</th>
+                            <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {batchRows.map((row) => (
+                            <tr key={row.requestId} className="border-b border-blue-50">
+                              <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
+                              <td className="py-2 text-gray-700">{row.plateNumber || "-"}</td>
+                              <td className="py-2 text-gray-700">{row.orCr?.ownerName || row.crCr?.ownerName || "-"}</td>
+                              <td className="py-2 text-gray-600">{row.voucherStatus || "DRAFT"}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </Card>
+              )}
             </div>
           )}
 
@@ -235,7 +382,12 @@ export const VoucherRequestFlow = ({ role, onComplete, onCancel }) => {
               </div>
               <div className="bg-gray-50 rounded-lg p-5 mb-5 text-center">
                 <p className="text-sm text-gray-500 mb-1">Voucher Request Fee</p>
-                <p className="text-3xl font-bold text-gray-900">PHP 500.00</p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {isAgent ? `PHP ${(batchRows.length * 500).toFixed(2)}` : "PHP 500.00"}
+                </p>
+                {isAgent && (
+                  <p className="text-xs text-gray-500 mt-1">{batchRows.length} request{batchRows.length !== 1 ? "s" : ""} in this batch</p>
+                )}
               </div>
               {processingPayment ? (
                 <div className="text-center py-4">
@@ -261,14 +413,40 @@ export const VoucherRequestFlow = ({ role, onComplete, onCancel }) => {
                 <Ticket size={18} className="text-[#0059b5]" />
                 <h3 className="text-base font-bold text-gray-900">Voucher Issued</h3>
               </div>
-              <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
-                <CheckCircle size={40} className="text-green-600 mx-auto mb-3" />
-                <p className="font-semibold text-green-700 text-lg">Voucher Issued</p>
-                <p className="text-sm font-mono font-bold text-gray-900 mt-2">{voucherCode}</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Plate: {orCr.plateNumber}
-                </p>
-              </div>
+              {isAgent ? (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <p className="font-semibold text-green-700 mb-3">{batchRows.length} voucher request{batchRows.length !== 1 ? "s" : ""} issued</p>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-green-200 text-left">
+                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request ID</th>
+                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Plate</th>
+                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Voucher Ref</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {batchRows.map((row) => (
+                          <tr key={row.requestId} className="border-b border-green-100">
+                            <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
+                            <td className="py-2 text-gray-700">{row.plateNumber || "-"}</td>
+                            <td className="py-2 font-mono text-xs font-semibold text-gray-900">{row.voucherReferenceNo || row.voucherCode || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
+                  <CheckCircle size={40} className="text-green-600 mx-auto mb-3" />
+                  <p className="font-semibold text-green-700 text-lg">Voucher Issued</p>
+                  <p className="text-sm font-mono font-bold text-gray-900 mt-2">{voucherCode}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Plate: {orCr.plateNumber}
+                  </p>
+                </div>
+              )}
             </Card>
           )}
 

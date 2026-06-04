@@ -13,11 +13,11 @@ import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { MyRequestsPage } from "./features/my-requests/MyRequestsPage";
 import { VoucherRequestPage } from "./features/voucher-request/VoucherRequestPage";
 import { VoucherRequestFlow } from "./features/voucher-request/VoucherRequestFlow";
+import { AgentBuyVoucherPage } from "./features/voucher-request/AgentBuyVoucherPage";
 import { AgentVoucherRequestPage } from "./features/voucher-request/AgentVoucherRequestPage";
 import { ClearanceRequestPage } from "./features/clearance-request/ClearanceRequestPage";
 import { ClearanceRequestFlow } from "./features/clearance-request/ClearanceRequestFlow";
 import { AgentClearanceRequestPage } from "./features/clearance-request/AgentClearanceRequestPage";
-import { CertificateRequestFlow } from "./features/certificate-request/CertificateRequestFlow";
 import { HpgVerifyPage } from "./features/hpg/HpgVerifyPage";
 import { LtoLookupPage } from "./features/lto/LtoLookupPage";
 import { ProfilePage } from "./features/Profile/ProfilePage";
@@ -28,7 +28,6 @@ import { AccessLogsPage } from "./features/AccessLogs/AccessLogsPage";
 import { AccountPage } from "./features/accounts/AccountPage";
 import { PlaceholderPage } from "./features/placeholder/PlaceholderPage";
 import { MaintenancePage } from "./features/Maintenance/MaintenancePage";
-
 import { useAlert } from "./hooks/useAlert";
 
 const getDefaultPageForRole = (currentRole) => {
@@ -62,6 +61,10 @@ function AppContent() {
     const saved = localStorage.getItem("certificateRequests");
     return saved ? JSON.parse(saved) : [];
   });
+  const [voucherInventory, setVoucherInventory] = useState(() => {
+    const saved = localStorage.getItem("voucherInventory");
+    return saved ? JSON.parse(saved) : [];
+  });
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [userProfile, setUserProfile] = useState(() => {
     const saved = localStorage.getItem("userProfile");
@@ -86,6 +89,10 @@ function AppContent() {
   useEffect(() => {
     localStorage.setItem("certificateRequests", JSON.stringify(requestRecords));
   }, [requestRecords]);
+
+  useEffect(() => {
+    localStorage.setItem("voucherInventory", JSON.stringify(voucherInventory));
+  }, [voucherInventory]);
 
   useEffect(() => {
     if (role === "citizen" && page === "dashboard") {
@@ -140,18 +147,60 @@ function AppContent() {
     upsertRequestRecord(record);
   };
 
-  const handleCertificateComplete = (payload) => {
+  const handleVoucherRequestSave = (record) => {
+    if (!record?.requestId) return;
+    upsertRequestRecord(record);
+  };
+
+  const handleVoucherRequestComplete = (payload) => {
+    if (payload?.rows?.length) {
+      payload.rows.forEach((row) => {
+        if (!row?.requestId) return;
+        upsertRequestRecord(row);
+      });
+    } else if (payload?.requestId) {
+      upsertRequestRecord(payload);
+    }
+    setSelectedRequest(null);
+    setPage("requests");
+  };
+
+  const handleClearanceRequestSave = (record) => {
+    if (!record?.requestId) return;
+    upsertRequestRecord(record);
+  };
+
+  const handleClearanceRequestComplete = (payload) => {
+    if (payload?.rows?.length) {
+      payload.rows.forEach((row) => {
+        if (!row?.requestId) return;
+        upsertRequestRecord({
+          ...row,
+          requestId: row.requestId,
+          plateNumber: row.plateNumber || row.vehicle?.plateNumber || "",
+          clearanceReferenceNo: row.certificateNo || row.clearanceReferenceNo || "",
+          clearanceStatus: "CERTIFICATE_ISSUED",
+          status: "CERTIFICATE_ISSUED",
+          certificateNo: row.certificateNo || "",
+          currentStep: 5,
+          hpgVerified: true,
+        });
+      });
+      setSelectedRequest(null);
+      setPage("requests");
+      return;
+    }
+
     if (!payload?.requestId) return;
     upsertRequestRecord({
       requestId: payload.requestId,
-      voucherReferenceNo: payload.voucherCode || "",
+      plateNumber: payload.vehicle?.plateNumber || payload.plateNumber || "",
       clearanceReferenceNo: payload.certificateNo || "",
-      plateNumber: payload.vehicle?.plateNumber || payload.orCr?.plateNumber || "",
-      voucherStatus: "VOUCHER_ISSUED",
       clearanceStatus: "CERTIFICATE_ISSUED",
-      currentStep: 6,
+      status: "CERTIFICATE_ISSUED",
       certificateNo: payload.certificateNo || "",
-      dateCreated: payload.dateCreated || new Date().toISOString().split("T")[0],
+      currentStep: 5,
+      hpgVerified: true,
     });
     setSelectedRequest(null);
     setPage("requests");
@@ -181,23 +230,41 @@ function AppContent() {
         if (role === "agent_fixer") return <AgentVoucherRequestPage onNavigate={handleNavigate} />;
         return <PlaceholderPage title="Access Denied" />;
       case "new-certificate-request":
+      case "new-clearance-request":
         return (
-          <CertificateRequestFlow
+          <ClearanceRequestFlow
             role={role}
-            initialRequest={selectedRequest}
-            onSaveRequest={handleRequestSave}
-            onComplete={handleCertificateComplete}
+            selectedRequest={selectedRequest}
+            availableVoucherRequests={requestRecords}
+            voucherInventory={voucherInventory}
+            onVoucherInventoryChange={setVoucherInventory}
+            onSaveRequest={handleClearanceRequestSave}
+            onComplete={handleClearanceRequestComplete}
             onCancel={() => setPage("requests")}
           />
         );
       case "new-voucher-request":
-        return <VoucherRequestFlow role={role} onComplete={() => setPage("requests")} onCancel={() => setPage("requests")} />;
+        if (role === "agent_fixer") {
+          return (
+            <AgentBuyVoucherPage
+              voucherInventory={voucherInventory}
+              onVoucherInventoryChange={setVoucherInventory}
+            />
+          );
+        }
+        return (
+          <VoucherRequestFlow
+            role={role}
+            initialRequest={selectedRequest}
+            onSaveRequest={handleVoucherRequestSave}
+            onComplete={handleVoucherRequestComplete}
+            onCancel={() => setPage("requests")}
+          />
+        );
       case "clearance-requests":
         if (role === "citizen") return <ClearanceRequestPage onNavigate={handleNavigate} />;
         if (role === "agent_fixer") return <AgentClearanceRequestPage onNavigate={handleNavigate} />;
         return <PlaceholderPage title="Access Denied" />;
-      case "new-clearance-request":
-        return <ClearanceRequestFlow role={role} onComplete={() => setPage("requests")} onCancel={() => setPage("requests")} />;
       case "verification":
         return <HpgVerifyPage />;
       case "certificate-lookup":

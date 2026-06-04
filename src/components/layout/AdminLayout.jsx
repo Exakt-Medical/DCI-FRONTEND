@@ -29,12 +29,13 @@ export const AdminLayout = ({
   const navConfig = {
     citizen: [
       { id: "requests", label: "My Requests", icon: FileText, section: "REQUESTS", disabled: false },
-      { id: "new-certificate-request", label: "Request Certificate", icon: CreditCard, section: "REQUESTS", disabled: false },
+      { id: "new-clearance-request", label: "Request Certificate", icon: CreditCard, section: "REQUESTS", disabled: false },
     ],
     agent_fixer: [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, section: "MAIN", disabled: false },
-      { id: "requests", label: "Client Requests", icon: FileText, section: "REQUESTS", disabled: false },
-      { id: "new-voucher-request", label: "New Voucher", icon: CreditCard, section: "REQUESTS", disabled: false },
+      { id: "requests", label: "My Requests / Queue", icon: FileText, section: "REQUESTS", disabled: false },
+      { id: "new-voucher-request", label: "Buy Voucher", icon: CreditCard, section: "REQUESTS", disabled: false },
+      { id: "new-clearance-request", label: "Request for Certification", icon: Shield, section: "REQUESTS", disabled: false },
     ],
     hpg: [
       { id: "verification", label: "Verify Vehicle", icon: Shield, section: "VERIFICATION", disabled: false },
