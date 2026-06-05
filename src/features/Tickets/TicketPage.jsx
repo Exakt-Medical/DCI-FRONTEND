@@ -24,6 +24,7 @@ export const TicketPage = () => {
   // ── Role detection ────────────────────────────────────────────────────────
   const userRole = (localStorage.getItem("role") ?? "").toUpperCase();
   const isLTO = userRole === "LTO";
+  const isHPG = userRole === "HPG";
   const isViewer = userRole === "VIEWER";
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -42,9 +43,13 @@ export const TicketPage = () => {
     setError(null);
     try {
       const data = await ticketService.getAll();
-      // LTO users only see tickets escalated to them
-      const filtered = isLTO ? data.filter((t) => t.roleBased === "LTO") : data;
-      setTickets(filtered);
+      // filter users only see tickets escalated to them
+      const filterLto = data.filter((t) => t.roleBased === "LTO");
+      const filterHpg = data.filter((t) => t.roleBased === "HPG");
+
+      if (isLTO) setTickets(filterLto);
+      if (isHPG) setTickets(filterHpg);
+      
     } catch (err) {
       setError(err.message ?? "Failed to load tickets.");
     } finally {
@@ -405,7 +410,7 @@ export const TicketPage = () => {
         onTicketUpdated={handleTicketUpdated}
       />
 
-      {/* Create Modal — hidden for LTO and Viewer */}
+      {/* Create Modal — hidden for Viewer */}
       {isLTO && !isViewer && (
         <CreateTicketModal
           isOpen={isCreateModalOpen}
