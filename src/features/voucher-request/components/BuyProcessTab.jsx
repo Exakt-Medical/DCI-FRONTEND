@@ -16,20 +16,25 @@ export const BuyProcessTab = ({
   const total = safeQuantity * UNIT_PRICE;
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-      <Card className="xl:col-span-2 p-5 space-y-4">
+    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)] gap-4">
+      <Card className="p-5 space-y-4">
         <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
           <ShoppingCart size={18} className="text-[#0059b5]" />
           <h3 className="text-base font-bold text-gray-900">Buy Voucher</h3>
         </div>
 
-        <Input
-          label="Quantity"
-          type="number"
-          value={quantity}
-          onChange={(e) => onQuantityChange(e.target.value)}
-          placeholder="Enter number of vouchers"
-        />
+        <div className="flex items-center gap-2.5">
+          <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+            Quantity
+          </label>
+          <Input
+            type="number"
+            value={quantity}
+            onChange={(e) => onQuantityChange(e.target.value)}
+            placeholder="Enter number of vouchers"
+            className="w-full"
+          />
+        </div>
 
         <Button onClick={onPurchase} disabled={isProcessingPayment || safeQuantity <= 0} className="w-full">
           <CreditCard size={16} /> {isProcessingPayment ? "Processing Payment..." : "Proceed Payment"}

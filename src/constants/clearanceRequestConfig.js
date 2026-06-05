@@ -31,7 +31,7 @@ export const CITIZEN_STEPS = [
   "Pay",
   "Issue Voucher",
   "Go To HPG",
-  "Upload MVC/MEC",
+  "Upload MVCC/MEC",
   "Issue Certificate",
 ];
 
@@ -39,7 +39,7 @@ export const AGENT_STEPS = [
   "Upload OR/CR",
   "Assign Voucher",
   "HPG Portal",
-  "Upload MVC/MEC",
+  "Upload MVCC/MEC",
   "Issue Certificate",
 ];
 

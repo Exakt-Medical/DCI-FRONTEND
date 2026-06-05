@@ -33,7 +33,7 @@ export const AgentBuyVoucherPage = ({
       <div className="bg-white rounded-xl shadow-lg p-4 flex items-center gap-3 border border-gray-100">
         <img src={DCI_LOGO} alt="DCI" className="h-10" />
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Buy Voucher</h1>
+          <h1 className="text-xl font-bold text-gray-900">Voucher</h1>
           <p className="text-sm text-gray-500">Purchase vouchers in bulk and manage their inventory status.</p>
         </div>
       </div>

@@ -28,6 +28,7 @@ import {
   MvcMecUploadCard,
   VehicleDocumentUploadCard,
 } from "./components/FlowFormCards";
+import { CertificateActionButtons } from "./components/CertificateActionButtons";
 
 const emptyVehicle = {
   plateNumber: "",
@@ -148,6 +149,7 @@ export const ClearanceRequestFlow = ({
   const [isIssuingBulk, setIsIssuingBulk] = useState(false);
   const [isIssuingCertificate, setIsIssuingCertificate] = useState(false);
   const [certificateNo, setCertificateNo] = useState(selectedRequest?.certificateNo || "");
+  const [selectedMvcMecRequestIds, setSelectedMvcMecRequestIds] = useState([]);
   const [citizenValidationState, setCitizenValidationState] = useState(
     selectedRequest?.mvcMecValidationState || VALIDATION_STATE.IDLE,
   );
@@ -182,8 +184,10 @@ export const ClearanceRequestFlow = ({
   const updateCrCr = (field, value) =>
     setCrCr((prev) => ({ ...prev, [field]: value }));
 
+  const isResume = Boolean(selectedRequest?.requestId);
+
   const fallbackRows = useMemo(() => {
-    if (!isAgent) return [];
+    if (!isAgent || !isResume) return [];
 
     return availableVoucherRequests
       .filter(
@@ -196,7 +200,7 @@ export const ClearanceRequestFlow = ({
         hpgStatus: item.hpgStatus || HPG_STATUS.PENDING,
         mvcMecUploaded: Boolean(item.mvcData?.mvcNo && item.mecData?.mecNo),
       }));
-  }, [availableVoucherRequests, isAgent]);
+  }, [availableVoucherRequests, isAgent, isResume]);
 
   const certificationQueue = queueRows.length > 0 ? queueRows : fallbackRows;
 
@@ -265,7 +269,10 @@ export const ClearanceRequestFlow = ({
       voucherCode,
       voucherReferenceNo: voucherCode,
       voucherAssigned,
-      voucherStatus: voucherAssigned ? "VOUCHER_ISSUED" : selectedRequest?.voucherStatus || "",
+      voucherStatus: voucherAssigned
+        ? "VOUCHER_ISSUED"
+        : (selectedRequest?.voucherStatus || (selectedRequest?.voucherCode ? "VOUCHER_ISSUED" : "")),
+
       paymentDone,
       hpgVerified,
       certificateNo,
@@ -547,11 +554,49 @@ export const ClearanceRequestFlow = ({
     }, 1300);
   };
 
-  const validateMvcMecForAll = () => {
-    certificationQueue.forEach((row) => {
-      if (row.mvcMecUploaded) validateMvcMecForRow(row.requestId);
+  const validateSelectedMvcMecRows = () => {
+    selectedMvcMecRequestIds.forEach((requestIdForRow) => {
+      validateMvcMecForRow(requestIdForRow);
     });
+    setSelectedMvcMecRequestIds([]);
   };
+
+  const toggleSelectedMvcMecRow = (requestIdForRow) => {
+    setSelectedMvcMecRequestIds((prev) =>
+      prev.includes(requestIdForRow)
+        ? prev.filter((id) => id !== requestIdForRow)
+        : [...prev, requestIdForRow],
+    );
+  };
+
+  const toggleSelectAllMvcMecRows = () => {
+    const selectableIds = certificationQueue
+      .filter((row) => row.mvcMecUploaded)
+      .map((row) => row.requestId);
+
+    setSelectedMvcMecRequestIds((prev) =>
+      prev.length === selectableIds.length && selectableIds.length > 0
+        ? []
+        : selectableIds,
+    );
+  };
+
+  const selectedMvcMecRows = certificationQueue.filter((row) =>
+    selectedMvcMecRequestIds.includes(row.requestId),
+  );
+  const allMvcMecSelectableSelected =
+    certificationQueue.some((row) => row.mvcMecUploaded) &&
+    certificationQueue
+      .filter((row) => row.mvcMecUploaded)
+      .every((row) => selectedMvcMecRequestIds.includes(row.requestId));
+  const hasSelectedMvcMecRows = selectedMvcMecRows.length > 0;
+
+  useEffect(() => {
+    const validIds = new Set(certificationQueue.map((row) => row.requestId));
+    setSelectedMvcMecRequestIds((prev) =>
+      prev.filter((requestIdForRow) => validIds.has(requestIdForRow)),
+    );
+  }, [certificationQueue]);
 
   const clearAgentMvcMecForm = () => {
     setAgentMvcPreview(null);
@@ -726,6 +771,7 @@ export const ClearanceRequestFlow = ({
   useEffect(() => {
     if (isAgent || step !== 6 || citizenValidationState !== VALIDATION_STATE.PASSED) return;
     if (certificateNo || isIssuingCertificate) return;
+    if (!voucherAssigned) return;
 
     setIsIssuingCertificate(true);
     setTimeout(() => {
@@ -739,6 +785,10 @@ export const ClearanceRequestFlow = ({
         certificateNo: certNo,
         clearanceReferenceNo: certNo,
         clearanceStatus: "CERTIFICATE_ISSUED",
+        voucherAssigned: true,
+        voucherStatus: "VOUCHER_ISSUED",
+        voucherCode: voucherCode,
+        voucherReferenceNo: voucherCode,
       });
     }, 1500);
   }, [
@@ -747,6 +797,8 @@ export const ClearanceRequestFlow = ({
     isAgent,
     isIssuingCertificate,
     step,
+    voucherAssigned,
+    voucherCode,
   ]);
 
   useEffect(() => {
@@ -940,7 +992,7 @@ export const ClearanceRequestFlow = ({
     if (step === 2) return paymentDone;
     if (step === 3) return voucherAssigned;
     if (step === 4) return hpgVerified;
-    if (step === 5) return citizenValidationState === VALIDATION_STATE.PASSED;
+    if (step === 5) return citizenValidationState === VALIDATION_STATE.PASSED && voucherAssigned;
     return false;
   };
 
@@ -1272,7 +1324,7 @@ export const ClearanceRequestFlow = ({
                 <div className="flex items-center justify-between gap-3 mb-4 pb-2 border-b border-gray-200">
                   <div className="flex items-center gap-2">
                     <Upload size={18} className="text-[#0059b5]" />
-                    <h3 className="text-base font-bold text-gray-900">Upload MVC/MEC (Bulk)</h3>
+                    <h3 className="text-base font-bold text-gray-900">Upload MVCC/MEC (Bulk)</h3>
                   </div>
                   <Button onClick={uploadMvcMecForAll} variant="secondary">
                     Auto Fill All
@@ -1288,7 +1340,7 @@ export const ClearanceRequestFlow = ({
                     onChange={(e) => setAgentMvcMecRequestId(e.target.value)}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
                   >
-                    <option value="">Select request for MVC/MEC upload</option>
+                    <option value="">Select request for MVCC/MEC upload</option>
                     {selectableMvcMecRows.map((row) => (
                       <option key={row.requestId} value={row.requestId}>
                         {row.requestId} - {row.plateNumber || "NO_PLATE"}
@@ -1305,7 +1357,7 @@ export const ClearanceRequestFlow = ({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <MvcMecUploadCard
-                    title="MVC"
+                    title="MVCC"
                     uploadLabel="Upload Motor Vehicle Clearance"
                     onFile={handleAgentMvcUpload}
                     preview={agentMvcPreview}
@@ -1407,10 +1459,10 @@ export const ClearanceRequestFlow = ({
                   <div className="flex gap-2">
                     <Button
                       variant="secondary"
-                      onClick={validateMvcMecForAll}
-                      disabled={certificationQueue.length === 0}
+                      onClick={validateSelectedMvcMecRows}
+                      disabled={!hasSelectedMvcMecRows}
                     >
-                      Validate All With DCI
+                      Validate
                     </Button>
                     <Button
                       onClick={handleAddAgentMvcMecToQueue}
@@ -1440,17 +1492,35 @@ export const ClearanceRequestFlow = ({
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-gray-200 text-left">
+                          <th className="pb-2 pr-3 w-10">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 rounded border-gray-300 text-[#0059b5] focus:ring-[#0059b5]"
+                              checked={allMvcMecSelectableSelected}
+                              onChange={toggleSelectAllMvcMecRows}
+                              aria-label="Select all MVC and MEC rows"
+                            />
+                          </th>
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Plate</th>
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">MVC</th>
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">MEC</th>
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">DCI Validation</th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
                         </tr>
                       </thead>
                       <tbody>
                         {certificationQueue.map((row) => (
                           <tr key={row.requestId} className="border-b border-gray-100">
+                            <td className="py-2 align-middle pr-3">
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-gray-300 text-[#0059b5] focus:ring-[#0059b5]"
+                                checked={selectedMvcMecRequestIds.includes(row.requestId)}
+                                onChange={() => toggleSelectedMvcMecRow(row.requestId)}
+                                disabled={!row.mvcMecUploaded}
+                                aria-label={`Select MVC and MEC row for ${row.requestId}`}
+                              />
+                            </td>
                             <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
                             <td className="py-2 text-gray-700">{row.plateNumber || "-"}</td>
                             <td className="py-2 text-gray-700 font-mono text-xs">{row.mvcData?.mvcNo || "-"}</td>
@@ -1458,16 +1528,6 @@ export const ClearanceRequestFlow = ({
                             <td className="py-2 text-gray-700">
                               {row.mvcMecValidationState || VALIDATION_STATE.PENDING}
                               {row.mvcMecValidationMessage ? ` - ${row.mvcMecValidationMessage}` : ""}
-                            </td>
-                            <td className="py-2">
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => validateMvcMecForRow(row.requestId)}
-                                disabled={!row.mvcMecUploaded}
-                              >
-                                Validate
-                              </Button>
                             </td>
                           </tr>
                         ))}
@@ -1501,6 +1561,7 @@ export const ClearanceRequestFlow = ({
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-gray-200 text-left">
+                          <th className="pb-2 w-28" />
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Plate</th>
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Certificate</th>
@@ -1510,6 +1571,9 @@ export const ClearanceRequestFlow = ({
                       <tbody>
                         {certificationQueue.map((row) => (
                           <tr key={row.requestId} className="border-b border-gray-100">
+                            <td className="py-2 align-middle">
+                              <CertificateActionButtons row={row} />
+                            </td>
                             <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
                             <td className="py-2 text-gray-700">{row.plateNumber || "-"}</td>
                             <td className="py-2 font-mono text-xs font-semibold text-gray-900">{row.certificateNo || "-"}</td>

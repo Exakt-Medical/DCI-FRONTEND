@@ -8,6 +8,7 @@ export const Button = ({
   disabled,
   className,
   type = "button",
+  ...rest
 }) => {
   const variants = {
     primary: "bg-[#0059b5] hover:bg-[#004a97] text-white shadow-md", // Updated to use your color
@@ -37,6 +38,7 @@ export const Button = ({
       type={type}
       onClick={onClick}
       disabled={disabled}
+      {...rest}
       className={cn(
         "rounded-xl transition-all duration-200 flex items-center gap-2 justify-center font-medium",
         variants[variant],

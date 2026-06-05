@@ -120,7 +120,6 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
                 <h1 className="text-xl font-bold text-gray-900">
                   DCI Clearance Verification System
                 </h1>
-                <h1 className="text-xl font-bold text-gray-900">Mindanao</h1>
               </div>
 
               {/* Sign In Title */}

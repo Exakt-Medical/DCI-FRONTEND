@@ -233,6 +233,7 @@ function AppContent() {
       case "new-clearance-request":
         return (
           <ClearanceRequestFlow
+            key={selectedRequest?.requestId || "new"}
             role={role}
             selectedRequest={selectedRequest}
             availableVoucherRequests={requestRecords}
