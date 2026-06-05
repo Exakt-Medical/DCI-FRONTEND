@@ -47,8 +47,8 @@ export const TicketPage = () => {
       const filterLto = data.filter((t) => t.roleBased === "LTO");
       const filterHpg = data.filter((t) => t.roleBased === "HPG");
 
-      if (isLTO) setTickets(filterLto);
       if (isHPG) setTickets(filterHpg);
+      if (isLTO) setTickets(data);
       
     } catch (err) {
       setError(err.message ?? "Failed to load tickets.");
@@ -308,7 +308,7 @@ export const TicketPage = () => {
             </p>
           </div>
 
-          {(isLTO || isHPG) && !isViewer && (
+          {!isLTO && !isViewer && (
             <button
               onClick={() => setIsCreateModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors"
@@ -411,7 +411,7 @@ export const TicketPage = () => {
       />
 
       {/* Create Modal — hidden for Viewer */}
-      {(isLTO || isHPG) && !isViewer && (
+      {!isLTO && !isViewer && (
         <CreateTicketModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
