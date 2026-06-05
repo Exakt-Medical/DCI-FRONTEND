@@ -308,7 +308,7 @@ export const TicketPage = () => {
             </p>
           </div>
 
-          {isLTO && !isViewer && (
+          {(isLTO || isHPG) && !isViewer && (
             <button
               onClick={() => setIsCreateModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors"
@@ -411,7 +411,7 @@ export const TicketPage = () => {
       />
 
       {/* Create Modal — hidden for Viewer */}
-      {isLTO && !isViewer && (
+      {(isLTO || isHPG) && !isViewer && (
         <CreateTicketModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
