@@ -31,7 +31,10 @@ import { MaintenancePage } from "./features/Maintenance/MaintenancePage";
 import { useAlert } from "./hooks/useAlert";
 
 const getDefaultPageForRole = (currentRole) => {
-  return currentRole === "citizen" ? "requests" : "dashboard";
+  if (currentRole === "citizen") return "requests";
+  if (currentRole === "hpg") return "verification";
+  if (currentRole === "lto") return "certificate-lookup";
+  return "dashboard";
 };
 
 function AppContent() {
