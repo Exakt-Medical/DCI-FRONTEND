@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
@@ -29,10 +29,16 @@ import {
   VehicleDocumentUploadCard,
 } from "./components/FlowFormCards";
 import { CertificateActionButtons } from "./components/CertificateActionButtons";
+import { OCR_DOCUMENT_TYPE, OCR_STATUS } from "../../constants/ocrConfig";
+import { extractDocumentData, formatOcrHint } from "../../utils/ocrService";
 
 const emptyVehicle = {
   plateNumber: "",
   mvFileNumber: "",
+  classification: "",
+  vehicleType: "",
+  fuelType: "",
+  airconType: "",
   engineNumber: "",
   chassisNumber: "",
   make: "",
@@ -62,6 +68,25 @@ const emptyMec = {
 const makeRequestId = () => `REQ-${Date.now()}-${String(Math.random()).slice(2, 6)}`;
 const makeCertificateNo = (index = 0) =>
   `DCI-CERT-${String(Date.now() + index).slice(-8)}`;
+
+const emptyOcrUploadState = {
+  or: { status: OCR_STATUS.IDLE, confidence: 0, error: "" },
+  cr: { status: OCR_STATUS.IDLE, confidence: 0, error: "" },
+  mvc: { status: OCR_STATUS.IDLE, confidence: 0, error: "" },
+  mec: { status: OCR_STATUS.IDLE, confidence: 0, error: "" },
+  agentMvc: { status: OCR_STATUS.IDLE, confidence: 0, error: "" },
+  agentMec: { status: OCR_STATUS.IDLE, confidence: 0, error: "" },
+};
+
+const mergeVehicleFields = (current = {}, next = {}) => {
+  const merged = { ...current };
+  Object.entries(next).forEach(([key, value]) => {
+    if (typeof value === "string" && value.trim()) {
+      merged[key] = value.trim();
+    }
+  });
+  return merged;
+};
 
 const evaluateMvcMecValidation = (mvcPayload, mecPayload) => {
   if (!mvcPayload?.mvcNo || !mecPayload?.mecNo) {
@@ -156,6 +181,15 @@ export const ClearanceRequestFlow = ({
   const [citizenValidationMessage, setCitizenValidationMessage] = useState(
     selectedRequest?.mvcMecValidationMessage || "",
   );
+  const [ocrUploadState, setOcrUploadState] = useState(emptyOcrUploadState);
+  const ocrUploadVersionRef = useRef({
+    or: 0,
+    cr: 0,
+    mvc: 0,
+    mec: 0,
+    agentMvc: 0,
+    agentMec: 0,
+  });
 
   const [queueRows, setQueueRows] = useState(() => {
     if (!isAgent) return [];
@@ -237,6 +271,29 @@ export const ClearanceRequestFlow = ({
     setCrPreview(null);
     setCrNumber("");
     setCrCr(emptyVehicle);
+    setOcrUploadState((prev) => ({
+      ...prev,
+      or: emptyOcrUploadState.or,
+      cr: emptyOcrUploadState.cr,
+    }));
+  };
+
+  const nextOcrVersion = (key) => {
+    const current = (ocrUploadVersionRef.current[key] || 0) + 1;
+    ocrUploadVersionRef.current[key] = current;
+    return current;
+  };
+
+  const isCurrentOcrVersion = (key, version) => ocrUploadVersionRef.current[key] === version;
+
+  const setOcrState = (key, patch) => {
+    setOcrUploadState((prev) => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        ...patch,
+      },
+    }));
   };
 
   const persistRow = (row) => {
@@ -301,62 +358,98 @@ export const ClearanceRequestFlow = ({
     return record;
   };
 
-  const handleOrUpload = (file, preview) => {
+  const handleOrUpload = async (file, preview) => {
     setOrPreview(preview);
-    if (!file) return;
+    if (!file) {
+      setOcrState("or", { status: OCR_STATUS.IDLE, confidence: 0, error: "" });
+      return;
+    }
+
+    const runId = nextOcrVersion("or");
+    const previousState = {
+      orNumber,
+      orDate,
+      orAmount,
+      orCr,
+    };
+    setOcrState("or", { status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
 
     setOrNumber("Extracting...");
     setOrDate("Extracting...");
     setOrAmount("Extracting...");
     updateOrCr("plateNumber", "Extracting...");
 
-    setTimeout(() => {
-      setOrNumber(`OR-${String(Date.now()).slice(-8)}`);
-      setOrDate(new Date().toISOString().split("T")[0]);
-      setOrAmount("PHP 500.00");
-      updateOrCr(
-        "plateNumber",
-        orCr.plateNumber && orCr.plateNumber !== "Extracting..."
-          ? orCr.plateNumber
-          : "ABC1234",
-      );
-      updateOrCr("mvFileNumber", "13242500000003A");
-      updateOrCr("engineNumber", `ENG-${String(Math.random()).slice(2, 8)}`);
-      updateOrCr("chassisNumber", `CHA-${String(Math.random()).slice(2, 8)}`);
-      updateOrCr("make", "TOYOTA");
-      updateOrCr("series", "VIOS");
-      updateOrCr("yearModel", "2020");
-      updateOrCr("color", "WHITE");
-      updateOrCr("ownerName", "JUAN DELA CRUZ");
-      updateOrCr("ownerAddress", "123 Rizal St., Manila");
-    }, 1200);
+    try {
+      const result = await extractDocumentData(file, OCR_DOCUMENT_TYPE.OR);
+      if (!isCurrentOcrVersion("or", runId)) return;
+
+      const parsed = result.fields || {};
+      const nextVehicle = mergeVehicleFields(orCr, parsed.vehicle || {});
+      setOrNumber(parsed.orNumber || previousState.orNumber || "");
+      setOrDate(parsed.orDate || previousState.orDate || "");
+      setOrAmount(parsed.orAmount || previousState.orAmount || "");
+      setOrCr(nextVehicle);
+      setOcrState("or", {
+        status: OCR_STATUS.SUCCESS,
+        confidence: result.confidence || 0,
+        error: "",
+      });
+    } catch (error) {
+      if (!isCurrentOcrVersion("or", runId)) return;
+
+      setOrNumber(previousState.orNumber || "");
+      setOrDate(previousState.orDate || "");
+      setOrAmount(previousState.orAmount || "");
+      setOrCr(previousState.orCr || emptyVehicle);
+      setOcrState("or", {
+        status: OCR_STATUS.ERROR,
+        confidence: 0,
+        error: error?.message || "Unable to extract OR details.",
+      });
+    }
   };
 
-  const handleCrUpload = (file, preview) => {
+  const handleCrUpload = async (file, preview) => {
     setCrPreview(preview);
-    if (!file) return;
+    if (!file) {
+      setOcrState("cr", { status: OCR_STATUS.IDLE, confidence: 0, error: "" });
+      return;
+    }
+
+    const runId = nextOcrVersion("cr");
+    const previousState = {
+      crNumber,
+      crCr,
+    };
+    setOcrState("cr", { status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
 
     setCrNumber("Extracting...");
     updateCrCr("plateNumber", "Extracting...");
 
-    setTimeout(() => {
-      setCrNumber(`CR-${String(Date.now()).slice(-8)}`);
-      updateCrCr(
-        "plateNumber",
-        crCr.plateNumber && crCr.plateNumber !== "Extracting..."
-          ? crCr.plateNumber
-          : "ABC1234",
-      );
-      updateCrCr("mvFileNumber", "13242500000003A");
-      updateCrCr("engineNumber", `ENG-${String(Math.random()).slice(2, 8)}`);
-      updateCrCr("chassisNumber", `CHA-${String(Math.random()).slice(2, 8)}`);
-      updateCrCr("make", "TOYOTA");
-      updateCrCr("series", "VIOS");
-      updateCrCr("yearModel", "2020");
-      updateCrCr("color", "WHITE");
-      updateCrCr("ownerName", "JUAN DELA CRUZ");
-      updateCrCr("ownerAddress", "123 Rizal St., Manila");
-    }, 1200);
+    try {
+      const result = await extractDocumentData(file, OCR_DOCUMENT_TYPE.CR);
+      if (!isCurrentOcrVersion("cr", runId)) return;
+
+      const parsed = result.fields || {};
+      const nextVehicle = mergeVehicleFields(crCr, parsed.vehicle || {});
+      setCrNumber(parsed.crNumber || previousState.crNumber || "");
+      setCrCr(nextVehicle);
+      setOcrState("cr", {
+        status: OCR_STATUS.SUCCESS,
+        confidence: result.confidence || 0,
+        error: "",
+      });
+    } catch (error) {
+      if (!isCurrentOcrVersion("cr", runId)) return;
+
+      setCrNumber(previousState.crNumber || "");
+      setCrCr(previousState.crCr || emptyVehicle);
+      setOcrState("cr", {
+        status: OCR_STATUS.ERROR,
+        confidence: 0,
+        error: error?.message || "Unable to extract CR details.",
+      });
+    }
   };
 
   const handleAddToQueue = () => {
@@ -607,10 +700,17 @@ export const ClearanceRequestFlow = ({
     setAgentMecData(emptyMec);
   };
 
-  const handleAgentMvcUpload = (file, preview) => {
+  const handleAgentMvcUpload = async (file, preview) => {
     setAgentMvcPreview(preview);
     setAgentMvcFileName(file?.name || "");
-    if (!file) return;
+    if (!file) {
+      setOcrState("agentMvc", { status: OCR_STATUS.IDLE, confidence: 0, error: "" });
+      return;
+    }
+
+    const runId = nextOcrVersion("agentMvc");
+    const previousState = { ...agentMvcData };
+    setOcrState("agentMvc", { status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
 
     setAgentMvcData((prev) => ({
       ...prev,
@@ -620,20 +720,45 @@ export const ClearanceRequestFlow = ({
       mvcStatus: "Extracting...",
     }));
 
-    setTimeout(() => {
+    try {
+      const result = await extractDocumentData(file, OCR_DOCUMENT_TYPE.MVC);
+      if (!isCurrentOcrVersion("agentMvc", runId)) return;
+
+      const parsed = result.fields || {};
       setAgentMvcData({
-        mvcNo: `MVC-${String(Date.now()).slice(-8)}`,
-        mvcIssueDate: new Date().toISOString().split("T")[0],
-        mvcValidUntil: "2026-12-31",
-        mvcStatus: "CLEAR",
+        mvcNo: parsed.mvcNo || previousState.mvcNo || "",
+        mvcIssueDate: parsed.mvcIssueDate || previousState.mvcIssueDate || "",
+        mvcValidUntil: parsed.mvcValidUntil || previousState.mvcValidUntil || "",
+        mvcStatus: parsed.mvcStatus || previousState.mvcStatus || "",
       });
-    }, 1200);
+      setOcrState("agentMvc", {
+        status: OCR_STATUS.SUCCESS,
+        confidence: result.confidence || 0,
+        error: "",
+      });
+    } catch (error) {
+      if (!isCurrentOcrVersion("agentMvc", runId)) return;
+
+      setAgentMvcData(previousState);
+      setOcrState("agentMvc", {
+        status: OCR_STATUS.ERROR,
+        confidence: 0,
+        error: error?.message || "Unable to extract MVC details.",
+      });
+    }
   };
 
-  const handleAgentMecUpload = (file, preview) => {
+  const handleAgentMecUpload = async (file, preview) => {
     setAgentMecPreview(preview);
     setAgentMecFileName(file?.name || "");
-    if (!file) return;
+    if (!file) {
+      setOcrState("agentMec", { status: OCR_STATUS.IDLE, confidence: 0, error: "" });
+      return;
+    }
+
+    const runId = nextOcrVersion("agentMec");
+    const previousState = { ...agentMecData };
+    setOcrState("agentMec", { status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
 
     setAgentMecData((prev) => ({
       ...prev,
@@ -645,16 +770,34 @@ export const ClearanceRequestFlow = ({
       mecResult: "Extracting...",
     }));
 
-    setTimeout(() => {
+    try {
+      const result = await extractDocumentData(file, OCR_DOCUMENT_TYPE.MEC);
+      if (!isCurrentOcrVersion("agentMec", runId)) return;
+
+      const parsed = result.fields || {};
       setAgentMecData({
-        mecNo: `MEC-${String(Date.now()).slice(-8)}`,
-        mecIssueDate: new Date().toISOString().split("T")[0],
-        mecValidUntil: "2026-12-31",
-        mecCo2: "0.85 g/km",
-        mecHc: "0.12 g/km",
-        mecResult: "PASS",
+        mecNo: parsed.mecNo || previousState.mecNo || "",
+        mecIssueDate: parsed.mecIssueDate || previousState.mecIssueDate || "",
+        mecValidUntil: parsed.mecValidUntil || previousState.mecValidUntil || "",
+        mecCo2: parsed.mecCo2 || previousState.mecCo2 || "",
+        mecHc: parsed.mecHc || previousState.mecHc || "",
+        mecResult: parsed.mecResult || previousState.mecResult || "",
       });
-    }, 1200);
+      setOcrState("agentMec", {
+        status: OCR_STATUS.SUCCESS,
+        confidence: result.confidence || 0,
+        error: "",
+      });
+    } catch (error) {
+      if (!isCurrentOcrVersion("agentMec", runId)) return;
+
+      setAgentMecData(previousState);
+      setOcrState("agentMec", {
+        status: OCR_STATUS.ERROR,
+        confidence: 0,
+        error: error?.message || "Unable to extract MEC details.",
+      });
+    }
   };
 
   const handleAddAgentMvcMecToQueue = () => {
@@ -865,12 +1008,19 @@ export const ClearanceRequestFlow = ({
     saveCitizenRequest({ currentStep: 5, status: "HPG_VERIFIED", hpgVerified: true });
   };
 
-  const handleMvcUpload = (file, preview) => {
+  const handleMvcUpload = async (file, preview) => {
     setMvcPreview(preview);
     setMvcFileName(file?.name || "");
     setCitizenValidationState(VALIDATION_STATE.PENDING);
     setCitizenValidationMessage("Awaiting DCI validation.");
-    if (!file) return;
+    if (!file) {
+      setOcrState("mvc", { status: OCR_STATUS.IDLE, confidence: 0, error: "" });
+      return;
+    }
+
+    const runId = nextOcrVersion("mvc");
+    const previousState = { ...mvcData };
+    setOcrState("mvc", { status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
 
     setMvcData((prev) => ({
       ...prev,
@@ -880,14 +1030,23 @@ export const ClearanceRequestFlow = ({
       mvcStatus: "Extracting...",
     }));
 
-    setTimeout(() => {
+    try {
+      const result = await extractDocumentData(file, OCR_DOCUMENT_TYPE.MVC);
+      if (!isCurrentOcrVersion("mvc", runId)) return;
+
+      const parsed = result.fields || {};
       const next = {
-        mvcNo: `MVC-${String(Date.now()).slice(-8)}`,
-        mvcIssueDate: new Date().toISOString().split("T")[0],
-        mvcValidUntil: "2026-12-31",
-        mvcStatus: "CLEAR",
+        mvcNo: parsed.mvcNo || previousState.mvcNo || "",
+        mvcIssueDate: parsed.mvcIssueDate || previousState.mvcIssueDate || "",
+        mvcValidUntil: parsed.mvcValidUntil || previousState.mvcValidUntil || "",
+        mvcStatus: parsed.mvcStatus || previousState.mvcStatus || "",
       };
       setMvcData(next);
+      setOcrState("mvc", {
+        status: OCR_STATUS.SUCCESS,
+        confidence: result.confidence || 0,
+        error: "",
+      });
       saveCitizenRequest({
         currentStep: 5,
         status: "MVC_MEC_VALIDATION_PENDING",
@@ -897,15 +1056,31 @@ export const ClearanceRequestFlow = ({
         mvcPreview: preview,
         mvcFileName: file.name,
       });
-    }, 1200);
+    } catch (error) {
+      if (!isCurrentOcrVersion("mvc", runId)) return;
+
+      setMvcData(previousState);
+      setOcrState("mvc", {
+        status: OCR_STATUS.ERROR,
+        confidence: 0,
+        error: error?.message || "Unable to extract MVC details.",
+      });
+    }
   };
 
-  const handleMecUpload = (file, preview) => {
+  const handleMecUpload = async (file, preview) => {
     setMecPreview(preview);
     setMecFileName(file?.name || "");
     setCitizenValidationState(VALIDATION_STATE.PENDING);
     setCitizenValidationMessage("Awaiting DCI validation.");
-    if (!file) return;
+    if (!file) {
+      setOcrState("mec", { status: OCR_STATUS.IDLE, confidence: 0, error: "" });
+      return;
+    }
+
+    const runId = nextOcrVersion("mec");
+    const previousState = { ...mecData };
+    setOcrState("mec", { status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
 
     setMecData((prev) => ({
       ...prev,
@@ -917,16 +1092,25 @@ export const ClearanceRequestFlow = ({
       mecResult: "Extracting...",
     }));
 
-    setTimeout(() => {
+    try {
+      const result = await extractDocumentData(file, OCR_DOCUMENT_TYPE.MEC);
+      if (!isCurrentOcrVersion("mec", runId)) return;
+
+      const parsed = result.fields || {};
       const next = {
-        mecNo: `MEC-${String(Date.now()).slice(-8)}`,
-        mecIssueDate: new Date().toISOString().split("T")[0],
-        mecValidUntil: "2026-12-31",
-        mecCo2: "0.85 g/km",
-        mecHc: "0.12 g/km",
-        mecResult: "PASS",
+        mecNo: parsed.mecNo || previousState.mecNo || "",
+        mecIssueDate: parsed.mecIssueDate || previousState.mecIssueDate || "",
+        mecValidUntil: parsed.mecValidUntil || previousState.mecValidUntil || "",
+        mecCo2: parsed.mecCo2 || previousState.mecCo2 || "",
+        mecHc: parsed.mecHc || previousState.mecHc || "",
+        mecResult: parsed.mecResult || previousState.mecResult || "",
       };
       setMecData(next);
+      setOcrState("mec", {
+        status: OCR_STATUS.SUCCESS,
+        confidence: result.confidence || 0,
+        error: "",
+      });
       saveCitizenRequest({
         currentStep: 5,
         status: "MVC_MEC_VALIDATION_PENDING",
@@ -936,7 +1120,16 @@ export const ClearanceRequestFlow = ({
         mecPreview: preview,
         mecFileName: file.name,
       });
-    }, 1200);
+    } catch (error) {
+      if (!isCurrentOcrVersion("mec", runId)) return;
+
+      setMecData(previousState);
+      setOcrState("mec", {
+        status: OCR_STATUS.ERROR,
+        confidence: 0,
+        error: error?.message || "Unable to extract MEC details.",
+      });
+    }
   };
 
   const handleDownload = () => {
@@ -1104,6 +1297,7 @@ export const ClearanceRequestFlow = ({
                   uploadLabel="Upload Official Receipt"
                   onFile={handleOrUpload}
                   preview={orPreview}
+                  uploadHint={formatOcrHint(ocrUploadState.or)}
                   numberLabel="OR Number"
                   numberValue={orNumber}
                   onNumberChange={(e) => setOrNumber(e.target.value)}
@@ -1126,6 +1320,7 @@ export const ClearanceRequestFlow = ({
                   ]}
                   vehicleLabel="Vehicle Details (from OR)"
                   vehicleValues={orCr}
+                  vehicleFieldSet="or"
                   onVehicleChange={updateOrCr}
                 />
 
@@ -1134,12 +1329,14 @@ export const ClearanceRequestFlow = ({
                   uploadLabel="Upload Certificate of Registration"
                   onFile={handleCrUpload}
                   preview={crPreview}
+                  uploadHint={formatOcrHint(ocrUploadState.cr)}
                   numberLabel="CR Number"
                   numberValue={crNumber}
                   onNumberChange={(e) => setCrNumber(e.target.value)}
                   numberPlaceholder="Auto-extracted from CR"
                   vehicleLabel="Vehicle Details (from CR)"
                   vehicleValues={crCr}
+                  vehicleFieldSet="cr"
                   onVehicleChange={updateCrCr}
                 />
               </div>
@@ -1361,6 +1558,7 @@ export const ClearanceRequestFlow = ({
                     uploadLabel="Upload Motor Vehicle Clearance"
                     onFile={handleAgentMvcUpload}
                     preview={agentMvcPreview}
+                    uploadHint={formatOcrHint(ocrUploadState.agentMvc)}
                     fields={[
                       {
                         key: "agent-mvc-number",
@@ -1402,6 +1600,7 @@ export const ClearanceRequestFlow = ({
                     uploadLabel="Upload Motor Vehicle Emission"
                     onFile={handleAgentMecUpload}
                     preview={agentMecPreview}
+                    uploadHint={formatOcrHint(ocrUploadState.agentMec)}
                     fields={[
                       {
                         key: "agent-mec-number",
@@ -1602,6 +1801,7 @@ export const ClearanceRequestFlow = ({
                   uploadLabel="Upload Official Receipt"
                   onFile={handleOrUpload}
                   preview={orPreview}
+                  uploadHint={formatOcrHint(ocrUploadState.or)}
                   numberLabel="OR Number"
                   numberValue={orNumber}
                   onNumberChange={(e) => setOrNumber(e.target.value)}
@@ -1624,6 +1824,7 @@ export const ClearanceRequestFlow = ({
                   ]}
                   vehicleLabel="Vehicle Details (from OR)"
                   vehicleValues={orCr}
+                  vehicleFieldSet="or"
                   onVehicleChange={updateOrCr}
                 />
 
@@ -1632,12 +1833,14 @@ export const ClearanceRequestFlow = ({
                   uploadLabel="Upload Certificate of Registration"
                   onFile={handleCrUpload}
                   preview={crPreview}
+                  uploadHint={formatOcrHint(ocrUploadState.cr)}
                   numberLabel="CR Number"
                   numberValue={crNumber}
                   onNumberChange={(e) => setCrNumber(e.target.value)}
                   numberPlaceholder="Auto-extracted from CR"
                   vehicleLabel="Vehicle Details (from CR)"
                   vehicleValues={crCr}
+                  vehicleFieldSet="cr"
                   onVehicleChange={updateCrCr}
                 />
               </div>
@@ -1737,6 +1940,7 @@ export const ClearanceRequestFlow = ({
                   uploadLabel="Upload Motor Vehicle Clearance"
                   onFile={handleMvcUpload}
                   preview={mvcPreview}
+                  uploadHint={formatOcrHint(ocrUploadState.mvc)}
                   fields={[
                     {
                       key: "citizen-mvc-number",
@@ -1778,6 +1982,7 @@ export const ClearanceRequestFlow = ({
                   uploadLabel="Upload Motor Vehicle Emission"
                   onFile={handleMecUpload}
                   preview={mecPreview}
+                  uploadHint={formatOcrHint(ocrUploadState.mec)}
                   fields={[
                     {
                       key: "citizen-mec-number",
