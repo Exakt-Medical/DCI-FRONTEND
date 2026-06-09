@@ -1,6 +1,6 @@
 // /src/services/profileService.js
 
-const BASE_URL = "/api/profile";
+import api from "./api";
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem("token");
@@ -21,46 +21,33 @@ const handleResponse = async (res) => {
 export const profileService = {
   // Get current user profile
   getProfile: async () => {
-    const response = await fetch(`${BASE_URL}`, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
-    return handleResponse(response);
+    const res = await api.get("/profile");
+    return res.data;
   },
 
   // Update user profile
   updateProfile: async (profileData) => {
-    const response = await fetch(`${BASE_URL}`, {
-      method: "PUT",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(profileData),
-    });
-    return handleResponse(response);
+    const res = await api.put("/profile", profileData);
+    return res.data;
   },
 
   // Change password
   changePassword: async (passwordData) => {
-    const response = await fetch(`${BASE_URL}/change-password`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(passwordData),
-    });
-    return handleResponse(response);
+    const res = await api.post("/profile/change-password", passwordData);
+    return res.data;
   },
 
-  // Upload avatar
+  // Upload avatar (multipart/form-data)
   uploadAvatar: async (file) => {
     const formData = new FormData();
     formData.append("file", file);
 
-    const token = localStorage.getItem("token");
-    const response = await fetch(`${BASE_URL}/avatar`, {
-      method: "POST",
+    const res = await api.post("/profile/avatar", formData, {
       headers: {
-        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
       },
-      body: formData,
     });
-    return handleResponse(response);
+
+    return res.data;
   },
 };
