@@ -154,21 +154,11 @@ export const MyRequestsPage = ({ role, requests = [], onNavigate }) => {
   };
 
   const handleCreateRequest = () => {
-    onNavigate?.(isAgent ? "new-voucher-request" : "new-clearance-request");
+    onNavigate?.("new-clearance-request");
   };
 
   const handleOpenRequest = (req) => {
-    if (!isAgent) {
-      onNavigate?.("new-clearance-request", req);
-      return;
-    }
-
-    if (voucherDone(req) && !clearanceDone(req)) {
-      onNavigate?.("new-clearance-request", req);
-      return;
-    }
-
-    onNavigate?.("new-voucher-request", req);
+    onNavigate?.("new-clearance-request", req);
   };
 
   return (
@@ -243,7 +233,7 @@ export const MyRequestsPage = ({ role, requests = [], onNavigate }) => {
           <div className="text-center py-12 text-gray-400">
             <FileText size={32} className="mx-auto mb-2 opacity-50" />
             <p className="text-sm">No requests yet</p>
-            <p className="text-xs mt-1">Click "New Request" to start a voucher request</p>
+            <p className="text-xs mt-1">Click "New Request" to start a certification request</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
