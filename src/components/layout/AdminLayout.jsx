@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Outlet, useLocation } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import { cn } from "../../utils/cn";
 import {
   LayoutDashboard,
@@ -16,15 +18,11 @@ import {
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
 
-export const AdminLayout = ({
-  children,
-  currentPage,
-  onNavigate,
-  role,
-  onLogout,
-  onMyProfile,
-}) => {
+export const AdminLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { role } = useAuth();
+  const location = useLocation();
+  const currentPage = location.pathname.split("/").pop();
 
   const navConfig = {
     citizen: [
@@ -72,8 +70,6 @@ export const AdminLayout = ({
       <div className="flex">
         <Sidebar
           navConfig={currentNav}
-          currentPage={currentPage}
-          onNavigate={onNavigate}
           isSidebarOpen={sidebarOpen}
           setIsSidebarOpen={setSidebarOpen}
         />
@@ -83,10 +79,10 @@ export const AdminLayout = ({
             isSidebarOpen={sidebarOpen}
             user={currentUser}
             role={role}
-            onMyProfile={onMyProfile}
-            onLogout={onLogout}
           />
-          <main className="p-6">{children}</main>
+          <main className="p-6">
+            <Outlet />
+          </main>
         </div>
       </div>
     </div>

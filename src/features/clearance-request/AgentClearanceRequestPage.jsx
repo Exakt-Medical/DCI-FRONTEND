@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
@@ -10,9 +11,10 @@ const QUICK_ACTIONS = {
   HPG_VERIFICATION: { label: "Issue Certificate", icon: FileText, action: "issue-certificate" },
 };
 
-export const AgentClearanceRequestPage = ({ onNavigate }) => {
+export const AgentClearanceRequestPage = () => {
   const [search, setSearch] = useState("");
   const [requests, setRequests] = useState([]);
+  const navigate = useNavigate();
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -78,12 +80,12 @@ export const AgentClearanceRequestPage = ({ onNavigate }) => {
                         <td className="py-3 text-gray-500">{req.dateCreated}</td>
                         <td className="py-3">
                           <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => onNavigate?.("view-clearance-request", req)}>
+                            <Button variant="ghost" size="sm" onClick={() => navigate("/dci-access/new-clearance-request", { state: { request: req } })}>
                               <Eye size={14} />
                             </Button>
                             {quickAction && (
                               <Button variant="ghost" size="sm"
-                                onClick={() => onNavigate?.(quickAction.action, req)} title={quickAction.label}>
+                                onClick={() => navigate("/dci-access/new-clearance-request", { state: { request: req } })} title={quickAction.label}>
                                 <quickAction.icon size={14} />
                               </Button>
                             )}

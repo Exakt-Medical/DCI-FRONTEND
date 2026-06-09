@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { authService } from "../services/authService";
 
 const AuthContext = createContext(null);
@@ -8,6 +9,7 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [role, setRole] = useState(localStorage.getItem("role"));
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (token && role) {
@@ -31,6 +33,8 @@ export function AuthProvider({ children }) {
         localStorage.setItem("companyId", String(data.companyId));
       if (data.companyCode != null)
         localStorage.setItem("companyCode", data.companyCode);
+      if (data.userId != null)
+        localStorage.setItem("userId", data.userId);
       setToken(data.token);
       setRole(data.role);
       setUser({ token: data.token, role: data.role });
@@ -60,6 +64,31 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const getDefaultPageForRole = (currentRole) => {
+    const role = (currentRole || "").toLowerCase();
+    if (role === "citizen") return "requests";
+    if (role === "hpg") return "verification";
+    if (role === "lto") return "certificate-lookup";
+    // admin, agent_fixer, agent, and any other roles → dashboard
+    return "dashboard";
+  };
+
+  const handleLogin = (userRole, userData) => {
+    const landingPage = getDefaultPageForRole(userRole);
+    setRole(userRole);
+    localStorage.setItem("authRole", userRole);
+    
+    if (userData) {
+      localStorage.setItem("userProfile", JSON.stringify(userData));
+    }
+    navigate(`/dci-access/${landingPage}`);
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate("/dci-access");
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -69,6 +98,8 @@ export function AuthProvider({ children }) {
         loading,
         login,
         logout,
+        handleLogin,
+        handleLogout,
         isAuthenticated: !!token,
       }}
     >

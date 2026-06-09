@@ -7,9 +7,6 @@ export const Header = ({
   isSidebarOpen,
   user,
   role,
-  onMyProfile,
-  onChangePassword,
-  onLogout,
 }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -57,9 +54,6 @@ export const Header = ({
           user={user}
           role={role}
           isSidebarOpen={isSidebarOpen}
-          onMyProfile={onMyProfile}
-          onChangePassword={onChangePassword}
-          onLogout={onLogout}
         />
       </div>
     </header>

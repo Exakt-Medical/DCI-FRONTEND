@@ -1,5 +1,5 @@
-// pages/LoginPage.jsx
 import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Card } from "../components/Card";
 import { Button } from "../components/Button";
 import { Spinner } from "../components/Spinner";
@@ -15,10 +15,11 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { authService } from "../services/authService";
+import { useAuth } from "../context/AuthContext";
 import DciLogo from "../assets/DCI-LOGO.png";
 import { CreateTicketModal } from "../features/Tickets/CreateTicketModal";
 
-export const LoginPage = ({ onLogin, onRegisterClick }) => {
+export const LoginPage = () => {
   const [form, setForm] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -26,6 +27,10 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
   const [rememberMe, setRememberMe] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [showDemoCredentials, setShowDemoCredentials] = useState(false);
+  
+  const { login, handleLogin } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const savedUsername = localStorage.getItem("rememberedUsername");
@@ -49,31 +54,8 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
     setLoading(true);
     setError("");
     try {
-      const response = await authService.login(form.username, form.password);
-
-      const {
-        token,
-        role,
-        firstname,
-        lastname,
-        email,
-        userId,
-        companyId,
-        companyCode,
-      } = response.data;
-
-      localStorage.setItem("token", token);
-      localStorage.setItem("role", role);
-      localStorage.setItem("email", email);
-      localStorage.setItem("firstname", firstname);
-      localStorage.setItem("lastname", lastname);
-      localStorage.setItem("username", form.username);
-      if (companyId != null)
-        localStorage.setItem("companyId", String(companyId));
-      if (companyCode != null) localStorage.setItem("companyCode", companyCode);
-      // ✅ Save userId so other pages can fetch user-specific data
-      localStorage.setItem("userId", userId);
-
+      const returnedRole = await login(form.username, form.password);
+      
       if (rememberMe) {
         localStorage.setItem("rememberedUsername", form.username);
         localStorage.setItem("rememberedPassword", form.password);
@@ -84,9 +66,16 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
         localStorage.setItem("rememberMe", "false");
       }
 
-      onLogin(role.toLowerCase(), {});
+      // If they were redirected here from a protected page, send them back there
+      if (location.state?.from) {
+        handleLogin(returnedRole.toLowerCase(), {});
+        navigate(location.state.from);
+      } else {
+        handleLogin(returnedRole.toLowerCase(), {});
+      }
+      
     } catch (err) {
-      const msg = err.response?.data?.error || "Invalid username or password";
+      const msg = err.message || "Invalid username or password";
       setError(msg);
     } finally {
       setLoading(false);
@@ -241,7 +230,7 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
               {/* Register as Citizen */}
               <div className="mt-4">
                 <button
-                  onClick={onRegisterClick}
+                  onClick={() => navigate('/dci-access/register')}
                   className="w-full border border-primary-500 text-primary-500 hover:bg-primary-50 font-medium py-2.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
                 >
                   Register as Citizen

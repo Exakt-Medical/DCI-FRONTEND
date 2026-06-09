@@ -1,8 +1,11 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
 import { CertificateActionButtons } from "../clearance-request/components/CertificateActionButtons";
+import { useAuth } from "../../context/AuthContext";
+import { useRequest } from "../../context/RequestContext";
 import {
   FileText, Plus, Eye, Search, CheckCircle, Clock, CreditCard,
 } from "lucide-react";
@@ -94,9 +97,12 @@ const getDateValue = (dateCreated) => {
   return Number.isNaN(timestamp) ? 0 : timestamp;
 };
 
-export const MyRequestsPage = ({ role, requests = [], onNavigate }) => {
+export const MyRequestsPage = () => {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
+  const { role } = useAuth();
+  const { requestRecords: requests } = useRequest();
+  const navigate = useNavigate();
   const isAgent = role === "agent_fixer";
 
   const filtered = useMemo(() => {
@@ -145,11 +151,11 @@ export const MyRequestsPage = ({ role, requests = [], onNavigate }) => {
   const activeCard = summaryCards.find((card) => card.id === activeFilter);
 
   const handleCreateRequest = () => {
-    onNavigate?.("new-clearance-request");
+    navigate("/dci-access/new-clearance-request");
   };
 
   const handleOpenRequest = (req) => {
-    onNavigate?.("new-clearance-request", req);
+    navigate("/dci-access/new-clearance-request", { state: { request: req } });
   };
 
   return (

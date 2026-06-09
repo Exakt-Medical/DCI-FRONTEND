@@ -1,13 +1,15 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
 import { FileText, Plus, Eye, Search } from "lucide-react";
 import { getClearanceStatusStyle } from "../../constants/clearanceRequestConfig";
 
-export const ClearanceRequestPage = ({ onNavigate }) => {
+export const ClearanceRequestPage = () => {
   const [search, setSearch] = useState("");
   const [requests, setRequests] = useState([]);
+  const navigate = useNavigate();
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -20,7 +22,7 @@ export const ClearanceRequestPage = ({ onNavigate }) => {
             View and manage your MVC/MEC and clearance requests
           </p>
         </div>
-        <Button onClick={() => onNavigate?.("new-clearance-request")}>
+        <Button onClick={() => navigate("/dci-access/new-clearance-request")}>
           <Plus size={16} />
           New Clearance Request
         </Button>
@@ -75,7 +77,7 @@ export const ClearanceRequestPage = ({ onNavigate }) => {
                         </td>
                         <td className="py-3 text-gray-500">{req.dateCreated}</td>
                         <td className="py-3">
-                          <Button variant="ghost" size="sm" onClick={() => onNavigate?.("view-clearance-request", req)}>
+                          <Button variant="ghost" size="sm" onClick={() => navigate("/dci-access/new-clearance-request", { state: { request: req } })}>
                             <Eye size={14} /> View
                           </Button>
                         </td>

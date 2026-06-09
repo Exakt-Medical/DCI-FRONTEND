@@ -106,16 +106,24 @@ const evaluateMvcMecValidation = (mvcPayload, mecPayload) => {
   return { valid: true, reason: "Validated by DCI portal." };
 };
 
-export const ClearanceRequestFlow = ({
-  role,
-  selectedRequest,
-  availableVoucherRequests = [],
-  voucherInventory = [],
-  onVoucherInventoryChange,
-  onSaveRequest,
-  onComplete,
-  onCancel,
-}) => {
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { useRequest } from "../../context/RequestContext";
+
+export const ClearanceRequestFlow = () => {
+  const { role } = useAuth();
+  const { 
+    requestRecords: availableVoucherRequests, 
+    voucherInventory, 
+    setVoucherInventory,
+    handleRequestSave: onSaveRequest,
+    handleClearanceRequestComplete: onComplete 
+  } = useRequest();
+  
+  const location = useLocation();
+  const navigate = useNavigate();
+  const selectedRequest = location.state?.request || null;
+  const onCancel = () => navigate("/dci-access/requests");
   const isAgent = role === "agent_fixer";
   const flowSteps = isAgent ? AGENT_STEPS : CITIZEN_STEPS;
 
@@ -531,8 +539,8 @@ export const ClearanceRequestFlow = ({
   };
 
   const updateVoucherInventory = (updater) => {
-    if (!onVoucherInventoryChange) return;
-    onVoucherInventoryChange((prev) =>
+    if (!setVoucherInventory) return;
+    setVoucherInventory((prev) =>
       updater(Array.isArray(prev) ? prev : voucherInventory),
     );
   };
