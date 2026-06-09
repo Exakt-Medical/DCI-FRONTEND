@@ -1,4 +1,4 @@
-const BASE_URL = "/api/support-ticket";
+import api from "./api";
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
@@ -135,53 +135,32 @@ const handleResponse = async (res) => {
 // ─── CRUD ─────────────────────────────────────────────────────────────────────
 
 export const ticketService = {
-  /** GET /api/support-ticket */
   async getAll() {
-    const res = await fetch(BASE_URL, { headers: getAuthHeaders() });
-    const data = await handleResponse(res);
-    return (
-      data
-        .map(mapTicket)
-        // ✅ Sort by dateRequested descending so newest tickets appear first
-        .sort((a, b) => new Date(b.dateRequested) - new Date(a.dateRequested))
-    );
+    const res = await api.get("/support-ticket");
+    return res.data
+      .map(mapTicket)
+      .sort((a, b) => new Date(b.dateRequested) - new Date(a.dateRequested));
   },
 
-  /** GET /api/support-ticket/:id */
   async getById(id) {
-    const res = await fetch(`${BASE_URL}/${id}`, { headers: getAuthHeaders() });
-    const data = await handleResponse(res);
-    return mapTicket(data);
+    const res = await api.get(`/support-ticket/${id}`);
+    return mapTicket(res.data);
   },
 
-  /** POST /api/support-ticket */
   async create(formData) {
-    const res = await fetch(BASE_URL, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(mapToRequest(formData)),
-    });
-    const data = await handleResponse(res);
-    return mapTicket(data);
+    const res = await api.post("/support-ticket", mapToRequest(formData));
+    return mapTicket(res.data);
   },
 
-  /** PUT /api/support-ticket/:id */
   async update(id, formData) {
-    const res = await fetch(`${BASE_URL}/${id}`, {
-      method: "PUT",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(mapToRequest(formData)),
-    });
-    const data = await handleResponse(res);
-    return mapTicket(data);
+    const res = await api.put(
+      `/api/support-ticket/${id}`,
+      mapToRequest(formData),
+    );
+    return mapTicket(res.data);
   },
 
-  /** DELETE /api/support-ticket/:id */
   async delete(id) {
-    const res = await fetch(`${BASE_URL}/${id}`, {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    });
-    return handleResponse(res);
+    await api.delete(`/support-ticket/${id}`);
   },
 };
