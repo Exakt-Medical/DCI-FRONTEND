@@ -29,6 +29,7 @@ import {
   VehicleDocumentUploadCard,
 } from "./components/FlowFormCards";
 import { CertificateActionButtons } from "./components/CertificateActionButtons";
+import { generateClearanceCertificatePDF } from "./utils/generateClearanceCertificatePDF";
 
 const emptyVehicle = {
   plateNumber: "",
@@ -940,16 +941,19 @@ export const ClearanceRequestFlow = ({
   };
 
   const handleDownload = () => {
-    const blob = new Blob(
-      [`Certificate: ${certificateNo}\nVoucher: ${voucherCode}\nPlate: ${orCr.plateNumber}`],
-      { type: "text/plain" },
-    );
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${certificateNo}.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
+    if (!certificateNo) return;
+    const { doc, filename } = generateClearanceCertificatePDF({
+      requestId,
+      certificateNo,
+      clearanceReferenceNo: certificateNo,
+      plateNumber: orCr.plateNumber || crCr.plateNumber || selectedRequest?.plateNumber || "",
+      voucherCode,
+      voucherReferenceNo: voucherCode,
+      dateCreated,
+      status: requestStatus,
+      clearanceStatus: "CERTIFICATE_ISSUED",
+    });
+    doc.save(filename);
   };
 
   const canNext = () => {
@@ -1660,7 +1664,7 @@ export const ClearanceRequestFlow = ({
               </div>
               <div className="bg-gray-50 rounded-lg p-5 mb-5 text-center">
                 <p className="text-sm text-gray-500 mb-1">Certificate Request Fee</p>
-                <p className="text-3xl font-bold text-gray-900">PHP 800.00</p>
+                <p className="text-3xl font-bold text-gray-900">PHP 500.00</p>
                 <p className="text-xs text-gray-500 mt-1">Single payment covers the whole request.</p>
               </div>
               {processingPayment ? (
@@ -1733,18 +1737,18 @@ export const ClearanceRequestFlow = ({
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <MvcMecUploadCard
-                  title="MVC"
+                  title="MVCC"
                   uploadLabel="Upload Motor Vehicle Clearance"
                   onFile={handleMvcUpload}
                   preview={mvcPreview}
                   fields={[
                     {
                       key: "citizen-mvc-number",
-                      label: "MVC Number",
+                      label: "MVCC Number",
                       value: mvcData.mvcNo,
                       onChange: (e) =>
                         setMvcData((prev) => ({ ...prev, mvcNo: e.target.value })),
-                      placeholder: "Auto-extracted from MVC",
+                      placeholder: "Auto-extracted from MVCC",
                     },
                     {
                       key: "citizen-mvc-issue-date",
@@ -1752,7 +1756,7 @@ export const ClearanceRequestFlow = ({
                       value: mvcData.mvcIssueDate,
                       onChange: (e) =>
                         setMvcData((prev) => ({ ...prev, mvcIssueDate: e.target.value })),
-                      placeholder: "Auto-extracted from MVC",
+                      placeholder: "Auto-extracted from MVCC",
                     },
                     {
                       key: "citizen-mvc-valid-until",
@@ -1760,7 +1764,7 @@ export const ClearanceRequestFlow = ({
                       value: mvcData.mvcValidUntil,
                       onChange: (e) =>
                         setMvcData((prev) => ({ ...prev, mvcValidUntil: e.target.value })),
-                      placeholder: "Auto-extracted from MVC",
+                      placeholder: "Auto-extracted from MVCC",
                     },
                     {
                       key: "citizen-mvc-status",
@@ -1836,7 +1840,7 @@ export const ClearanceRequestFlow = ({
                   <div>
                     <p className="text-sm font-semibold text-gray-900">DCI Validation</p>
                     <p className="text-xs text-gray-600">
-                      DCI portal validates MVC/MEC before certificate issuance.
+                      DCI portal validates MVCC/MEC before certificate issuance.
                     </p>
                   </div>
                   <Button
