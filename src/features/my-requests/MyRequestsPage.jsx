@@ -2,8 +2,9 @@ import { useMemo, useState } from "react";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
+import { CertificateActionButtons } from "../clearance-request/components/CertificateActionButtons";
 import {
-  FileText, Plus, Eye, Search, CheckCircle, Clock, Download, CreditCard,
+  FileText, Plus, Eye, Search, CheckCircle, Clock, CreditCard,
 } from "lucide-react";
 
 const getVoucherStatus = (request) => {
@@ -143,32 +144,12 @@ export const MyRequestsPage = ({ role, requests = [], onNavigate }) => {
 
   const activeCard = summaryCards.find((card) => card.id === activeFilter);
 
-  const handleDownload = (certNo) => {
-    const blob = new Blob([`Clearance Certificate: ${certNo}`], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${certNo}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
   const handleCreateRequest = () => {
-    onNavigate?.(isAgent ? "new-voucher-request" : "new-clearance-request");
+    onNavigate?.("new-clearance-request");
   };
 
   const handleOpenRequest = (req) => {
-    if (!isAgent) {
-      onNavigate?.("new-clearance-request", req);
-      return;
-    }
-
-    if (voucherDone(req) && !clearanceDone(req)) {
-      onNavigate?.("new-clearance-request", req);
-      return;
-    }
-
-    onNavigate?.("new-voucher-request", req);
+    onNavigate?.("new-clearance-request", req);
   };
 
   return (
@@ -243,24 +224,41 @@ export const MyRequestsPage = ({ role, requests = [], onNavigate }) => {
           <div className="text-center py-12 text-gray-400">
             <FileText size={32} className="mx-auto mb-2 opacity-50" />
             <p className="text-sm">No requests yet</p>
-            <p className="text-xs mt-1">Click "New Request" to start a voucher request</p>
+            <p className="text-xs mt-1">Click "New Request" to start a certification request</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 text-left">
+                  <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider"></th>
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Reference</th>
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Plate No.</th>
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Voucher</th>
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Clearance</th>
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Date</th>
-                  <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((req) => (
                   <tr key={req.requestId || req.voucherReferenceNo || req.clearanceReferenceNo} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-3">
+                      {clearanceDone(req) && req.certificateNo ? (
+                        <CertificateActionButtons row={req} />
+                      ) : (
+                        <div className="mx-auto grid w-24 grid-cols-3 items-center justify-items-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="col-start-2"
+                            onClick={() => handleOpenRequest(req)}
+                            title="View Request"
+                          >
+                            <Eye size={14} />
+                          </Button>
+                        </div>
+                      )}
+                    </td>
                     <td className="py-3">
                       <span className="font-mono text-xs font-medium text-gray-900">
                         {req.requestId || req.voucherReferenceNo || req.clearanceReferenceNo}
@@ -276,27 +274,9 @@ export const MyRequestsPage = ({ role, requests = [], onNavigate }) => {
                     <td className="py-3">
                       <div className="flex items-center gap-2">
                         <StatusBadge done={clearanceDone(req)} />
-                        {clearanceDone(req) && req.certificateNo && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDownload(req.certificateNo)}
-                            title="Download Certificate"
-                            className="ml-2"
-                          >
-                            <Download size={12} />
-                          </Button>
-                        )}
                       </div>
                     </td>
                     <td className="py-3 text-gray-500 text-xs">{req.dateCreated || "-"}</td>
-                    <td className="py-3">
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="sm" onClick={() => handleOpenRequest(req)} title="Open Request">
-                          <Eye size={14} />
-                        </Button>
-                      </div>
-                    </td>
                   </tr>
                 ))}
               </tbody>

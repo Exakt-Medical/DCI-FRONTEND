@@ -24,7 +24,7 @@ const STEPS = [
   "Payment",
   "Voucher",
   "HPG Verification",
-  "Upload MVC/MEC",
+  "Upload MVCC/MEC",
   "Issue Certificate",
 ];
 
@@ -459,7 +459,7 @@ export const ClearanceRequestFlow = ({ role, onComplete, onCancel }) => {
                 <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                   <Upload size={18} className="text-[#0059b5]" />
                   <h3 className="text-base font-bold text-gray-900">
-                    Upload MVC/MEC Image
+                    Upload MVCC/MEC Image
                   </h3>
                 </div>
                 <FileUpload
@@ -474,12 +474,12 @@ export const ClearanceRequestFlow = ({ role, onComplete, onCancel }) => {
                 <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                   <FileText size={18} className="text-[#0059b5]" />
                   <h3 className="text-base font-bold text-gray-900">
-                    MVC/MEC OCR Data
+                    MVCC/MEC OCR Data
                   </h3>
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                    Paste or type MVC/MEC details
+                    Paste or type MVCC/MEC details
                   </label>
                   <textarea
                     value={mvcOcrText}

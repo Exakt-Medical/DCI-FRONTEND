@@ -31,6 +31,7 @@ import {
 import { CertificateActionButtons } from "./components/CertificateActionButtons";
 import { OCR_DOCUMENT_TYPE, OCR_STATUS } from "../../constants/ocrConfig";
 import { extractDocumentData, formatOcrHint } from "../../utils/ocrService";
+import { generateClearanceCertificatePDF } from "./utils/generateClearanceCertificatePDF";
 
 const emptyVehicle = {
   plateNumber: "",
@@ -65,7 +66,8 @@ const emptyMec = {
   mecResult: "",
 };
 
-const makeRequestId = () => `REQ-${Date.now()}-${String(Math.random()).slice(2, 6)}`;
+const makeRequestId = () =>
+  `REQ-${Date.now()}-${String(Math.random()).slice(2, 6)}`;
 const makeCertificateNo = (index = 0) =>
   `DCI-CERT-${String(Date.now() + index).slice(-8)}`;
 
@@ -117,22 +119,29 @@ export const ClearanceRequestFlow = ({
   const isAgent = role === "agent_fixer";
   const flowSteps = isAgent ? AGENT_STEPS : CITIZEN_STEPS;
 
-  const [requestId] = useState(() => selectedRequest?.requestId || makeRequestId());
+  const [requestId] = useState(
+    () => selectedRequest?.requestId || makeRequestId(),
+  );
   const [step, setStep] = useState(() => selectedRequest?.currentStep || 1);
   const [requestStatus, setRequestStatus] = useState(
     () => selectedRequest?.status || "DRAFT",
   );
   const [dateCreated] = useState(
-    () => selectedRequest?.dateCreated || new Date().toISOString().split("T")[0],
+    () =>
+      selectedRequest?.dateCreated || new Date().toISOString().split("T")[0],
   );
 
-  const [orPreview, setOrPreview] = useState(selectedRequest?.orPreview || null);
+  const [orPreview, setOrPreview] = useState(
+    selectedRequest?.orPreview || null,
+  );
   const [orNumber, setOrNumber] = useState(selectedRequest?.orNumber || "");
   const [orDate, setOrDate] = useState(selectedRequest?.orDate || "");
   const [orAmount, setOrAmount] = useState(selectedRequest?.orAmount || "");
   const [orCr, setOrCr] = useState(() => selectedRequest?.orCr || emptyVehicle);
 
-  const [crPreview, setCrPreview] = useState(selectedRequest?.crPreview || null);
+  const [crPreview, setCrPreview] = useState(
+    selectedRequest?.crPreview || null,
+  );
   const [crNumber, setCrNumber] = useState(selectedRequest?.crNumber || "");
   const [crCr, setCrCr] = useState(() => selectedRequest?.crCr || emptyVehicle);
 
@@ -148,20 +157,34 @@ export const ClearanceRequestFlow = ({
   const [voucherAssigned, setVoucherAssigned] = useState(
     Boolean(
       selectedRequest?.voucherAssigned ||
-        selectedRequest?.voucherCode ||
-        selectedRequest?.voucherReferenceNo,
+      selectedRequest?.voucherCode ||
+      selectedRequest?.voucherReferenceNo,
     ),
   );
 
-  const [hpgVerified, setHpgVerified] = useState(Boolean(selectedRequest?.hpgVerified));
+  const [hpgVerified, setHpgVerified] = useState(
+    Boolean(selectedRequest?.hpgVerified),
+  );
 
-  const [mvcPreview, setMvcPreview] = useState(selectedRequest?.mvcPreview || null);
-  const [mvcFileName, setMvcFileName] = useState(selectedRequest?.mvcFileName || "");
-  const [mvcData, setMvcData] = useState(() => selectedRequest?.mvcData || emptyMvc);
+  const [mvcPreview, setMvcPreview] = useState(
+    selectedRequest?.mvcPreview || null,
+  );
+  const [mvcFileName, setMvcFileName] = useState(
+    selectedRequest?.mvcFileName || "",
+  );
+  const [mvcData, setMvcData] = useState(
+    () => selectedRequest?.mvcData || emptyMvc,
+  );
 
-  const [mecPreview, setMecPreview] = useState(selectedRequest?.mecPreview || null);
-  const [mecFileName, setMecFileName] = useState(selectedRequest?.mecFileName || "");
-  const [mecData, setMecData] = useState(() => selectedRequest?.mecData || emptyMec);
+  const [mecPreview, setMecPreview] = useState(
+    selectedRequest?.mecPreview || null,
+  );
+  const [mecFileName, setMecFileName] = useState(
+    selectedRequest?.mecFileName || "",
+  );
+  const [mecData, setMecData] = useState(
+    () => selectedRequest?.mecData || emptyMec,
+  );
 
   const [agentMvcPreview, setAgentMvcPreview] = useState(null);
   const [agentMvcFileName, setAgentMvcFileName] = useState("");
@@ -173,7 +196,9 @@ export const ClearanceRequestFlow = ({
 
   const [isIssuingBulk, setIsIssuingBulk] = useState(false);
   const [isIssuingCertificate, setIsIssuingCertificate] = useState(false);
-  const [certificateNo, setCertificateNo] = useState(selectedRequest?.certificateNo || "");
+  const [certificateNo, setCertificateNo] = useState(
+    selectedRequest?.certificateNo || "",
+  );
   const [selectedMvcMecRequestIds, setSelectedMvcMecRequestIds] = useState([]);
   const [citizenValidationState, setCitizenValidationState] = useState(
     selectedRequest?.mvcMecValidationState || VALIDATION_STATE.IDLE,
@@ -284,7 +309,8 @@ export const ClearanceRequestFlow = ({
     return current;
   };
 
-  const isCurrentOcrVersion = (key, version) => ocrUploadVersionRef.current[key] === version;
+  const isCurrentOcrVersion = (key, version) =>
+    ocrUploadVersionRef.current[key] === version;
 
   const setOcrState = (key, patch) => {
     setOcrUploadState((prev) => ({
@@ -322,13 +348,17 @@ export const ClearanceRequestFlow = ({
       status: requestStatus,
       role,
       plateNumber:
-        orCr.plateNumber || crCr.plateNumber || selectedRequest?.plateNumber || "",
+        orCr.plateNumber ||
+        crCr.plateNumber ||
+        selectedRequest?.plateNumber ||
+        "",
       voucherCode,
       voucherReferenceNo: voucherCode,
       voucherAssigned,
       voucherStatus: voucherAssigned
         ? "VOUCHER_ISSUED"
-        : (selectedRequest?.voucherStatus || (selectedRequest?.voucherCode ? "VOUCHER_ISSUED" : "")),
+        : selectedRequest?.voucherStatus ||
+          (selectedRequest?.voucherCode ? "VOUCHER_ISSUED" : ""),
 
       paymentDone,
       hpgVerified,
@@ -372,7 +402,11 @@ export const ClearanceRequestFlow = ({
       orAmount,
       orCr,
     };
-    setOcrState("or", { status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
+    setOcrState("or", {
+      status: OCR_STATUS.EXTRACTING,
+      confidence: 0,
+      error: "",
+    });
 
     setOrNumber("Extracting...");
     setOrDate("Extracting...");
@@ -421,7 +455,11 @@ export const ClearanceRequestFlow = ({
       crNumber,
       crCr,
     };
-    setOcrState("cr", { status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
+    setOcrState("cr", {
+      status: OCR_STATUS.EXTRACTING,
+      confidence: 0,
+      error: "",
+    });
 
     setCrNumber("Extracting...");
     updateCrCr("plateNumber", "Extracting...");
@@ -500,7 +538,9 @@ export const ClearanceRequestFlow = ({
   };
 
   const assignVoucherForRow = (requestIdForRow, voucherId) => {
-    const voucher = voucherInventory.find((item) => item.voucherId === voucherId);
+    const voucher = voucherInventory.find(
+      (item) => item.voucherId === voucherId,
+    );
 
     updateVoucherInventory((prev) =>
       voucherInventoryService.assignVoucherToRequest(prev, {
@@ -520,7 +560,8 @@ export const ClearanceRequestFlow = ({
         const updated = {
           ...row,
           voucherId,
-          voucherReferenceNo: voucher?.voucherCode || row.voucherReferenceNo || "",
+          voucherReferenceNo:
+            voucher?.voucherCode || row.voucherReferenceNo || "",
           voucherStatus: "VOUCHER_ISSUED",
           status: "VOUCHER_ASSIGNED",
           currentStep: 2,
@@ -556,7 +597,9 @@ export const ClearanceRequestFlow = ({
   };
 
   const setHpgForAll = (nextStatus) => {
-    certificationQueue.forEach((row) => setHpgForRow(row.requestId, nextStatus));
+    certificationQueue.forEach((row) =>
+      setHpgForRow(row.requestId, nextStatus),
+    );
   };
 
   const uploadMvcMecForRow = (requestIdForRow, uploadPayload = {}) => {
@@ -704,13 +747,21 @@ export const ClearanceRequestFlow = ({
     setAgentMvcPreview(preview);
     setAgentMvcFileName(file?.name || "");
     if (!file) {
-      setOcrState("agentMvc", { status: OCR_STATUS.IDLE, confidence: 0, error: "" });
+      setOcrState("agentMvc", {
+        status: OCR_STATUS.IDLE,
+        confidence: 0,
+        error: "",
+      });
       return;
     }
 
     const runId = nextOcrVersion("agentMvc");
     const previousState = { ...agentMvcData };
-    setOcrState("agentMvc", { status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
+    setOcrState("agentMvc", {
+      status: OCR_STATUS.EXTRACTING,
+      confidence: 0,
+      error: "",
+    });
 
     setAgentMvcData((prev) => ({
       ...prev,
@@ -728,7 +779,8 @@ export const ClearanceRequestFlow = ({
       setAgentMvcData({
         mvcNo: parsed.mvcNo || previousState.mvcNo || "",
         mvcIssueDate: parsed.mvcIssueDate || previousState.mvcIssueDate || "",
-        mvcValidUntil: parsed.mvcValidUntil || previousState.mvcValidUntil || "",
+        mvcValidUntil:
+          parsed.mvcValidUntil || previousState.mvcValidUntil || "",
         mvcStatus: parsed.mvcStatus || previousState.mvcStatus || "",
       });
       setOcrState("agentMvc", {
@@ -752,13 +804,21 @@ export const ClearanceRequestFlow = ({
     setAgentMecPreview(preview);
     setAgentMecFileName(file?.name || "");
     if (!file) {
-      setOcrState("agentMec", { status: OCR_STATUS.IDLE, confidence: 0, error: "" });
+      setOcrState("agentMec", {
+        status: OCR_STATUS.IDLE,
+        confidence: 0,
+        error: "",
+      });
       return;
     }
 
     const runId = nextOcrVersion("agentMec");
     const previousState = { ...agentMecData };
-    setOcrState("agentMec", { status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
+    setOcrState("agentMec", {
+      status: OCR_STATUS.EXTRACTING,
+      confidence: 0,
+      error: "",
+    });
 
     setAgentMecData((prev) => ({
       ...prev,
@@ -778,7 +838,8 @@ export const ClearanceRequestFlow = ({
       setAgentMecData({
         mecNo: parsed.mecNo || previousState.mecNo || "",
         mecIssueDate: parsed.mecIssueDate || previousState.mecIssueDate || "",
-        mecValidUntil: parsed.mecValidUntil || previousState.mecValidUntil || "",
+        mecValidUntil:
+          parsed.mecValidUntil || previousState.mecValidUntil || "",
         mecCo2: parsed.mecCo2 || previousState.mecCo2 || "",
         mecHc: parsed.mecHc || previousState.mecHc || "",
         mecResult: parsed.mecResult || previousState.mecResult || "",
@@ -803,7 +864,10 @@ export const ClearanceRequestFlow = ({
   const handleAddAgentMvcMecToQueue = () => {
     if (!agentMvcMecRequestId) return;
     if (!agentMvcData.mvcNo || !agentMecData.mecNo) return;
-    if (agentMvcData.mvcNo === "Extracting..." || agentMecData.mecNo === "Extracting...") {
+    if (
+      agentMvcData.mvcNo === "Extracting..." ||
+      agentMecData.mecNo === "Extracting..."
+    ) {
       return;
     }
 
@@ -912,7 +976,12 @@ export const ClearanceRequestFlow = ({
   }, [agentMvcMecRequestId, isAgent, selectableMvcMecRows]);
 
   useEffect(() => {
-    if (isAgent || step !== 6 || citizenValidationState !== VALIDATION_STATE.PASSED) return;
+    if (
+      isAgent ||
+      step !== 6 ||
+      citizenValidationState !== VALIDATION_STATE.PASSED
+    )
+      return;
     if (certificateNo || isIssuingCertificate) return;
     if (!voucherAssigned) return;
 
@@ -966,7 +1035,11 @@ export const ClearanceRequestFlow = ({
       setPaymentDone(true);
       setRequestStatus("PENDING");
       setStep(3);
-      saveCitizenRequest({ currentStep: 3, status: "PENDING", paymentDone: true });
+      saveCitizenRequest({
+        currentStep: 3,
+        status: "PENDING",
+        paymentDone: true,
+      });
     }, 1600);
   };
 
@@ -1005,7 +1078,11 @@ export const ClearanceRequestFlow = ({
     setHpgVerified(true);
     setRequestStatus("HPG_VERIFIED");
     setStep(5);
-    saveCitizenRequest({ currentStep: 5, status: "HPG_VERIFIED", hpgVerified: true });
+    saveCitizenRequest({
+      currentStep: 5,
+      status: "HPG_VERIFIED",
+      hpgVerified: true,
+    });
   };
 
   const handleMvcUpload = async (file, preview) => {
@@ -1020,7 +1097,11 @@ export const ClearanceRequestFlow = ({
 
     const runId = nextOcrVersion("mvc");
     const previousState = { ...mvcData };
-    setOcrState("mvc", { status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
+    setOcrState("mvc", {
+      status: OCR_STATUS.EXTRACTING,
+      confidence: 0,
+      error: "",
+    });
 
     setMvcData((prev) => ({
       ...prev,
@@ -1038,7 +1119,8 @@ export const ClearanceRequestFlow = ({
       const next = {
         mvcNo: parsed.mvcNo || previousState.mvcNo || "",
         mvcIssueDate: parsed.mvcIssueDate || previousState.mvcIssueDate || "",
-        mvcValidUntil: parsed.mvcValidUntil || previousState.mvcValidUntil || "",
+        mvcValidUntil:
+          parsed.mvcValidUntil || previousState.mvcValidUntil || "",
         mvcStatus: parsed.mvcStatus || previousState.mvcStatus || "",
       };
       setMvcData(next);
@@ -1080,7 +1162,11 @@ export const ClearanceRequestFlow = ({
 
     const runId = nextOcrVersion("mec");
     const previousState = { ...mecData };
-    setOcrState("mec", { status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
+    setOcrState("mec", {
+      status: OCR_STATUS.EXTRACTING,
+      confidence: 0,
+      error: "",
+    });
 
     setMecData((prev) => ({
       ...prev,
@@ -1100,7 +1186,8 @@ export const ClearanceRequestFlow = ({
       const next = {
         mecNo: parsed.mecNo || previousState.mecNo || "",
         mecIssueDate: parsed.mecIssueDate || previousState.mecIssueDate || "",
-        mecValidUntil: parsed.mecValidUntil || previousState.mecValidUntil || "",
+        mecValidUntil:
+          parsed.mecValidUntil || previousState.mecValidUntil || "",
         mecCo2: parsed.mecCo2 || previousState.mecCo2 || "",
         mecHc: parsed.mecHc || previousState.mecHc || "",
         mecResult: parsed.mecResult || previousState.mecResult || "",
@@ -1133,16 +1220,23 @@ export const ClearanceRequestFlow = ({
   };
 
   const handleDownload = () => {
-    const blob = new Blob(
-      [`Certificate: ${certificateNo}\nVoucher: ${voucherCode}\nPlate: ${orCr.plateNumber}`],
-      { type: "text/plain" },
-    );
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${certificateNo}.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
+    if (!certificateNo) return;
+    const { doc, filename } = generateClearanceCertificatePDF({
+      requestId,
+      certificateNo,
+      clearanceReferenceNo: certificateNo,
+      plateNumber:
+        orCr.plateNumber ||
+        crCr.plateNumber ||
+        selectedRequest?.plateNumber ||
+        "",
+      voucherCode,
+      voucherReferenceNo: voucherCode,
+      dateCreated,
+      status: requestStatus,
+      clearanceStatus: "CERTIFICATE_ISSUED",
+    });
+    doc.save(filename);
   };
 
   const canNext = () => {
@@ -1157,7 +1251,9 @@ export const ClearanceRequestFlow = ({
       if (step === 3) {
         return (
           certificationQueue.length > 0 &&
-          certificationQueue.every((row) => row.hpgStatus === HPG_STATUS.APPROVED)
+          certificationQueue.every(
+            (row) => row.hpgStatus === HPG_STATUS.APPROVED,
+          )
         );
       }
       if (step === 4) {
@@ -1185,7 +1281,10 @@ export const ClearanceRequestFlow = ({
     if (step === 2) return paymentDone;
     if (step === 3) return voucherAssigned;
     if (step === 4) return hpgVerified;
-    if (step === 5) return citizenValidationState === VALIDATION_STATE.PASSED && voucherAssigned;
+    if (step === 5)
+      return (
+        citizenValidationState === VALIDATION_STATE.PASSED && voucherAssigned
+      );
     return false;
   };
 
@@ -1257,7 +1356,10 @@ export const ClearanceRequestFlow = ({
                 const isCompleted = step > idx;
                 const isActive = step === idx;
                 return (
-                  <div key={label} className="flex-1 text-center relative min-w-0">
+                  <div
+                    key={label}
+                    className="flex-1 text-center relative min-w-0"
+                  >
                     <div
                       className={`w-8 h-8 mx-auto rounded-full flex items-center justify-center text-xs font-semibold
                       ${isCompleted ? "bg-white text-[#0059b5]" : ""}
@@ -1278,7 +1380,10 @@ export const ClearanceRequestFlow = ({
                         className={`absolute top-4 left-1/2 w-full h-0.5 -translate-y-1/2 ${
                           isCompleted ? "bg-white" : "bg-white/30"
                         }`}
-                        style={{ width: "calc(100% - 2rem)", left: "calc(50% + 1rem)" }}
+                        style={{
+                          width: "calc(100% - 2rem)",
+                          left: "calc(50% + 1rem)",
+                        }}
                       />
                     )}
                   </div>
@@ -1345,7 +1450,10 @@ export const ClearanceRequestFlow = ({
                 <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
                   <AlertTriangle size={18} className="text-red-500 shrink-0" />
                   <p className="text-sm text-red-700">
-                    Plate number mismatch: OR says <strong>{orCr.plateNumber}</strong>, CR says <strong>{crCr.plateNumber}</strong>. Both must match to add queue entry.
+                    Plate number mismatch: OR says{" "}
+                    <strong>{orCr.plateNumber}</strong>, CR says{" "}
+                    <strong>{crCr.plateNumber}</strong>. Both must match to add
+                    queue entry.
                   </p>
                 </div>
               )}
@@ -1353,37 +1461,66 @@ export const ClearanceRequestFlow = ({
               <Card className="mt-4 p-4 border border-blue-100 bg-blue-50/40">
                 <div className="flex items-center justify-between gap-3 mb-3">
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">Bulk Queue Staging</p>
-                    <p className="text-xs text-gray-600">Upload OR/CR then add each transaction to queue.</p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      Bulk Queue Staging
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      Upload OR/CR then add each transaction to queue.
+                    </p>
                   </div>
                   <Button
                     onClick={handleAddToQueue}
-                    disabled={!orCr.plateNumber || !crCr.plateNumber || plateMismatch}
+                    disabled={
+                      !orCr.plateNumber || !crCr.plateNumber || plateMismatch
+                    }
                   >
                     Add To Queue
                   </Button>
                 </div>
 
                 {certificationQueue.length === 0 ? (
-                  <p className="text-sm text-gray-500">No staged entries yet.</p>
+                  <p className="text-sm text-gray-500">
+                    No staged entries yet.
+                  </p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-blue-100 text-left">
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request ID</th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Plate</th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Owner</th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Request ID
+                          </th>
+                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Plate
+                          </th>
+                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Owner
+                          </th>
+                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Status
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
                         {certificationQueue.map((row) => (
-                          <tr key={row.requestId} className="border-b border-blue-50">
-                            <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
-                            <td className="py-2 text-gray-700">{row.plateNumber || "-"}</td>
-                            <td className="py-2 text-gray-700">{row.orCr?.ownerName || row.crCr?.ownerName || "-"}</td>
-                            <td className="py-2 text-gray-600">{row.status || "OR_CR_UPLOADED"}</td>
+                          <tr
+                            key={row.requestId}
+                            className="border-b border-blue-50"
+                          >
+                            <td className="py-2 font-mono text-xs text-gray-700">
+                              {row.requestId}
+                            </td>
+                            <td className="py-2 text-gray-700">
+                              {row.plateNumber || "-"}
+                            </td>
+                            <td className="py-2 text-gray-700">
+                              {row.orCr?.ownerName ||
+                                row.crCr?.ownerName ||
+                                "-"}
+                            </td>
+                            <td className="py-2 text-gray-600">
+                              {row.status || "OR_CR_UPLOADED"}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -1398,39 +1535,70 @@ export const ClearanceRequestFlow = ({
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <FileText size={18} className="text-[#0059b5]" />
-                <h3 className="text-base font-bold text-gray-900">Assign Voucher (Bulk)</h3>
+                <h3 className="text-base font-bold text-gray-900">
+                  Assign Voucher (Bulk)
+                </h3>
               </div>
 
               {certificationQueue.length === 0 ? (
-                <p className="text-sm text-gray-500">No active requests available in queue.</p>
+                <p className="text-sm text-gray-500">
+                  No active requests available in queue.
+                </p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-gray-200 text-left">
-                        <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
-                        <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Plate</th>
-                        <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Assigned Voucher</th>
-                        <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
+                        <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Request
+                        </th>
+                        <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Plate
+                        </th>
+                        <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Assigned Voucher
+                        </th>
+                        <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Action
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {certificationQueue.map((row) => {
-                        const options = assignableVouchersForRequest(row.requestId);
+                        const options = assignableVouchersForRequest(
+                          row.requestId,
+                        );
                         return (
-                          <tr key={row.requestId} className="border-b border-gray-100">
-                            <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
-                            <td className="py-2 text-gray-700">{row.plateNumber || "-"}</td>
-                            <td className="py-2 text-gray-700 font-mono text-xs">{row.voucherReferenceNo || "-"}</td>
+                          <tr
+                            key={row.requestId}
+                            className="border-b border-gray-100"
+                          >
+                            <td className="py-2 font-mono text-xs text-gray-700">
+                              {row.requestId}
+                            </td>
+                            <td className="py-2 text-gray-700">
+                              {row.plateNumber || "-"}
+                            </td>
+                            <td className="py-2 text-gray-700 font-mono text-xs">
+                              {row.voucherReferenceNo || "-"}
+                            </td>
                             <td className="py-2">
                               <select
                                 value={row.voucherId || ""}
-                                onChange={(e) => assignVoucherForRow(row.requestId, e.target.value)}
+                                onChange={(e) =>
+                                  assignVoucherForRow(
+                                    row.requestId,
+                                    e.target.value,
+                                  )
+                                }
                                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
                               >
                                 <option value="">Select voucher</option>
                                 {options.map((item) => (
-                                  <option key={item.voucherId} value={item.voucherId}>
+                                  <option
+                                    key={item.voucherId}
+                                    value={item.voucherId}
+                                  >
                                     {item.voucherCode} - {item.inventoryStatus}
                                   </option>
                                 ))}
@@ -1451,7 +1619,9 @@ export const ClearanceRequestFlow = ({
               <div className="flex items-center justify-between gap-3 mb-4 pb-2 border-b border-gray-200">
                 <div className="flex items-center gap-2">
                   <CheckCircle size={18} className="text-[#0059b5]" />
-                  <h3 className="text-base font-bold text-gray-900">HPG Portal (Bulk)</h3>
+                  <h3 className="text-base font-bold text-gray-900">
+                    HPG Portal (Bulk)
+                  </h3>
                 </div>
                 <div className="flex gap-2">
                   <Button
@@ -1461,7 +1631,10 @@ export const ClearanceRequestFlow = ({
                   >
                     Mark All Under Inspection
                   </Button>
-                  <Button size="sm" onClick={() => setHpgForAll(HPG_STATUS.APPROVED)}>
+                  <Button
+                    size="sm"
+                    onClick={() => setHpgForAll(HPG_STATUS.APPROVED)}
+                  >
                     Mark All Approved
                   </Button>
                 </div>
@@ -1471,37 +1644,63 @@ export const ClearanceRequestFlow = ({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 text-left">
-                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
-                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Plate</th>
-                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">HPG Status</th>
-                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
+                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Request
+                      </th>
+                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Plate
+                      </th>
+                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        HPG Status
+                      </th>
+                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        Action
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {certificationQueue.map((row) => (
-                      <tr key={row.requestId} className="border-b border-gray-100">
-                        <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
-                        <td className="py-2 text-gray-700">{row.plateNumber || "-"}</td>
-                        <td className="py-2 text-gray-700">{row.hpgStatus || HPG_STATUS.PENDING}</td>
+                      <tr
+                        key={row.requestId}
+                        className="border-b border-gray-100"
+                      >
+                        <td className="py-2 font-mono text-xs text-gray-700">
+                          {row.requestId}
+                        </td>
+                        <td className="py-2 text-gray-700">
+                          {row.plateNumber || "-"}
+                        </td>
+                        <td className="py-2 text-gray-700">
+                          {row.hpgStatus || HPG_STATUS.PENDING}
+                        </td>
                         <td className="py-2">
                           <div className="flex gap-2">
                             <Button
                               size="sm"
                               variant="secondary"
-                              onClick={() => setHpgForRow(row.requestId, HPG_STATUS.INSPECTION)}
+                              onClick={() =>
+                                setHpgForRow(
+                                  row.requestId,
+                                  HPG_STATUS.INSPECTION,
+                                )
+                              }
                             >
                               Inspection
                             </Button>
                             <Button
                               size="sm"
-                              onClick={() => setHpgForRow(row.requestId, HPG_STATUS.APPROVED)}
+                              onClick={() =>
+                                setHpgForRow(row.requestId, HPG_STATUS.APPROVED)
+                              }
                             >
                               Approve
                             </Button>
                             <Button
                               size="sm"
                               variant="danger"
-                              onClick={() => setHpgForRow(row.requestId, HPG_STATUS.REJECTED)}
+                              onClick={() =>
+                                setHpgForRow(row.requestId, HPG_STATUS.REJECTED)
+                              }
                             >
                               Reject
                             </Button>
@@ -1521,7 +1720,9 @@ export const ClearanceRequestFlow = ({
                 <div className="flex items-center justify-between gap-3 mb-4 pb-2 border-b border-gray-200">
                   <div className="flex items-center gap-2">
                     <Upload size={18} className="text-[#0059b5]" />
-                    <h3 className="text-base font-bold text-gray-900">Upload MVCC/MEC (Bulk)</h3>
+                    <h3 className="text-base font-bold text-gray-900">
+                      Upload MVCC/MEC (Bulk)
+                    </h3>
                   </div>
                   <Button onClick={uploadMvcMecForAll} variant="secondary">
                     Auto Fill All
@@ -1548,7 +1749,8 @@ export const ClearanceRequestFlow = ({
 
                 {!agentMvcMecRequestId && (
                   <p className="mb-4 text-xs text-amber-700">
-                    No selectable request found. Add a queue entry in step 1 first.
+                    No selectable request found. Add a queue entry in step 1
+                    first.
                   </p>
                 )}
 
@@ -1565,7 +1767,10 @@ export const ClearanceRequestFlow = ({
                         label: "MVC Number",
                         value: agentMvcData.mvcNo,
                         onChange: (e) =>
-                          setAgentMvcData((prev) => ({ ...prev, mvcNo: e.target.value })),
+                          setAgentMvcData((prev) => ({
+                            ...prev,
+                            mvcNo: e.target.value,
+                          })),
                         placeholder: "Auto-extracted from MVC",
                       },
                       {
@@ -1573,7 +1778,10 @@ export const ClearanceRequestFlow = ({
                         label: "Issue Date",
                         value: agentMvcData.mvcIssueDate,
                         onChange: (e) =>
-                          setAgentMvcData((prev) => ({ ...prev, mvcIssueDate: e.target.value })),
+                          setAgentMvcData((prev) => ({
+                            ...prev,
+                            mvcIssueDate: e.target.value,
+                          })),
                         placeholder: "Auto-extracted from MVC",
                       },
                       {
@@ -1581,7 +1789,10 @@ export const ClearanceRequestFlow = ({
                         label: "Valid Until",
                         value: agentMvcData.mvcValidUntil,
                         onChange: (e) =>
-                          setAgentMvcData((prev) => ({ ...prev, mvcValidUntil: e.target.value })),
+                          setAgentMvcData((prev) => ({
+                            ...prev,
+                            mvcValidUntil: e.target.value,
+                          })),
                         placeholder: "Auto-extracted from MVC",
                       },
                       {
@@ -1589,7 +1800,10 @@ export const ClearanceRequestFlow = ({
                         label: "Status",
                         value: agentMvcData.mvcStatus,
                         onChange: (e) =>
-                          setAgentMvcData((prev) => ({ ...prev, mvcStatus: e.target.value })),
+                          setAgentMvcData((prev) => ({
+                            ...prev,
+                            mvcStatus: e.target.value,
+                          })),
                         placeholder: "Auto-extracted from MVC",
                       },
                     ]}
@@ -1607,7 +1821,10 @@ export const ClearanceRequestFlow = ({
                         label: "MEC Number",
                         value: agentMecData.mecNo,
                         onChange: (e) =>
-                          setAgentMecData((prev) => ({ ...prev, mecNo: e.target.value })),
+                          setAgentMecData((prev) => ({
+                            ...prev,
+                            mecNo: e.target.value,
+                          })),
                         placeholder: "Auto-extracted from MEC",
                       },
                       {
@@ -1615,7 +1832,10 @@ export const ClearanceRequestFlow = ({
                         label: "Issue Date",
                         value: agentMecData.mecIssueDate,
                         onChange: (e) =>
-                          setAgentMecData((prev) => ({ ...prev, mecIssueDate: e.target.value })),
+                          setAgentMecData((prev) => ({
+                            ...prev,
+                            mecIssueDate: e.target.value,
+                          })),
                         placeholder: "Auto-extracted from MEC",
                       },
                       {
@@ -1623,7 +1843,10 @@ export const ClearanceRequestFlow = ({
                         label: "Valid Until",
                         value: agentMecData.mecValidUntil,
                         onChange: (e) =>
-                          setAgentMecData((prev) => ({ ...prev, mecValidUntil: e.target.value })),
+                          setAgentMecData((prev) => ({
+                            ...prev,
+                            mecValidUntil: e.target.value,
+                          })),
                         placeholder: "Auto-extracted from MEC",
                       },
                       {
@@ -1631,7 +1854,10 @@ export const ClearanceRequestFlow = ({
                         label: "CO2",
                         value: agentMecData.mecCo2,
                         onChange: (e) =>
-                          setAgentMecData((prev) => ({ ...prev, mecCo2: e.target.value })),
+                          setAgentMecData((prev) => ({
+                            ...prev,
+                            mecCo2: e.target.value,
+                          })),
                         placeholder: "Auto-extracted from MEC",
                       },
                       {
@@ -1639,7 +1865,10 @@ export const ClearanceRequestFlow = ({
                         label: "HC",
                         value: agentMecData.mecHc,
                         onChange: (e) =>
-                          setAgentMecData((prev) => ({ ...prev, mecHc: e.target.value })),
+                          setAgentMecData((prev) => ({
+                            ...prev,
+                            mecHc: e.target.value,
+                          })),
                         placeholder: "Auto-extracted from MEC",
                       },
                       {
@@ -1647,7 +1876,10 @@ export const ClearanceRequestFlow = ({
                         label: "Result",
                         value: agentMecData.mecResult,
                         onChange: (e) =>
-                          setAgentMecData((prev) => ({ ...prev, mecResult: e.target.value })),
+                          setAgentMecData((prev) => ({
+                            ...prev,
+                            mecResult: e.target.value,
+                          })),
                         placeholder: "Auto-extracted from MEC",
                       },
                     ]}
@@ -1682,10 +1914,14 @@ export const ClearanceRequestFlow = ({
               <Card className="p-5">
                 <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                   <FileText size={18} className="text-[#0059b5]" />
-                  <h3 className="text-base font-bold text-gray-900">MVC/MEC Upload Queue</h3>
+                  <h3 className="text-base font-bold text-gray-900">
+                    MVC/MEC Upload Queue
+                  </h3>
                 </div>
                 {certificationQueue.length === 0 ? (
-                  <p className="text-sm text-gray-500">No active requests available in queue.</p>
+                  <p className="text-sm text-gray-500">
+                    No active requests available in queue.
+                  </p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
@@ -1700,33 +1936,61 @@ export const ClearanceRequestFlow = ({
                               aria-label="Select all MVC and MEC rows"
                             />
                           </th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Plate</th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">MVC</th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">MEC</th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">DCI Validation</th>
+                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Request
+                          </th>
+                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Plate
+                          </th>
+                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            MVC
+                          </th>
+                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            MEC
+                          </th>
+                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            DCI Validation
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
                         {certificationQueue.map((row) => (
-                          <tr key={row.requestId} className="border-b border-gray-100">
+                          <tr
+                            key={row.requestId}
+                            className="border-b border-gray-100"
+                          >
                             <td className="py-2 align-middle pr-3">
                               <input
                                 type="checkbox"
                                 className="h-4 w-4 rounded border-gray-300 text-[#0059b5] focus:ring-[#0059b5]"
-                                checked={selectedMvcMecRequestIds.includes(row.requestId)}
-                                onChange={() => toggleSelectedMvcMecRow(row.requestId)}
+                                checked={selectedMvcMecRequestIds.includes(
+                                  row.requestId,
+                                )}
+                                onChange={() =>
+                                  toggleSelectedMvcMecRow(row.requestId)
+                                }
                                 disabled={!row.mvcMecUploaded}
                                 aria-label={`Select MVC and MEC row for ${row.requestId}`}
                               />
                             </td>
-                            <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
-                            <td className="py-2 text-gray-700">{row.plateNumber || "-"}</td>
-                            <td className="py-2 text-gray-700 font-mono text-xs">{row.mvcData?.mvcNo || "-"}</td>
-                            <td className="py-2 text-gray-700 font-mono text-xs">{row.mecData?.mecNo || "-"}</td>
+                            <td className="py-2 font-mono text-xs text-gray-700">
+                              {row.requestId}
+                            </td>
                             <td className="py-2 text-gray-700">
-                              {row.mvcMecValidationState || VALIDATION_STATE.PENDING}
-                              {row.mvcMecValidationMessage ? ` - ${row.mvcMecValidationMessage}` : ""}
+                              {row.plateNumber || "-"}
+                            </td>
+                            <td className="py-2 text-gray-700 font-mono text-xs">
+                              {row.mvcData?.mvcNo || "-"}
+                            </td>
+                            <td className="py-2 text-gray-700 font-mono text-xs">
+                              {row.mecData?.mecNo || "-"}
+                            </td>
+                            <td className="py-2 text-gray-700">
+                              {row.mvcMecValidationState ||
+                                VALIDATION_STATE.PENDING}
+                              {row.mvcMecValidationMessage
+                                ? ` - ${row.mvcMecValidationMessage}`
+                                : ""}
                             </td>
                           </tr>
                         ))}
@@ -1742,18 +2006,23 @@ export const ClearanceRequestFlow = ({
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <FileText size={18} className="text-[#0059b5]" />
-                <h3 className="text-base font-bold text-gray-900">Certificate Issuance (Bulk)</h3>
+                <h3 className="text-base font-bold text-gray-900">
+                  Certificate Issuance (Bulk)
+                </h3>
               </div>
 
               {isIssuingBulk ? (
                 <div className="text-center py-8">
                   <Spinner size="lg" />
-                  <p className="text-sm text-gray-500 mt-4">DCI portal is issuing certificates...</p>
+                  <p className="text-sm text-gray-500 mt-4">
+                    DCI portal is issuing certificates...
+                  </p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   <p className="text-sm text-gray-600">
-                    Certificates are automatically issued by DCI once all MVC/MEC uploads are validated.
+                    Certificates are automatically issued by DCI once all
+                    MVC/MEC uploads are validated.
                   </p>
 
                   <div className="overflow-x-auto">
@@ -1761,22 +2030,43 @@ export const ClearanceRequestFlow = ({
                       <thead>
                         <tr className="border-b border-gray-200 text-left">
                           <th className="pb-2 w-28" />
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Plate</th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Certificate</th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Request
+                          </th>
+                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Plate
+                          </th>
+                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Certificate
+                          </th>
+                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Status
+                          </th>
                         </tr>
                       </thead>
                       <tbody>
                         {certificationQueue.map((row) => (
-                          <tr key={row.requestId} className="border-b border-gray-100">
+                          <tr
+                            key={row.requestId}
+                            className="border-b border-gray-100"
+                          >
                             <td className="py-2 align-middle">
                               <CertificateActionButtons row={row} />
                             </td>
-                            <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
-                            <td className="py-2 text-gray-700">{row.plateNumber || "-"}</td>
-                            <td className="py-2 font-mono text-xs font-semibold text-gray-900">{row.certificateNo || "-"}</td>
-                            <td className="py-2 text-gray-700">{row.certificateNo ? "CERTIFICATE_ISSUED" : "READY"}</td>
+                            <td className="py-2 font-mono text-xs text-gray-700">
+                              {row.requestId}
+                            </td>
+                            <td className="py-2 text-gray-700">
+                              {row.plateNumber || "-"}
+                            </td>
+                            <td className="py-2 font-mono text-xs font-semibold text-gray-900">
+                              {row.certificateNo || "-"}
+                            </td>
+                            <td className="py-2 text-gray-700">
+                              {row.certificateNo
+                                ? "CERTIFICATE_ISSUED"
+                                : "READY"}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -1848,7 +2138,10 @@ export const ClearanceRequestFlow = ({
                 <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
                   <AlertTriangle size={18} className="text-red-500 shrink-0" />
                   <p className="text-sm text-red-700">
-                    Plate number mismatch: OR says <strong>{orCr.plateNumber}</strong>, CR says <strong>{crCr.plateNumber}</strong>. Both must match to proceed.
+                    Plate number mismatch: OR says{" "}
+                    <strong>{orCr.plateNumber}</strong>, CR says{" "}
+                    <strong>{crCr.plateNumber}</strong>. Both must match to
+                    proceed.
                   </p>
                 </div>
               )}
@@ -1862,19 +2155,30 @@ export const ClearanceRequestFlow = ({
                 <h3 className="text-base font-bold text-gray-900">Payment</h3>
               </div>
               <div className="bg-gray-50 rounded-lg p-5 mb-5 text-center">
-                <p className="text-sm text-gray-500 mb-1">Certificate Request Fee</p>
-                <p className="text-3xl font-bold text-gray-900">PHP 800.00</p>
-                <p className="text-xs text-gray-500 mt-1">Single payment covers the whole request.</p>
+                <p className="text-sm text-gray-500 mb-1">
+                  Certificate Request Fee
+                </p>
+                <p className="text-3xl font-bold text-gray-900">PHP 500.00</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Single payment covers the whole request.
+                </p>
               </div>
               {processingPayment ? (
                 <div className="text-center py-4">
                   <Spinner size="md" />
-                  <p className="text-sm text-gray-500 mt-2">Processing payment...</p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Processing payment...
+                  </p>
                 </div>
               ) : paymentDone ? (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                  <CheckCircle size={24} className="text-green-600 mx-auto mb-2" />
-                  <p className="font-semibold text-green-700">Payment Completed</p>
+                  <CheckCircle
+                    size={24}
+                    className="text-green-600 mx-auto mb-2"
+                  />
+                  <p className="font-semibold text-green-700">
+                    Payment Completed
+                  </p>
                 </div>
               ) : (
                 <Button onClick={handleProceedToPayment} className="w-full">
@@ -1888,23 +2192,38 @@ export const ClearanceRequestFlow = ({
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <Ticket size={18} className="text-[#0059b5]" />
-                <h3 className="text-base font-bold text-gray-900">Issue Voucher</h3>
+                <h3 className="text-base font-bold text-gray-900">
+                  Issue Voucher
+                </h3>
               </div>
               {issuingVoucher ? (
                 <div className="text-center py-5">
                   <Spinner size="md" />
-                  <p className="text-sm text-gray-500 mt-2">Generating voucher...</p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Generating voucher...
+                  </p>
                 </div>
               ) : voucherAssigned ? (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
-                  <CheckCircle size={40} className="text-green-600 mx-auto mb-3" />
-                  <p className="font-semibold text-green-700 text-lg">Voucher Issued</p>
-                  <p className="text-sm font-mono font-bold text-gray-900 mt-2">{voucherCode}</p>
-                  <p className="text-xs text-gray-500 mt-1">Plate: {orCr.plateNumber}</p>
+                  <CheckCircle
+                    size={40}
+                    className="text-green-600 mx-auto mb-3"
+                  />
+                  <p className="font-semibold text-green-700 text-lg">
+                    Voucher Issued
+                  </p>
+                  <p className="text-sm font-mono font-bold text-gray-900 mt-2">
+                    {voucherCode}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Plate: {orCr.plateNumber}
+                  </p>
                 </div>
               ) : (
                 <div className="text-center py-6">
-                  <p className="text-sm text-gray-500">Voucher issues automatically after payment.</p>
+                  <p className="text-sm text-gray-500">
+                    Voucher issues automatically after payment.
+                  </p>
                 </div>
               )}
             </Card>
@@ -1914,14 +2233,18 @@ export const ClearanceRequestFlow = ({
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <FileText size={18} className="text-[#0059b5]" />
-                <h3 className="text-base font-bold text-gray-900">HPG Pending</h3>
+                <h3 className="text-base font-bold text-gray-900">
+                  HPG Pending
+                </h3>
               </div>
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                 <p className="text-sm text-amber-800">
-                  Please present your voucher to HPG/LTO. In this frontend demo, click the button below to simulate verification.
+                  Please present your voucher to HPG/LTO. In this frontend demo,
+                  click the button below to simulate verification.
                 </p>
                 <p className="text-xs text-gray-600 mt-2">
-                  Voucher Code: <span className="font-mono font-semibold">{voucherCode}</span>
+                  Voucher Code:{" "}
+                  <span className="font-mono font-semibold">{voucherCode}</span>
                 </p>
               </div>
               <div className="mt-4">
@@ -1936,7 +2259,7 @@ export const ClearanceRequestFlow = ({
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <MvcMecUploadCard
-                  title="MVC"
+                  title="MVCC"
                   uploadLabel="Upload Motor Vehicle Clearance"
                   onFile={handleMvcUpload}
                   preview={mvcPreview}
@@ -1944,34 +2267,46 @@ export const ClearanceRequestFlow = ({
                   fields={[
                     {
                       key: "citizen-mvc-number",
-                      label: "MVC Number",
+                      label: "MVCC Number",
                       value: mvcData.mvcNo,
                       onChange: (e) =>
-                        setMvcData((prev) => ({ ...prev, mvcNo: e.target.value })),
-                      placeholder: "Auto-extracted from MVC",
+                        setMvcData((prev) => ({
+                          ...prev,
+                          mvcNo: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
                     },
                     {
                       key: "citizen-mvc-issue-date",
                       label: "Issue Date",
                       value: mvcData.mvcIssueDate,
                       onChange: (e) =>
-                        setMvcData((prev) => ({ ...prev, mvcIssueDate: e.target.value })),
-                      placeholder: "Auto-extracted from MVC",
+                        setMvcData((prev) => ({
+                          ...prev,
+                          mvcIssueDate: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
                     },
                     {
                       key: "citizen-mvc-valid-until",
                       label: "Valid Until",
                       value: mvcData.mvcValidUntil,
                       onChange: (e) =>
-                        setMvcData((prev) => ({ ...prev, mvcValidUntil: e.target.value })),
-                      placeholder: "Auto-extracted from MVC",
+                        setMvcData((prev) => ({
+                          ...prev,
+                          mvcValidUntil: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
                     },
                     {
                       key: "citizen-mvc-status",
                       label: "Status",
                       value: mvcData.mvcStatus,
                       onChange: (e) =>
-                        setMvcData((prev) => ({ ...prev, mvcStatus: e.target.value })),
+                        setMvcData((prev) => ({
+                          ...prev,
+                          mvcStatus: e.target.value,
+                        })),
                       placeholder: "Auto-extracted from MVC",
                     },
                   ]}
@@ -1989,7 +2324,10 @@ export const ClearanceRequestFlow = ({
                       label: "MEC Number",
                       value: mecData.mecNo,
                       onChange: (e) =>
-                        setMecData((prev) => ({ ...prev, mecNo: e.target.value })),
+                        setMecData((prev) => ({
+                          ...prev,
+                          mecNo: e.target.value,
+                        })),
                       placeholder: "Auto-extracted from MEC",
                     },
                     {
@@ -1997,7 +2335,10 @@ export const ClearanceRequestFlow = ({
                       label: "Issue Date",
                       value: mecData.mecIssueDate,
                       onChange: (e) =>
-                        setMecData((prev) => ({ ...prev, mecIssueDate: e.target.value })),
+                        setMecData((prev) => ({
+                          ...prev,
+                          mecIssueDate: e.target.value,
+                        })),
                       placeholder: "Auto-extracted from MEC",
                     },
                     {
@@ -2005,7 +2346,10 @@ export const ClearanceRequestFlow = ({
                       label: "Valid Until",
                       value: mecData.mecValidUntil,
                       onChange: (e) =>
-                        setMecData((prev) => ({ ...prev, mecValidUntil: e.target.value })),
+                        setMecData((prev) => ({
+                          ...prev,
+                          mecValidUntil: e.target.value,
+                        })),
                       placeholder: "Auto-extracted from MEC",
                     },
                     {
@@ -2013,7 +2357,10 @@ export const ClearanceRequestFlow = ({
                       label: "CO2",
                       value: mecData.mecCo2,
                       onChange: (e) =>
-                        setMecData((prev) => ({ ...prev, mecCo2: e.target.value })),
+                        setMecData((prev) => ({
+                          ...prev,
+                          mecCo2: e.target.value,
+                        })),
                       placeholder: "Auto-extracted from MEC",
                     },
                     {
@@ -2021,7 +2368,10 @@ export const ClearanceRequestFlow = ({
                       label: "HC",
                       value: mecData.mecHc,
                       onChange: (e) =>
-                        setMecData((prev) => ({ ...prev, mecHc: e.target.value })),
+                        setMecData((prev) => ({
+                          ...prev,
+                          mecHc: e.target.value,
+                        })),
                       placeholder: "Auto-extracted from MEC",
                     },
                     {
@@ -2029,7 +2379,10 @@ export const ClearanceRequestFlow = ({
                       label: "Result",
                       value: mecData.mecResult,
                       onChange: (e) =>
-                        setMecData((prev) => ({ ...prev, mecResult: e.target.value })),
+                        setMecData((prev) => ({
+                          ...prev,
+                          mecResult: e.target.value,
+                        })),
                       placeholder: "Auto-extracted from MEC",
                     },
                   ]}
@@ -2039,9 +2392,11 @@ export const ClearanceRequestFlow = ({
               <Card className="p-5">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">DCI Validation</p>
+                    <p className="text-sm font-semibold text-gray-900">
+                      DCI Validation
+                    </p>
                     <p className="text-xs text-gray-600">
-                      DCI portal validates MVC/MEC before certificate issuance.
+                      DCI portal validates MVCC/MEC before certificate issuance.
                     </p>
                   </div>
                   <Button
@@ -2058,12 +2413,18 @@ export const ClearanceRequestFlow = ({
                   </Button>
                 </div>
                 <div className="mt-3 text-sm text-gray-700">
-                  Status: <span className="font-semibold">{citizenValidationState}</span>
-                  {citizenValidationMessage ? ` - ${citizenValidationMessage}` : ""}
+                  Status:{" "}
+                  <span className="font-semibold">
+                    {citizenValidationState}
+                  </span>
+                  {citizenValidationMessage
+                    ? ` - ${citizenValidationMessage}`
+                    : ""}
                 </div>
                 {citizenValidationState === VALIDATION_STATE.FAILED && (
                   <p className="mt-2 text-xs text-amber-700">
-                    Validation failed. Request remains pending and cannot proceed to certificate issuance.
+                    Validation failed. Request remains pending and cannot
+                    proceed to certificate issuance.
                   </p>
                 )}
               </Card>
@@ -2074,19 +2435,32 @@ export const ClearanceRequestFlow = ({
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <FileText size={18} className="text-[#0059b5]" />
-                <h3 className="text-base font-bold text-gray-900">Issue Certificate</h3>
+                <h3 className="text-base font-bold text-gray-900">
+                  Issue Certificate
+                </h3>
               </div>
               {isIssuingCertificate ? (
                 <div className="text-center py-8">
                   <Spinner size="lg" />
-                  <p className="text-sm text-gray-500 mt-4">DCI portal is issuing certificate...</p>
+                  <p className="text-sm text-gray-500 mt-4">
+                    DCI portal is issuing certificate...
+                  </p>
                 </div>
               ) : certificateNo ? (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
-                  <CheckCircle size={40} className="text-green-600 mx-auto mb-3" />
-                  <p className="font-semibold text-green-700 text-lg">Certificate Issued</p>
-                  <p className="text-sm font-mono font-bold text-gray-900 mt-2">{certificateNo}</p>
-                  <p className="text-xs text-gray-500 mt-1">Plate: {orCr.plateNumber}</p>
+                  <CheckCircle
+                    size={40}
+                    className="text-green-600 mx-auto mb-3"
+                  />
+                  <p className="font-semibold text-green-700 text-lg">
+                    Certificate Issued
+                  </p>
+                  <p className="text-sm font-mono font-bold text-gray-900 mt-2">
+                    {certificateNo}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Plate: {orCr.plateNumber}
+                  </p>
                   <div className="mt-4 flex justify-center gap-3">
                     <Button onClick={handleDownload} variant="outline">
                       <Download size={16} /> Download
@@ -2099,7 +2473,8 @@ export const ClearanceRequestFlow = ({
               ) : (
                 <div className="text-center py-6">
                   <p className="text-sm text-gray-500 mb-4">
-                    Certificate issuance starts automatically after successful MVC/MEC validation.
+                    Certificate issuance starts automatically after successful
+                    MVC/MEC validation.
                   </p>
                 </div>
               )}
@@ -2109,7 +2484,11 @@ export const ClearanceRequestFlow = ({
           <div className="flex justify-between mt-6">
             <div>
               {step > 1 ? (
-                <Button variant="secondary" onClick={prevStep} disabled={!canPrev()}>
+                <Button
+                  variant="secondary"
+                  onClick={prevStep}
+                  disabled={!canPrev()}
+                >
                   <ChevronLeft size={16} /> Previous
                 </Button>
               ) : (

@@ -65,7 +65,7 @@ export const CertificateActionButtons = ({ row, disabled = false }) => {
   };
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="mx-auto grid w-24 grid-cols-3 items-center justify-items-center gap-1">
       <Button
         type="button"
         variant="ghost"
