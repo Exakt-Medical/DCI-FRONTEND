@@ -1,21 +1,20 @@
-const BASE_URL = "/api/users";
-const VOUCHER_URL = "/api/voucher-transfer";
+import api from "./api";
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("token");
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
+const BASE_URL = "/users";
+const VOUCHER_URL = "/voucher-transfer";
+
+const handleResponse = (res) => {
+  if (res.status === 204) return null;
+  return res.data;
 };
 
-const handleResponse = async (res) => {
-  if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText);
-    throw new Error(`${res.status}: ${text}`);
+const normalizeError = (error) => {
+  if (error?.response) {
+    const body = error.response.data;
+    const text = typeof body === "string" ? body : JSON.stringify(body);
+    return new Error(`${error.response.status}: ${text}`);
   }
-  if (res.status === 204) return null;
-  return res.json();
+  return error;
 };
 
 const mapUser = (u) => ({
@@ -41,11 +40,13 @@ export const transferVoucherService = {
   // ─── Users ────────────────────────────────────────────────────────────────
 
   async getAgents() {
-    const res = await fetch(`${BASE_URL}/by-role/AGENT_FIXER`, {
-      headers: getAuthHeaders(),
-    });
-    const data = await handleResponse(res);
-    return data.map(mapUser);
+    try {
+      const res = await api.get(`${BASE_URL}/by-role/AGENT_FIXER`);
+      const data = handleResponse(res);
+      return data.map(mapUser);
+    } catch (error) {
+      throw normalizeError(error);
+    }
   },
 
   async getAgentsWithVoucherCounts() {
@@ -68,10 +69,12 @@ export const transferVoucherService = {
   // ─── Vouchers ─────────────────────────────────────────────────────────────
 
   async getVoucherCounts(userId) {
-    const res = await fetch(`${VOUCHER_URL}/count/by-user/${userId}`, {
-      headers: getAuthHeaders(),
-    });
-    return handleResponse(res);
+    try {
+      const res = await api.get(`${VOUCHER_URL}/count/by-user/${userId}`);
+      return handleResponse(res);
+    } catch (error) {
+      throw normalizeError(error);
+    }
   },
 
   /**
@@ -80,38 +83,47 @@ export const transferVoucherService = {
    * Replaces N individual getVoucherCounts() calls.
    */
   async countBatch(userIds) {
-    const res = await fetch(`${VOUCHER_URL}/count/batch`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(userIds),
-    });
-    return handleResponse(res);
+    try {
+      const res = await api.post(`${VOUCHER_URL}/count/batch`, userIds);
+      return handleResponse(res);
+    } catch (error) {
+      throw normalizeError(error);
+    }
   },
 
   async getManagerBalance(managerId) {
-    const res = await fetch(`${VOUCHER_URL}/count/by-user/${managerId}`, {
-      headers: getAuthHeaders(),
-    });
-    return handleResponse(res);
+    try {
+      const res = await api.get(`${VOUCHER_URL}/count/by-user/${managerId}`);
+      return handleResponse(res);
+    } catch (error) {
+      throw normalizeError(error);
+    }
   },
 
   // ─── Transfer History ─────────────────────────────────────────────────────
 
   async getTransferHistory(fromUserId) {
-    const res = await fetch(`${VOUCHER_URL}/transfer/history/${fromUserId}`, {
-      headers: getAuthHeaders(),
-    });
-    return handleResponse(res);
+    try {
+      const res = await api.get(
+        `${VOUCHER_URL}/transfer/history/${fromUserId}`,
+      );
+      return handleResponse(res);
+    } catch (error) {
+      throw normalizeError(error);
+    }
   },
 
   // ─── Transfer by quantity ─────────────────────────────────────────────────
 
   async transferByQuantity(fromUserId, toUserId, quantity) {
-    const res = await fetch(`${VOUCHER_URL}/transfer/from/${fromUserId}`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ toUserId, quantity }),
-    });
-    return handleResponse(res);
+    try {
+      const res = await api.post(`${VOUCHER_URL}/transfer/from/${fromUserId}`, {
+        toUserId,
+        quantity,
+      });
+      return handleResponse(res);
+    } catch (error) {
+      throw normalizeError(error);
+    }
   },
 };

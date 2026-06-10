@@ -5,8 +5,6 @@ import { NavSection } from "./NavSection";
 
 export function Sidebar({
   navConfig,
-  currentPage,
-  onNavigate,
   isSidebarOpen,
   setIsSidebarOpen,
 }) {
@@ -55,8 +53,6 @@ export function Sidebar({
             section={section}
             items={items}
             isSidebarOpen={isSidebarOpen}
-            currentPage={currentPage}
-            onNavigate={onNavigate}
           />
         ))}
       </nav>

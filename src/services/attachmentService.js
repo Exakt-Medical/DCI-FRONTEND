@@ -1,56 +1,37 @@
 // services/attachmentService.js
-// Use import.meta.env for Vite instead of process.env
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:8080/api";
+import api from "./api";
 
 export const attachmentService = {
   upload: async (formData) => {
-    const response = await fetch(`${API_BASE_URL}/attachment/upload`, {
-      method: "POST",
-      body: formData,
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || "Failed to upload attachment");
+    try {
+      const { data } = await api.post("/attachment/upload", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      return data;
+    } catch (error) {
+      throw new Error(
+        error?.response?.data?.message || "Failed to upload attachment",
+      );
     }
-
-    return response.json();
   },
 
   getAll: async () => {
-    const response = await fetch(`${API_BASE_URL}/attachment`, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
-    return response.json();
+    const { data } = await api.get("/attachment");
+    return data;
   },
 
   getById: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/attachment/${id}`, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
-
-    if (!response.ok) {
+    try {
+      const { data } = await api.get(`/attachment/${id}`);
+      return data;
+    } catch {
       throw new Error("Failed to fetch attachment");
     }
-
-    return response.json();
   },
 
   delete: async (id) => {
-    const response = await fetch(`${API_BASE_URL}/attachment/${id}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
-    return response;
+    return api.delete(`/attachment/${id}`);
   },
 };

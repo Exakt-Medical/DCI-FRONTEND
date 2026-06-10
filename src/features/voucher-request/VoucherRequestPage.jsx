@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
@@ -12,9 +13,10 @@ const STATUS_STYLES = {
   VOUCHER_ISSUED: { bg: "bg-purple-100", text: "text-purple-700", dot: "bg-purple-500" },
 };
 
-export const VoucherRequestPage = ({ onNavigate }) => {
+export const VoucherRequestPage = () => {
   const [search, setSearch] = useState("");
   const [requests, setRequests] = useState([]);
+  const navigate = useNavigate();
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -27,7 +29,7 @@ export const VoucherRequestPage = ({ onNavigate }) => {
             View and manage your OR/CR and voucher requests
           </p>
         </div>
-        <Button onClick={() => onNavigate?.("new-voucher-request")}>
+        <Button onClick={() => navigate("/dci-access/new-voucher-request")}>
           <Plus size={16} />
           New Voucher Request
         </Button>
@@ -86,7 +88,7 @@ export const VoucherRequestPage = ({ onNavigate }) => {
                         </td>
                         <td className="py-3 text-gray-500">{req.dateCreated}</td>
                         <td className="py-3">
-                          <Button variant="ghost" size="sm" onClick={() => onNavigate?.("view-voucher-request", req)}>
+                          <Button variant="ghost" size="sm" onClick={() => navigate("/dci-access/view-voucher-request", { state: { request: req } })}>
                             <Eye size={14} /> View
                           </Button>
                         </td>

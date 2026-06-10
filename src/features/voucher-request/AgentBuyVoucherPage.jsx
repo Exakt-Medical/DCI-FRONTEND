@@ -3,11 +3,11 @@ import { VoucherTabs } from "./components/VoucherTabs";
 import { BuyProcessTab } from "./components/BuyProcessTab";
 import { InventoryTab } from "./components/InventoryTab";
 import { useVoucherInventory } from "./hooks/useVoucherInventory";
+import { useRequest } from "../../context/RequestContext";
 
-export const AgentBuyVoucherPage = ({
-  voucherInventory = [],
-  onVoucherInventoryChange,
-}) => {
+export const AgentBuyVoucherPage = () => {
+  const { voucherInventory, setVoucherInventory } = useRequest();
+
   const {
     activeTab,
     setActiveTab,
@@ -25,7 +25,7 @@ export const AgentBuyVoucherPage = ({
     lastBatch,
   } = useVoucherInventory({
     inventory: voucherInventory,
-    onInventoryChange: onVoucherInventoryChange,
+    onInventoryChange: setVoucherInventory,
   });
 
   return (

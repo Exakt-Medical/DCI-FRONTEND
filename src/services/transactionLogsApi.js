@@ -1,16 +1,5 @@
 // services/transactionLogsApi.js
-
-const API_BASE_URL = "http://localhost:8080";
-
-// Helper function to get auth headers
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("token");
-
-  return {
-    "Content-Type": "application/json",
-    ...(token && { Authorization: `Bearer ${token}` }),
-  };
-};
+import api from "./api";
 
 export const transactionLogsApi = {
   // Get all transaction logs with filters
@@ -24,55 +13,58 @@ export const transactionLogsApi = {
     if (pageIndex) params.append("page", pageIndex);
     if (limit) params.append("size", limit);
 
-    // ✅ Changed from /api/transaction-logs to /api/transactions
-    const url = `${API_BASE_URL}/api/transactions?${params.toString()}`;
+    try {
+      // ✅ Changed from /api/transaction-logs to /api/transactions
+      const { data } = await api.get("/transactions", { params });
 
-    const response = await fetch(url, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
+      // ✅ Transform backend response to match frontend expectations
+      return {
+        data: data.transactions || [],
+        totalPages: data.totalPages || 1,
+        total: data.totalElements || 0,
+        currentPage: (data.currentPage || 0) + 1, // Convert back to 1-based
+        stats: data.stats || { authenticated: 0, verified: 0, failed: 0 },
+      };
+    } catch (error) {
+      if (error?.response?.status === 401) {
         console.error("401 Unauthorized - Token may be invalid or expired");
       }
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const status = error?.response?.status;
+      throw new Error(
+        status
+          ? `HTTP error! status: ${status}`
+          : "Failed to fetch transaction logs",
+      );
     }
-
-    const data = await response.json();
-
-    // ✅ Transform backend response to match frontend expectations
-    return {
-      data: data.transactions || [],
-      totalPages: data.totalPages || 1,
-      total: data.totalElements || 0,
-      currentPage: (data.currentPage || 0) + 1, // Convert back to 1-based
-      stats: data.stats || { authenticated: 0, verified: 0, failed: 0 },
-    };
   },
 
   getTransactionLogById: async (id) => {
-    // ✅ Changed endpoint to match backend
-    const response = await fetch(`${API_BASE_URL}/api/transactions/${id}`, {
-      method: "GET",
-      headers: getAuthHeaders(),
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    try {
+      // ✅ Changed endpoint to match backend
+      const { data } = await api.get(`/transactions/${id}`);
+      return data;
+    } catch (error) {
+      const status = error?.response?.status;
+      throw new Error(
+        status
+          ? `HTTP error! status: ${status}`
+          : "Failed to fetch transaction log",
+      );
     }
-    return response.json();
   },
 
   // Note: You might not need this for transaction logs since they're read-only
   createTransactionLog: async (data) => {
-    const response = await fetch(`${API_BASE_URL}/api/transactions`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data),
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    try {
+      const response = await api.post("/transactions", data);
+      return response.data;
+    } catch (error) {
+      const status = error?.response?.status;
+      throw new Error(
+        status
+          ? `HTTP error! status: ${status}`
+          : "Failed to create transaction log",
+      );
     }
-    return response.json();
   },
 };

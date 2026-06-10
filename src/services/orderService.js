@@ -1,21 +1,16 @@
 // src/services/orderService.js
+import api from "./api";
+
 class OrderService {
   async getOrderDetails(orderId) {
     try {
       // TODO: Replace with your actual API endpoint
-      const response = await fetch(`/api/orders/${orderId}`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-        },
-      });
+      const authToken = localStorage.getItem("authToken");
+      const config = authToken
+        ? { headers: { Authorization: `Bearer ${authToken}` } }
+        : undefined;
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch order details");
-      }
-
-      const data = await response.json();
+      const { data } = await api.get(`/api/orders/${orderId}`, config);
 
       // Transform API response to match your component's expected format
       return {

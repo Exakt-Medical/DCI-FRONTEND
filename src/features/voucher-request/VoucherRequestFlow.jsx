@@ -1,8 +1,11 @@
 import { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
 import { FileUpload } from "../../components/FileUpload";
+import { useAuth } from "../../context/AuthContext";
+import { useRequest } from "../../context/RequestContext";
 import DCI_LOGO from "../../assets/DCI-LOGO.png";
 import {
   CreditCard, Ticket, Upload, CheckCircle,
@@ -18,7 +21,13 @@ const emptyVehicle = {
 
 const makeRequestId = () => `REQ-${Date.now()}-${String(Math.random()).slice(2, 6)}`;
 
-export const VoucherRequestFlow = ({ role, initialRequest, onSaveRequest, onComplete, onCancel }) => {
+export const VoucherRequestFlow = () => {
+  const { role } = useAuth();
+  const { handleVoucherRequestComplete, handleRequestSave } = useRequest();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const initialRequest = location.state?.request || null;
+  
   const isAgent = role === "agent_fixer";
   const [step, setStep] = useState(1);
   const [orFile, setOrFile] = useState(null);
@@ -148,7 +157,7 @@ export const VoucherRequestFlow = ({ role, initialRequest, onSaveRequest, onComp
             paymentDone: true,
             voucherAssigned: true,
           };
-          onSaveRequest?.(updated);
+          handleRequestSave(updated);
           return updated;
         });
         setBatchRows(issued);
@@ -170,7 +179,7 @@ export const VoucherRequestFlow = ({ role, initialRequest, onSaveRequest, onComp
 
     const requestId = makeRequestId();
     const draft = buildDraftRecord(requestId);
-    onSaveRequest?.(draft);
+    handleRequestSave(draft);
     setBatchRows((prev) => [draft, ...prev]);
     clearEntryForm();
   };
@@ -198,7 +207,8 @@ export const VoucherRequestFlow = ({ role, initialRequest, onSaveRequest, onComp
 
   const finish = () => {
     if (isAgent) {
-      onComplete?.({ rows: batchRows });
+      handleVoucherRequestComplete({ rows: batchRows });
+      navigate("/dci-access/requests");
       return;
     }
 
@@ -224,8 +234,13 @@ export const VoucherRequestFlow = ({ role, initialRequest, onSaveRequest, onComp
       orPreview,
       crPreview,
     };
-    onSaveRequest?.(record);
-    onComplete?.(record);
+    handleRequestSave(record);
+    handleVoucherRequestComplete(record);
+    navigate("/dci-access/requests");
+  };
+
+  const onCancel = () => {
+    navigate("/dci-access/requests");
   };
 
   const VehicleFields = ({ values, onChange }) => (

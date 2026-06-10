@@ -1,74 +1,90 @@
 // /src/services/auditTrailService.js
+import api from "./api";
 
-const BASE_URL = "/api/audit-trail";
+const BASE_URL = "/audit-trail";
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("token");
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
+const handleResponse = (res) => {
+  if (res.status === 204) return null;
+  return res.data;
 };
 
-const handleResponse = async (res) => {
-  if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText);
-    throw new Error(`${res.status}: ${text}`);
+const normalizeError = (error) => {
+  if (error?.response) {
+    const body = error.response.data;
+    const text = typeof body === "string" ? body : JSON.stringify(body);
+    return new Error(`${error.response.status}: ${text}`);
   }
-  if (res.status === 204) return null;
-  return res.json();
+  return error;
 };
 
 export const auditTrailService = {
   // Get all audit logs
-  getAll() {
-    return fetch(BASE_URL, { headers: getAuthHeaders() }).then(handleResponse);
+  async getAll() {
+    try {
+      const res = await api.get(BASE_URL);
+      return handleResponse(res);
+    } catch (error) {
+      throw normalizeError(error);
+    }
   },
 
   // Get unique actions for filter dropdown
-  getUniqueActions() {
-    return fetch(`${BASE_URL}/actions`, { headers: getAuthHeaders() }).then(
-      handleResponse,
-    );
+  async getUniqueActions() {
+    try {
+      const res = await api.get(`${BASE_URL}/actions`);
+      return handleResponse(res);
+    } catch (error) {
+      throw normalizeError(error);
+    }
   },
 
   // Get unique users for filter dropdown
-  getUniqueUsers() {
-    return fetch(`${BASE_URL}/users`, { headers: getAuthHeaders() }).then(
-      handleResponse,
-    );
+  async getUniqueUsers() {
+    try {
+      const res = await api.get(`${BASE_URL}/users`);
+      return handleResponse(res);
+    } catch (error) {
+      throw normalizeError(error);
+    }
   },
 
   // Get by ID
-  getById(id) {
-    return fetch(`${BASE_URL}/${id}`, { headers: getAuthHeaders() }).then(
-      handleResponse,
-    );
+  async getById(id) {
+    try {
+      const res = await api.get(`${BASE_URL}/${id}`);
+      return handleResponse(res);
+    } catch (error) {
+      throw normalizeError(error);
+    }
   },
 
   // Create new audit log
-  create(data) {
-    return fetch(BASE_URL, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data),
-    }).then(handleResponse);
+  async create(data) {
+    try {
+      const res = await api.post(BASE_URL, data);
+      return handleResponse(res);
+    } catch (error) {
+      throw normalizeError(error);
+    }
   },
 
   // Update audit log
-  update(id, data) {
-    return fetch(`${BASE_URL}/${id}`, {
-      method: "PUT",
-      headers: getAuthHeaders(),
-      body: JSON.stringify(data),
-    }).then(handleResponse);
+  async update(id, data) {
+    try {
+      const res = await api.put(`${BASE_URL}/${id}`, data);
+      return handleResponse(res);
+    } catch (error) {
+      throw normalizeError(error);
+    }
   },
 
   // Delete audit log
-  delete(id) {
-    return fetch(`${BASE_URL}/${id}`, {
-      method: "DELETE",
-      headers: getAuthHeaders(),
-    }).then(handleResponse);
+  async delete(id) {
+    try {
+      const res = await api.delete(`${BASE_URL}/${id}`);
+      return handleResponse(res);
+    } catch (error) {
+      throw normalizeError(error);
+    }
   },
 };

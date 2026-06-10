@@ -1,16 +1,17 @@
 import { useState } from "react";
 import { cn } from "../../utils/cn";
 import { LogOut, User, Key, ChevronDown } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export function UserMenu({
   user,
   role,
   isSidebarOpen,
-  onMyProfile,
-  onChangePassword,
-  onLogout,
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const { handleLogout } = useAuth();
+  const navigate = useNavigate();
 
   const getRoleDisplayName = () => {
     const names = {
@@ -60,7 +61,7 @@ export function UserMenu({
             <button
               onClick={() => {
                 setIsOpen(false);
-                onMyProfile?.();
+                navigate("/dci-access/profile");
               }}
               className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
             >
@@ -71,7 +72,7 @@ export function UserMenu({
             <button
               onClick={() => {
                 setIsOpen(false);
-                onLogout();
+                handleLogout();
               }}
               className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
             >

@@ -6,8 +6,9 @@ import { AccountInfoCard } from "../Profile/components/AccountInfoCard";
 import { ChangePasswordModal } from "../Profile/components/ChangePasswordModal";
 import { useProfile } from "../../hooks/useProfile";
 import { useAlert } from "../../hooks/useAlert"; // ADD THIS
+import { useAuth } from "../../context/AuthContext";
 
-export const ProfilePage = ({ onLogout }) => {
+export const ProfilePage = () => {
   const {
     profile,
     loading,
@@ -16,6 +17,8 @@ export const ProfilePage = ({ onLogout }) => {
     changePassword,
     uploadAvatar,
   } = useProfile();
+  
+  const { handleLogout } = useAuth();
 
   const { success: showSuccess, error: showError } = useAlert(); // ADD THIS
 
@@ -145,7 +148,7 @@ export const ProfilePage = ({ onLogout }) => {
           }}
           onSave={handleSave}
           onChangePassword={() => setShowChangePassword(true)}
-          onLogout={onLogout}
+          onLogout={handleLogout}
           joinDate={profile?.dateCreated}
         />
 

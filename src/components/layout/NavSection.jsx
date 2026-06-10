@@ -4,8 +4,6 @@ export function NavSection({
   section,
   items,
   isSidebarOpen,
-  currentPage,
-  onNavigate,
 }) {
   return (
     <div className="mb-6">
@@ -20,9 +18,7 @@ export function NavSection({
         <NavItem
           key={item.id}
           item={item}
-          isActive={currentPage === item.id}
           isSidebarOpen={isSidebarOpen}
-          onClick={onNavigate}
         />
       ))}
     </div>

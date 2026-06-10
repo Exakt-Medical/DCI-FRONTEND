@@ -13,11 +13,13 @@
     "axios": "^1.16.1",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.16.0",
+    "pdfjs-dist": "^4.10.38",
     "qr-scanner": "^1.4.2",
     "qrcode": "^1.5.4",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.15.1",
+    "tesseract.js": "^6.0.1",
     "sweetalert2": "^11.26.25",
     "sweetalert2-react-content": "^5.1.2"
   },

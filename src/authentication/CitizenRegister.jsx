@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { User, Lock, Mail, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { Spinner } from "../components/Spinner";
+import { useAlert } from "../hooks/useAlert";
 import DciLogo from "../assets/DCI-LOGO.png";
 import api from "../services/api";
 
-export const CitizenRegister = ({ onComplete, onCancel }) => {
+export const CitizenRegister = () => {
   const [form, setForm] = useState({
     username: "",
     firstName: "",
@@ -17,6 +19,9 @@ export const CitizenRegister = ({ onComplete, onCancel }) => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  
+  const navigate = useNavigate();
+  const { success } = useAlert();
 
   const passwordStrength = (pw) => {
     let score = 0;
@@ -63,7 +68,8 @@ export const CitizenRegister = ({ onComplete, onCancel }) => {
         lastName: form.lastName,
         email: form.email,
       });
-      await onComplete();
+      await success("Registration Successful", "You can now login with your credentials.");
+      navigate("/dci-access");
     } catch (err) {
       const msg = err.response?.data?.error || err.response?.data?.message || "Registration failed. Please try again.";
       setErrors({ form: msg });
@@ -233,7 +239,7 @@ export const CitizenRegister = ({ onComplete, onCancel }) => {
 
             <div className="mt-4">
               <button
-                onClick={onCancel}
+                onClick={() => navigate('/dci-access')}
                 className="w-full border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium py-2.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
               >
                 <ArrowLeft size={16} />
