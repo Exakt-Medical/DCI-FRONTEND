@@ -10,6 +10,7 @@ import { CreateTicketModal } from "./CreateTicketModal";
 import { useTicketFilters } from "./hooks/useTicketFilters";
 import { ticketService } from "../../services/ticketService";
 import { statusOptions, typeOptions } from "../../constants/ticketMockData";
+import { useAuth } from "../../context/AuthContext";
 import {
   Ticket,
   Clock,
@@ -22,10 +23,12 @@ import {
 
 export const TicketPage = () => {
   // ── Role detection ────────────────────────────────────────────────────────
-  const userRole = (localStorage.getItem("role") ?? "").toUpperCase();
-  const isLTO = userRole === "LTO";
-  const isHPG = userRole === "HPG";
-  const isViewer = userRole === "VIEWER";
+  const { role: authRole } = useAuth();
+  const userRole = (authRole || localStorage.getItem("role") || "").toLowerCase();
+  const isAdmin = userRole === "admin";
+  const isLTO = userRole === "lto";
+  const isHPG = userRole === "hpg";
+  const isViewer = userRole === "viewer";
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -43,19 +46,23 @@ export const TicketPage = () => {
     setError(null);
     try {
       const data = await ticketService.getAll();
-      // filter users only see tickets escalated to them
-      const filterLto = data.filter((t) => t.roleBased === "LTO");
-      const filterHpg = data.filter((t) => t.roleBased === "HPG");
 
-      if (isHPG) setTickets(filterHpg);
-      if (isLTO) setTickets(data);
-      
+      if (isAdmin) {
+        // Admin sees all tickets
+        setTickets(data);
+      } else if (isHPG) {
+        setTickets(data.filter((t) => (t.roleBased || "").toUpperCase() === "HPG"));
+      } else if (isLTO) {
+        setTickets(data.filter((t) => (t.roleBased || "").toUpperCase() === "LTO"));
+      } else {
+        setTickets(data);
+      }
     } catch (err) {
       setError(err.message ?? "Failed to load tickets.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isAdmin, isHPG, isLTO]);
 
   useEffect(() => {
     fetchTickets();

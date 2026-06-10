@@ -18,7 +18,7 @@ export const ProtectedRoute = ({ children, allowedRoles }) => {
     return <Navigate to="/dci-access" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(role)) {
+  if (allowedRoles && !allowedRoles.includes((role || "").toLowerCase())) {
     return <PlaceholderPage title="Access Denied" description="You don't have permission to access this page." />;
   }
 

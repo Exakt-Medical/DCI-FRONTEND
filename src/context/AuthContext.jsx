@@ -7,7 +7,7 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem("token"));
-  const [role, setRole] = useState(localStorage.getItem("role"));
+  const [role, setRole] = useState((localStorage.getItem("role") || "").toLowerCase() || null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -23,8 +23,9 @@ export function AuthProvider({ children }) {
       const response = await authService.login(username, password);
       const data = response.data;
 
+      const normalizedRole = (data.role || "").toLowerCase();
       localStorage.setItem("token", data.token);
-      localStorage.setItem("role", data.role);
+      localStorage.setItem("role", normalizedRole);
       localStorage.setItem("username", data.username);
       localStorage.setItem("email", data.email ?? "");
       localStorage.setItem("firstname", data.firstname ?? "");
@@ -36,9 +37,9 @@ export function AuthProvider({ children }) {
       if (data.userId != null)
         localStorage.setItem("userId", data.userId);
       setToken(data.token);
-      setRole(data.role);
-      setUser({ token: data.token, role: data.role });
-      return data.role;
+      setRole(normalizedRole);
+      setUser({ token: data.token, role: normalizedRole });
+      return normalizedRole;
     } catch (error) {
       throw new Error(
         error.response?.data?.message ||
