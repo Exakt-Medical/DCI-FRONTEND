@@ -1320,6 +1320,7 @@ export const ClearanceRequestFlow = () => {
 
   const finishBulk = () => {
     onComplete?.({ rows: certificationQueue });
+    navigate("/dci-access/requests");
   };
 
   const finishCitizen = () => {
@@ -1343,6 +1344,7 @@ export const ClearanceRequestFlow = () => {
       clearanceReferenceNo: certificateNo,
       voucherReferenceNo: voucherCode,
     });
+    navigate("/dci-access/requests");
   };
 
   return (
