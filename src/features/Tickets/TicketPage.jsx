@@ -7,7 +7,7 @@ import { TicketTable } from "./components/TicketTable";
 import { TicketPagination } from "./components/TicketPagination";
 import { TicketDetailModal } from "./components/TicketDetailModal";
 import { CreateTicketModal } from "./CreateTicketModal";
-import { useTicketFilters } from "./hooks/useTicketFilters";
+import { useTicketFilters } from "../../hooks/useTicketFilters";
 import { ticketService } from "../../services/ticketService";
 import { statusOptions, typeOptions } from "../../constants/ticketMockData";
 import { useAuth } from "../../context/AuthContext";

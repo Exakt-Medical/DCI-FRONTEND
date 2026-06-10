@@ -2,8 +2,8 @@ import { useMemo, useState } from "react";
 import {
   VOUCHER_INVENTORY_FILTERS,
   VOUCHER_INVENTORY_STATUS,
-} from "../../../constants/voucherInventoryStatus";
-import { voucherInventoryService } from "../../../services/voucherInventoryService";
+} from "../constants/voucherInventoryStatus";
+import { voucherInventoryService } from "../services/voucherInventoryService";
 
 export const useVoucherInventory = ({
   inventory,

@@ -2,7 +2,7 @@ import DCI_LOGO from "../../assets/DCI-LOGO.png";
 import { VoucherTabs } from "./components/VoucherTabs";
 import { BuyProcessTab } from "./components/BuyProcessTab";
 import { InventoryTab } from "./components/InventoryTab";
-import { useVoucherInventory } from "./hooks/useVoucherInventory";
+import { useVoucherInventory } from "../../hooks/useVoucherInventory";
 import { useRequest } from "../../context/RequestContext";
 
 export const AgentBuyVoucherPage = () => {
