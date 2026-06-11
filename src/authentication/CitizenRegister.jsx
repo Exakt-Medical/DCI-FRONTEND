@@ -2,7 +2,7 @@ import { useState } from "react";
 import { User, Lock, Mail, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { Spinner } from "../components/Spinner";
 import DciLogo from "../assets/DCI-LOGO.png";
-import api from "../services/api";
+import { authService } from "../services/authService";
 
 export const CitizenRegister = ({ onComplete, onCancel }) => {
   const [form, setForm] = useState({
@@ -39,11 +39,19 @@ export const CitizenRegister = ({ onComplete, onCancel }) => {
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       errs.email = "Invalid email format";
     }
+    
     if (!form.password) {
       errs.password = "Password is required";
     } else if (form.password.length < 8) {
       errs.password = "Password must be at least 8 characters";
+    } else if (!/[A-Z]/.test(form.password)) {
+      errs.password = "Frontend Validation: Password must contain at least one uppercase letter";
+    } else if (!/[a-z]/.test(form.password)) {
+      errs.password = "Frontend Validation: Password must contain at least one lowercase letter";
+    } else if (!/\d/.test(form.password)) {
+      errs.password = "Frontend Validation: Password must contain at least one digit";
     }
+
     if (form.password !== form.confirmPassword) {
       errs.confirmPassword = "Passwords do not match";
     }
@@ -55,7 +63,7 @@ export const CitizenRegister = ({ onComplete, onCancel }) => {
     if (!validate()) return;
     setLoading(true);
     try {
-      await api.post("/public/register", {
+      await authService.register({
         username: form.username,
         password: form.password,
         confirmPassword: form.confirmPassword,
