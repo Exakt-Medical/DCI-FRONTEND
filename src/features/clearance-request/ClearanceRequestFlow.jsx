@@ -29,8 +29,12 @@ import {
   VehicleDocumentUploadCard,
 } from "./components/FlowFormCards";
 import { CertificateActionButtons } from "./components/CertificateActionButtons";
-import { OCR_DOCUMENT_TYPE, OCR_STATUS } from "../../constants/ocrConfig";
-import { extractDocumentData, formatOcrHint } from "../../utils/ocrService";
+import {
+  CLEARANCE_OCR_DOCUMENT_TYPE,
+  extractClearanceDocumentData,
+  formatOcrHint,
+  OCR_STATUS,
+} from "../../hooks/useOcrForm";
 import { generateClearanceCertificatePDF } from "./utils/generateClearanceCertificatePDF";
 
 const emptyVehicle = {
@@ -112,14 +116,14 @@ import { useRequest } from "../../context/RequestContext";
 
 export const ClearanceRequestFlow = () => {
   const { role } = useAuth();
-  const { 
-    requestRecords: availableVoucherRequests, 
-    voucherInventory, 
+  const {
+    requestRecords: availableVoucherRequests,
+    voucherInventory,
     setVoucherInventory,
     handleRequestSave: onSaveRequest,
-    handleClearanceRequestComplete: onComplete 
+    handleClearanceRequestComplete: onComplete,
   } = useRequest();
-  
+
   const location = useLocation();
   const navigate = useNavigate();
   const selectedRequest = location.state?.request || null;
@@ -422,7 +426,10 @@ export const ClearanceRequestFlow = () => {
     updateOrCr("plateNumber", "Extracting...");
 
     try {
-      const result = await extractDocumentData(file, OCR_DOCUMENT_TYPE.OR);
+      const result = await extractClearanceDocumentData(
+        file,
+        CLEARANCE_OCR_DOCUMENT_TYPE.OR,
+      );
       if (!isCurrentOcrVersion("or", runId)) return;
 
       const parsed = result.fields || {};
@@ -473,7 +480,10 @@ export const ClearanceRequestFlow = () => {
     updateCrCr("plateNumber", "Extracting...");
 
     try {
-      const result = await extractDocumentData(file, OCR_DOCUMENT_TYPE.CR);
+      const result = await extractClearanceDocumentData(
+        file,
+        CLEARANCE_OCR_DOCUMENT_TYPE.CR,
+      );
       if (!isCurrentOcrVersion("cr", runId)) return;
 
       const parsed = result.fields || {};
@@ -780,7 +790,10 @@ export const ClearanceRequestFlow = () => {
     }));
 
     try {
-      const result = await extractDocumentData(file, OCR_DOCUMENT_TYPE.MVC);
+      const result = await extractClearanceDocumentData(
+        file,
+        CLEARANCE_OCR_DOCUMENT_TYPE.MVC,
+      );
       if (!isCurrentOcrVersion("agentMvc", runId)) return;
 
       const parsed = result.fields || {};
@@ -839,7 +852,10 @@ export const ClearanceRequestFlow = () => {
     }));
 
     try {
-      const result = await extractDocumentData(file, OCR_DOCUMENT_TYPE.MEC);
+      const result = await extractClearanceDocumentData(
+        file,
+        CLEARANCE_OCR_DOCUMENT_TYPE.MEC,
+      );
       if (!isCurrentOcrVersion("agentMec", runId)) return;
 
       const parsed = result.fields || {};
@@ -1120,7 +1136,10 @@ export const ClearanceRequestFlow = () => {
     }));
 
     try {
-      const result = await extractDocumentData(file, OCR_DOCUMENT_TYPE.MVC);
+      const result = await extractClearanceDocumentData(
+        file,
+        CLEARANCE_OCR_DOCUMENT_TYPE.MVC,
+      );
       if (!isCurrentOcrVersion("mvc", runId)) return;
 
       const parsed = result.fields || {};
@@ -1187,7 +1206,10 @@ export const ClearanceRequestFlow = () => {
     }));
 
     try {
-      const result = await extractDocumentData(file, OCR_DOCUMENT_TYPE.MEC);
+      const result = await extractClearanceDocumentData(
+        file,
+        CLEARANCE_OCR_DOCUMENT_TYPE.MEC,
+      );
       if (!isCurrentOcrVersion("mec", runId)) return;
 
       const parsed = result.fields || {};
