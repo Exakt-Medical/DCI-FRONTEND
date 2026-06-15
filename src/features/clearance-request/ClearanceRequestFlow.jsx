@@ -314,7 +314,7 @@ export const ClearanceRequestFlow = ({
     setTimeout(() => {
       setOrNumber(`OR-${String(Date.now()).slice(-8)}`);
       setOrDate(new Date().toISOString().split("T")[0]);
-      setOrAmount("PHP 500.00");
+      setOrAmount("PHP 100.00");
       updateOrCr(
         "plateNumber",
         orCr.plateNumber && orCr.plateNumber !== "Extracting..."
@@ -1664,7 +1664,7 @@ export const ClearanceRequestFlow = ({
               </div>
               <div className="bg-gray-50 rounded-lg p-5 mb-5 text-center">
                 <p className="text-sm text-gray-500 mb-1">Certificate Request Fee</p>
-                <p className="text-3xl font-bold text-gray-900">PHP 500.00</p>
+                <p className="text-3xl font-bold text-gray-900">PHP 100.00</p>
                 <p className="text-xs text-gray-500 mt-1">Single payment covers the whole request.</p>
               </div>
               {processingPayment ? (

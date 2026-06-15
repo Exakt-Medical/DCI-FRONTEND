@@ -339,7 +339,7 @@ export const ClearanceRequestFlow = ({ role, onComplete, onCancel }) => {
 
               <div className="bg-gray-50 rounded-lg p-5 mb-5 text-center">
                 <p className="text-sm text-gray-500 mb-1">Clearance Fee</p>
-                <p className="text-3xl font-bold text-gray-900">PHP 500.00</p>
+                <p className="text-3xl font-bold text-gray-900">PHP 100.00</p>
               </div>
 
               {paymentDone ? (
