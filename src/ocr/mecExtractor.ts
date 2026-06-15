@@ -1,6 +1,6 @@
 import type { OcrWord } from "./types";
 import { FIELD_ALIASES } from "./constants";
-import { extractAroundLabel, findRightText } from "./extractors";
+import { extractAroundLabel, findRightText, extractExaminerBlock } from "./extractors";
 import { isLabelLine, toCanonical } from "./normalize";
 import {
   isLikelyNhqPid,
@@ -28,7 +28,7 @@ function extractMultiLineAddress(lines: string[], aliases: readonly string[]): s
   return out.join(" ").replace(/\s+/g, " ").trim();
 }
 
-export function extractMECFields(lines: string[], words: OcrWord[]) {
+export function extractMECFields(lines: string[], words: OcrWord[], pageWidth: number, pageHeight: number) {
   return {
     nhqPid:
       extractAroundLabel(lines, FIELD_ALIASES.nhqPid, isLikelyNhqPid)
@@ -42,7 +42,7 @@ export function extractMECFields(lines: string[], words: OcrWord[]) {
     plateNo: extractAroundLabel(lines, FIELD_ALIASES.plateNo, isLikelyPlate),
     engineNo: extractAroundLabel(lines, FIELD_ALIASES.engineNo, isLikelyEngine),
     chassisNo: extractAroundLabel(lines, FIELD_ALIASES.chassisNo, isLikelyChassis),
-    examinedBy: extractAroundLabel(lines, FIELD_ALIASES.examinedBy, isLikelyOfficerName),
+    examinedBy: extractExaminerBlock(words, pageWidth, pageHeight) || extractAroundLabel(lines, FIELD_ALIASES.examinedBy, isLikelyOfficerName),
     notedBy: extractAroundLabel(lines, FIELD_ALIASES.notedBy, isLikelyOfficerName),
   };
 }

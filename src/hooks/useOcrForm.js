@@ -200,14 +200,18 @@ export async function extractClearanceDocumentData(file, documentType) {
     case CLEARANCE_OCR_DOCUMENT_TYPE.MVC:
       return {
         fields: {
-          mvcNo: (
-            fields.mvccControlNo ||
-            fields.mvrrNumber ||
-            ""
-          ).toUpperCase(),
+          mvcNo: (fields.mvccControlNo || fields.mvrrNumber || "").toUpperCase(),
           mvcIssueDate: normalizeDateForInput(fields.date || ""),
-          mvcValidUntil: "",
-          mvcStatus: "",
+          mvcStatus: (fields.mvcStatus || "CLEAR").toUpperCase(),
+          remarks: (fields.remarks || "").toUpperCase(),
+          plateNo: (fields.plateNo || "").toUpperCase(),
+          mvFileNo: (fields.mvFileNo || "").toUpperCase(),
+          engineNo: (fields.engineNo || "").toUpperCase(),
+          chassisNo: (fields.chassisNo || "").toUpperCase(),
+          vehicleType: (fields.vehicleType || "").toUpperCase(),
+          ownerName: (fields.ownerName || "").toUpperCase(),
+          ownerAddress: (fields.address || "").toUpperCase(),
+          ownerContact: (fields.ownerContact || "").toUpperCase(),
         },
         extraction,
         layoutText,
@@ -215,24 +219,23 @@ export async function extractClearanceDocumentData(file, documentType) {
           extraction.mvccControlNo?.confidence,
           extraction.mvrrNumber?.confidence,
           extraction.date?.confidence,
+          extraction.plateNo?.confidence,
+          extraction.ownerName?.confidence,
         ]),
       };
     case CLEARANCE_OCR_DOCUMENT_TYPE.MEC:
       return {
         fields: {
-          mecNo: (fields.meNumber || fields.nhqPid || "").toUpperCase(),
-          mecIssueDate: normalizeDateForInput(fields.date || ""),
-          mecValidUntil: "",
-          mecCo2: "",
-          mecHc: "",
-          mecResult: "",
+          engineNoStencilled: (fields.engineNoStencilled || fields.engineNo || "").toUpperCase(),
+          chassisNoStencilled: (fields.chassisNoStencilled || fields.chassisNo || "").toUpperCase(),
+          hpgTechnician: (fields.hpgTechnician || fields.examinedBy || "").toUpperCase(),
         },
         extraction,
         layoutText,
         confidence: averageConfidence([
-          extraction.meNumber?.confidence,
-          extraction.nhqPid?.confidence,
-          extraction.date?.confidence,
+          extraction.engineNoStencilled?.confidence || extraction.engineNo?.confidence,
+          extraction.chassisNoStencilled?.confidence || extraction.chassisNo?.confidence,
+          extraction.hpgTechnician?.confidence || extraction.examinedBy?.confidence,
         ]),
       };
     default:

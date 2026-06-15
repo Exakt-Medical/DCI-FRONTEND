@@ -100,7 +100,7 @@ export const VoucherRequestFlow = () => {
       setTimeout(() => {
         setOrNumber(`OR-${String(Date.now()).slice(-8)}`);
         setOrDate(new Date().toISOString().split('T')[0]);
-        setOrAmount("PHP 500.00");
+        setOrAmount("PHP 100.00");
         updateOrCr("plateNumber", orCr.plateNumber && orCr.plateNumber !== "Extracting..." ? orCr.plateNumber : "ABC1234");
         updateOrCr("mvFileNumber", "13242500000003A");
         updateOrCr("engineNumber", "ENG-" + String(Math.random()).slice(2, 8));
@@ -398,7 +398,7 @@ export const VoucherRequestFlow = () => {
               <div className="bg-gray-50 rounded-lg p-5 mb-5 text-center">
                 <p className="text-sm text-gray-500 mb-1">Voucher Request Fee</p>
                 <p className="text-3xl font-bold text-gray-900">
-                  {isAgent ? `PHP ${(batchRows.length * 500).toFixed(2)}` : "PHP 500.00"}
+                  {isAgent ? `PHP ${(batchRows.length * 100).toFixed(2)}` : "PHP 100.00"}
                 </p>
                 {isAgent && (
                   <p className="text-xs text-gray-500 mt-1">{batchRows.length} request{batchRows.length !== 1 ? "s" : ""} in this batch</p>
