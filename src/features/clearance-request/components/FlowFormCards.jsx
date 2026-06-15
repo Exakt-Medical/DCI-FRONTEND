@@ -9,7 +9,6 @@ const OR_FIELD_CONFIG = [
   { key: "classification", label: "Classification" },
   { key: "vehicleType", label: "Vehicle Type" },
   { key: "fuelType", label: "Fuel Type" },
-  { key: "airconType", label: "Aircon Type" },
   { key: "yearModel", label: "Year Model" },
   { key: "color", label: "Color" },
   { key: "ownerName", label: "Owner Name", required: true },

@@ -7,7 +7,9 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem("token"));
-  const [role, setRole] = useState((localStorage.getItem("role") || "").toLowerCase() || null);
+  const [role, setRole] = useState(
+    (localStorage.getItem("role") || "").toLowerCase() || null,
+  );
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -34,8 +36,7 @@ export function AuthProvider({ children }) {
         localStorage.setItem("companyId", String(data.companyId));
       if (data.companyCode != null)
         localStorage.setItem("companyCode", data.companyCode);
-      if (data.userId != null)
-        localStorage.setItem("userId", data.userId);
+      if (data.userId != null) localStorage.setItem("userId", data.userId);
       setToken(data.token);
       setRole(normalizedRole);
       setUser({ token: data.token, role: normalizedRole });
@@ -78,7 +79,7 @@ export function AuthProvider({ children }) {
     const landingPage = getDefaultPageForRole(userRole);
     setRole(userRole);
     localStorage.setItem("authRole", userRole);
-    
+
     if (userData) {
       localStorage.setItem("userProfile", JSON.stringify(userData));
     }
