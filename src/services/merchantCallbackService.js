@@ -10,7 +10,7 @@ async function fetchSummary(transactionId, { timeout = 10000 } = {}) {
 
   try {
     const res = await api.get(
-      `/api/merchant-callback/summary/${encodeURIComponent(transactionId)}`,
+      `/merchant-callback/summary/${encodeURIComponent(transactionId)}`,
       {
         headers: { Accept: "application/json" },
         timeout,
@@ -46,7 +46,7 @@ function streamPaymentResult(
 ) {
   if (!transactionId) throw new Error("Missing transactionId");
 
-  const url = `${API_BASE}/api/merchant-callback/stream?transactionId=${encodeURIComponent(transactionId)}`;
+  const url = `${API_BASE}/merchant-callback/stream?transactionId=${encodeURIComponent(transactionId)}`;
   const es = new EventSource(url);
 
   const timeoutId = setTimeout(() => {
