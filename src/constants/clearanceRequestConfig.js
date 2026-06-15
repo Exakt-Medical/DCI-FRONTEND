@@ -37,7 +37,6 @@ export const CITIZEN_STEPS = [
 
 export const AGENT_STEPS = [
   "Upload OR/CR",
-  "Assign Voucher",
   "HPG Portal",
   "Upload MVCC/MEC",
   "Issue Certificate",

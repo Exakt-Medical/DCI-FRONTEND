@@ -29,8 +29,12 @@ import {
   VehicleDocumentUploadCard,
 } from "./components/FlowFormCards";
 import { CertificateActionButtons } from "./components/CertificateActionButtons";
-import { OCR_DOCUMENT_TYPE, OCR_STATUS } from "../../constants/ocrConfig";
-import { extractDocumentData, formatOcrHint } from "../../utils/ocrService";
+import {
+  CLEARANCE_OCR_DOCUMENT_TYPE,
+  extractClearanceDocumentData,
+  formatOcrHint,
+  OCR_STATUS,
+} from "../../hooks/useOcrForm";
 import { generateClearanceCertificatePDF } from "./utils/generateClearanceCertificatePDF";
 
 const emptyVehicle = {
@@ -112,25 +116,29 @@ import { useRequest } from "../../context/RequestContext";
 
 export const ClearanceRequestFlow = () => {
   const { role } = useAuth();
-  const { 
-    requestRecords: availableVoucherRequests, 
-    voucherInventory, 
+  const {
+    requestRecords: availableVoucherRequests,
+    voucherInventory,
     setVoucherInventory,
     handleRequestSave: onSaveRequest,
-    handleClearanceRequestComplete: onComplete 
+    handleClearanceRequestComplete: onComplete,
   } = useRequest();
-  
+
   const location = useLocation();
   const navigate = useNavigate();
   const selectedRequest = location.state?.request || null;
   const onCancel = () => navigate("/dci-access/requests");
   const isAgent = role === "agent_fixer";
   const flowSteps = isAgent ? AGENT_STEPS : CITIZEN_STEPS;
+  const maxStep = flowSteps.length;
 
   const [requestId] = useState(
     () => selectedRequest?.requestId || makeRequestId(),
   );
-  const [step, setStep] = useState(() => selectedRequest?.currentStep || 1);
+  const [step, setStep] = useState(() => {
+    const storedStep = selectedRequest?.currentStep || 1;
+    return Math.min(storedStep, maxStep);
+  });
   const [requestStatus, setRequestStatus] = useState(
     () => selectedRequest?.status || "DRAFT",
   );
@@ -286,13 +294,14 @@ export const ClearanceRequestFlow = () => {
     [certificationQueue],
   );
 
-  const assignableVouchersForRequest = (requestId) => {
-    return voucherInventory.filter(
-      (item) =>
-        item.inventoryStatus === VOUCHER_INVENTORY_STATUS.AVAILABLE ||
-        (item.inventoryStatus === VOUCHER_INVENTORY_STATUS.ASSIGNED &&
-          item.assignedToRequestId === requestId),
-    );
+  const getQueueTimestamp = (row) => {
+    const requestTs = Number(String(row?.requestId || "").split("-")[1]);
+    if (Number.isFinite(requestTs)) return requestTs;
+
+    const createdTs = Date.parse(row?.dateCreated || "");
+    if (Number.isFinite(createdTs)) return createdTs;
+
+    return Number.MAX_SAFE_INTEGER;
   };
 
   const clearOrCrForm = () => {
@@ -422,7 +431,10 @@ export const ClearanceRequestFlow = () => {
     updateOrCr("plateNumber", "Extracting...");
 
     try {
-      const result = await extractDocumentData(file, OCR_DOCUMENT_TYPE.OR);
+      const result = await extractClearanceDocumentData(
+        file,
+        CLEARANCE_OCR_DOCUMENT_TYPE.OR,
+      );
       if (!isCurrentOcrVersion("or", runId)) return;
 
       const parsed = result.fields || {};
@@ -473,7 +485,10 @@ export const ClearanceRequestFlow = () => {
     updateCrCr("plateNumber", "Extracting...");
 
     try {
-      const result = await extractDocumentData(file, OCR_DOCUMENT_TYPE.CR);
+      const result = await extractClearanceDocumentData(
+        file,
+        CLEARANCE_OCR_DOCUMENT_TYPE.CR,
+      );
       if (!isCurrentOcrVersion("cr", runId)) return;
 
       const parsed = result.fields || {};
@@ -545,41 +560,6 @@ export const ClearanceRequestFlow = () => {
     );
   };
 
-  const assignVoucherForRow = (requestIdForRow, voucherId) => {
-    const voucher = voucherInventory.find(
-      (item) => item.voucherId === voucherId,
-    );
-
-    updateVoucherInventory((prev) =>
-      voucherInventoryService.assignVoucherToRequest(prev, {
-        voucherId,
-        requestId: requestIdForRow,
-        plateNumber:
-          certificationQueue.find((item) => item.requestId === requestIdForRow)
-            ?.plateNumber || "",
-        assignedBy: role,
-      }),
-    );
-
-    setQueueRows((prev) => {
-      const source = prev.length > 0 ? prev : fallbackRows;
-      return source.map((row) => {
-        if (row.requestId !== requestIdForRow) return row;
-        const updated = {
-          ...row,
-          voucherId,
-          voucherReferenceNo:
-            voucher?.voucherCode || row.voucherReferenceNo || "",
-          voucherStatus: "VOUCHER_ISSUED",
-          status: "VOUCHER_ASSIGNED",
-          currentStep: 2,
-        };
-        persistRow(updated);
-        return updated;
-      });
-    });
-  };
-
   const setHpgForRow = (requestIdForRow, nextStatus) => {
     setQueueRows((prev) => {
       const source = prev.length > 0 ? prev : fallbackRows;
@@ -596,7 +576,7 @@ export const ClearanceRequestFlow = () => {
           hpgStatus: nextStatus,
           hpgVerified: nextStatus === HPG_STATUS.APPROVED,
           status: statusMap[nextStatus],
-          currentStep: 3,
+          currentStep: 2,
         };
         persistRow(updated);
         return updated;
@@ -646,7 +626,7 @@ export const ClearanceRequestFlow = () => {
           mvcFileName: uploadPayload.mvcFileName || row.mvcFileName || "",
           mecFileName: uploadPayload.mecFileName || row.mecFileName || "",
           status: "MVC_MEC_VALIDATION_PENDING",
-          currentStep: 4,
+          currentStep: 3,
         };
         persistRow(updated);
         return updated;
@@ -689,7 +669,7 @@ export const ClearanceRequestFlow = () => {
             status: validation.valid
               ? "MVC_MEC_VALIDATED"
               : "MVC_MEC_VALIDATION_PENDING",
-            currentStep: 4,
+            currentStep: 3,
           };
           persistRow(validated);
           return validated;
@@ -780,7 +760,10 @@ export const ClearanceRequestFlow = () => {
     }));
 
     try {
-      const result = await extractDocumentData(file, OCR_DOCUMENT_TYPE.MVC);
+      const result = await extractClearanceDocumentData(
+        file,
+        CLEARANCE_OCR_DOCUMENT_TYPE.MVC,
+      );
       if (!isCurrentOcrVersion("agentMvc", runId)) return;
 
       const parsed = result.fields || {};
@@ -839,7 +822,10 @@ export const ClearanceRequestFlow = () => {
     }));
 
     try {
-      const result = await extractDocumentData(file, OCR_DOCUMENT_TYPE.MEC);
+      const result = await extractClearanceDocumentData(
+        file,
+        CLEARANCE_OCR_DOCUMENT_TYPE.MEC,
+      );
       if (!isCurrentOcrVersion("agentMec", runId)) return;
 
       const parsed = result.fields || {};
@@ -949,7 +935,7 @@ export const ClearanceRequestFlow = () => {
             clearanceReferenceNo: certNo,
             clearanceStatus: "CERTIFICATE_ISSUED",
             status: "CERTIFICATE_ISSUED",
-            currentStep: 5,
+            currentStep: 4,
           };
           persistRow(updated);
           return updated;
@@ -971,6 +957,79 @@ export const ClearanceRequestFlow = () => {
       setIsIssuingBulk(false);
     }, 1200);
   };
+
+  useEffect(() => {
+    if (!isAgent) return;
+
+    const rowsInOrder = [...certificationQueue].sort(
+      (a, b) => getQueueTimestamp(a) - getQueueTimestamp(b),
+    );
+    const rowsNeedingVoucher = rowsInOrder.filter((row) => !row.voucherId);
+    if (rowsNeedingVoucher.length === 0) return;
+
+    const availableVouchers = [...voucherInventory]
+      .filter(
+        (item) => item.inventoryStatus === VOUCHER_INVENTORY_STATUS.AVAILABLE,
+      )
+      .sort(
+        (a, b) =>
+          Date.parse(a.dateCreated || "") - Date.parse(b.dateCreated || ""),
+      );
+    if (availableVouchers.length === 0) return;
+
+    const pairCount = Math.min(
+      rowsNeedingVoucher.length,
+      availableVouchers.length,
+    );
+    const assignments = Array.from({ length: pairCount }, (_, index) => ({
+      requestId: rowsNeedingVoucher[index].requestId,
+      plateNumber: rowsNeedingVoucher[index].plateNumber || "",
+      voucherId: availableVouchers[index].voucherId,
+      voucherCode: availableVouchers[index].voucherCode,
+    }));
+    if (assignments.length === 0) return;
+
+    updateVoucherInventory((prev) =>
+      assignments.reduce(
+        (inventoryRows, assignment) =>
+          voucherInventoryService.assignVoucherToRequest(inventoryRows, {
+            voucherId: assignment.voucherId,
+            requestId: assignment.requestId,
+            plateNumber: assignment.plateNumber,
+            assignedBy: role,
+          }),
+        prev,
+      ),
+    );
+
+    const assignmentByRequest = assignments.reduce((acc, item) => {
+      acc[item.requestId] = item;
+      return acc;
+    }, {});
+
+    setQueueRows((prev) => {
+      const source = prev.length > 0 ? prev : fallbackRows;
+      let changed = false;
+      const next = source.map((row) => {
+        const assignment = assignmentByRequest[row.requestId];
+        if (!assignment || row.voucherId) return row;
+
+        changed = true;
+        const updated = {
+          ...row,
+          voucherId: assignment.voucherId,
+          voucherReferenceNo: assignment.voucherCode,
+          voucherStatus: "VOUCHER_ISSUED",
+          status: "VOUCHER_ASSIGNED",
+          currentStep: Math.max(row.currentStep || 1, 2),
+        };
+        persistRow(updated);
+        return updated;
+      });
+
+      return changed ? next : prev;
+    });
+  }, [certificationQueue, fallbackRows, isAgent, role, voucherInventory]);
 
   useEffect(() => {
     if (!isAgent) return;
@@ -1022,7 +1081,7 @@ export const ClearanceRequestFlow = () => {
   ]);
 
   useEffect(() => {
-    if (!isAgent || step !== 5 || isIssuingBulk) return;
+    if (!isAgent || step !== 4 || isIssuingBulk) return;
     const allValidated =
       certificationQueue.length > 0 &&
       certificationQueue.every(
@@ -1120,7 +1179,10 @@ export const ClearanceRequestFlow = () => {
     }));
 
     try {
-      const result = await extractDocumentData(file, OCR_DOCUMENT_TYPE.MVC);
+      const result = await extractClearanceDocumentData(
+        file,
+        CLEARANCE_OCR_DOCUMENT_TYPE.MVC,
+      );
       if (!isCurrentOcrVersion("mvc", runId)) return;
 
       const parsed = result.fields || {};
@@ -1187,7 +1249,10 @@ export const ClearanceRequestFlow = () => {
     }));
 
     try {
-      const result = await extractDocumentData(file, OCR_DOCUMENT_TYPE.MEC);
+      const result = await extractClearanceDocumentData(
+        file,
+        CLEARANCE_OCR_DOCUMENT_TYPE.MEC,
+      );
       if (!isCurrentOcrVersion("mec", runId)) return;
 
       const parsed = result.fields || {};
@@ -1249,14 +1314,13 @@ export const ClearanceRequestFlow = () => {
 
   const canNext = () => {
     if (isAgent) {
-      if (step === 1) return certificationQueue.length > 0;
-      if (step === 2) {
+      if (step === 1) {
         return (
           certificationQueue.length > 0 &&
           certificationQueue.every((row) => Boolean(row.voucherId))
         );
       }
-      if (step === 3) {
+      if (step === 2) {
         return (
           certificationQueue.length > 0 &&
           certificationQueue.every(
@@ -1264,7 +1328,7 @@ export const ClearanceRequestFlow = () => {
           )
         );
       }
-      if (step === 4) {
+      if (step === 3) {
         return (
           certificationQueue.length > 0 &&
           certificationQueue.every(
@@ -1297,7 +1361,6 @@ export const ClearanceRequestFlow = () => {
   };
 
   const nextStep = () => {
-    const maxStep = isAgent ? 5 : 6;
     if (step < maxStep && canNext()) setStep((prev) => prev + 1);
   };
 
@@ -1543,89 +1606,6 @@ export const ClearanceRequestFlow = () => {
 
           {isAgent && step === 2 && (
             <Card className="p-5">
-              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
-                <FileText size={18} className="text-[#0059b5]" />
-                <h3 className="text-base font-bold text-gray-900">
-                  Assign Voucher (Bulk)
-                </h3>
-              </div>
-
-              {certificationQueue.length === 0 ? (
-                <p className="text-sm text-gray-500">
-                  No active requests available in queue.
-                </p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-200 text-left">
-                        <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Request
-                        </th>
-                        <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Plate
-                        </th>
-                        <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Assigned Voucher
-                        </th>
-                        <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Action
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {certificationQueue.map((row) => {
-                        const options = assignableVouchersForRequest(
-                          row.requestId,
-                        );
-                        return (
-                          <tr
-                            key={row.requestId}
-                            className="border-b border-gray-100"
-                          >
-                            <td className="py-2 font-mono text-xs text-gray-700">
-                              {row.requestId}
-                            </td>
-                            <td className="py-2 text-gray-700">
-                              {row.plateNumber || "-"}
-                            </td>
-                            <td className="py-2 text-gray-700 font-mono text-xs">
-                              {row.voucherReferenceNo || "-"}
-                            </td>
-                            <td className="py-2">
-                              <select
-                                value={row.voucherId || ""}
-                                onChange={(e) =>
-                                  assignVoucherForRow(
-                                    row.requestId,
-                                    e.target.value,
-                                  )
-                                }
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
-                              >
-                                <option value="">Select voucher</option>
-                                {options.map((item) => (
-                                  <option
-                                    key={item.voucherId}
-                                    value={item.voucherId}
-                                  >
-                                    {item.voucherCode} - {item.inventoryStatus}
-                                  </option>
-                                ))}
-                              </select>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </Card>
-          )}
-
-          {isAgent && step === 3 && (
-            <Card className="p-5">
               <div className="flex items-center justify-between gap-3 mb-4 pb-2 border-b border-gray-200">
                 <div className="flex items-center gap-2">
                   <CheckCircle size={18} className="text-[#0059b5]" />
@@ -1724,7 +1704,7 @@ export const ClearanceRequestFlow = () => {
             </Card>
           )}
 
-          {isAgent && step === 4 && (
+          {isAgent && step === 3 && (
             <div className="space-y-5">
               <Card className="p-5">
                 <div className="flex items-center justify-between gap-3 mb-4 pb-2 border-b border-gray-200">
@@ -2012,7 +1992,7 @@ export const ClearanceRequestFlow = () => {
             </div>
           )}
 
-          {isAgent && step === 5 && (
+          {isAgent && step === 4 && (
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <FileText size={18} className="text-[#0059b5]" />
