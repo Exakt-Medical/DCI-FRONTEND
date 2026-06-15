@@ -36,10 +36,6 @@ import {
   OCR_STATUS,
 } from "../../hooks/useOcrForm";
 import { generateClearanceCertificatePDF } from "./utils/generateClearanceCertificatePDF";
-import { verificationService } from "../../services/verificationService";
-import { useAlert } from "../../hooks/useAlert";
-import paymentsService from "../../services/paymentsService";
-import merchantCallbackService from "../../services/merchantCallbackService";
 
 const emptyVehicle = {
   plateNumber: "",
@@ -47,6 +43,7 @@ const emptyVehicle = {
   classification: "",
   vehicleType: "",
   fuelType: "",
+  airconType: "",
   engineNumber: "",
   chassisNumber: "",
   make: "",
@@ -122,7 +119,6 @@ import { useAuth } from "../../context/AuthContext";
 import { useRequest } from "../../context/RequestContext";
 
 export const ClearanceRequestFlow = () => {
-  const { error: showError } = useAlert();
   const { role } = useAuth();
   const {
     requestRecords: availableVoucherRequests,
@@ -134,26 +130,11 @@ export const ClearanceRequestFlow = () => {
 
   const location = useLocation();
   const navigate = useNavigate();
-  const searchParams = useMemo(
-    () => new URLSearchParams(location.search),
-    [location.search],
-  );
-  const requestIdFromQuery = searchParams.get("requestId") || "";
-  const paymentTransactionId =
-    searchParams.get("transaction_id") ||
-    searchParams.get("transactionId") ||
-    "";
-  const selectedRequest =
-    location.state?.request ||
-    availableVoucherRequests.find(
-      (item) => item.requestId === requestIdFromQuery,
-    ) ||
-    null;
+  const selectedRequest = location.state?.request || null;
   const onCancel = () => navigate("/dci-access/requests");
   const isAgent = role === "agent_fixer";
   const flowSteps = isAgent ? AGENT_STEPS : CITIZEN_STEPS;
   const maxStep = flowSteps.length;
-  const handledPaymentTransactionRef = useRef("");
 
   const [requestId] = useState(
     () => selectedRequest?.requestId || makeRequestId(),
@@ -174,6 +155,8 @@ export const ClearanceRequestFlow = () => {
     selectedRequest?.orPreview || null,
   );
   const [orNumber, setOrNumber] = useState(selectedRequest?.orNumber || "");
+  const [orDate, setOrDate] = useState(selectedRequest?.orDate || "");
+  const [orAmount, setOrAmount] = useState(selectedRequest?.orAmount || "");
   const [orCr, setOrCr] = useState(() => selectedRequest?.orCr || emptyVehicle);
 
   const [crPreview, setCrPreview] = useState(
@@ -183,7 +166,6 @@ export const ClearanceRequestFlow = () => {
   const [crCr, setCrCr] = useState(() => selectedRequest?.crCr || emptyVehicle);
 
   const [processingPayment, setProcessingPayment] = useState(false);
-  const [isVerifyingDocuments, setIsVerifyingDocuments] = useState(false);
   const [paymentDone, setPaymentDone] = useState(
     Boolean(isAgent || selectedRequest?.paymentDone),
   );
@@ -329,6 +311,8 @@ export const ClearanceRequestFlow = () => {
   const clearOrCrForm = () => {
     setOrPreview(null);
     setOrNumber("");
+    setOrDate("");
+    setOrAmount("");
     setOrCr(emptyVehicle);
     setCrPreview(null);
     setCrNumber("");
@@ -405,6 +389,8 @@ export const ClearanceRequestFlow = () => {
         ? "CERTIFICATE_ISSUED"
         : selectedRequest?.clearanceStatus || "",
       orNumber,
+      orDate,
+      orAmount,
       crNumber,
       orCr,
       crCr,
@@ -433,6 +419,8 @@ export const ClearanceRequestFlow = () => {
     const runId = nextOcrVersion("or");
     const previousState = {
       orNumber,
+      orDate,
+      orAmount,
       orCr,
     };
     setOcrState("or", {
@@ -442,6 +430,8 @@ export const ClearanceRequestFlow = () => {
     });
 
     setOrNumber("Extracting...");
+    setOrDate("Extracting...");
+    setOrAmount("Extracting...");
     updateOrCr("plateNumber", "Extracting...");
 
     try {
@@ -454,6 +444,8 @@ export const ClearanceRequestFlow = () => {
       const parsed = result.fields || {};
       const nextVehicle = mergeVehicleFields(orCr, parsed.vehicle || {});
       setOrNumber(parsed.orNumber || previousState.orNumber || "");
+      setOrDate(parsed.orDate || previousState.orDate || "");
+      setOrAmount(parsed.orAmount || previousState.orAmount || "");
       setOrCr(nextVehicle);
       setOcrState("or", {
         status: OCR_STATUS.SUCCESS,
@@ -464,6 +456,8 @@ export const ClearanceRequestFlow = () => {
       if (!isCurrentOcrVersion("or", runId)) return;
 
       setOrNumber(previousState.orNumber || "");
+      setOrDate(previousState.orDate || "");
+      setOrAmount(previousState.orAmount || "");
       setOrCr(previousState.orCr || emptyVehicle);
       setOcrState("or", {
         status: OCR_STATUS.ERROR,
@@ -547,6 +541,8 @@ export const ClearanceRequestFlow = () => {
       clearanceStatus: "",
       plateNumber: orCr.plateNumber || crCr.plateNumber || "",
       orNumber,
+      orDate,
+      orAmount,
       crNumber,
       orCr,
       crCr,
@@ -1113,122 +1109,20 @@ export const ClearanceRequestFlow = () => {
     }
   }, [certificationQueue, isAgent, isIssuingBulk, step]);
 
-  const handleProceedToPayment = async () => {
-    if (isAgent || processingPayment) return;
-
-    const storedProfile = JSON.parse(
-      localStorage.getItem("userProfile") || "{}",
-    );
-    const storedFirstName =
-      localStorage.getItem("firstname") || storedProfile.firstName || "";
-    const storedLastName =
-      localStorage.getItem("lastname") || storedProfile.lastName || "";
-    const storedEmail =
-      localStorage.getItem("email") || storedProfile.email || "";
-    const storedMobile =
-      localStorage.getItem("mobile") || storedProfile.mobile || "";
-    const companyId = Number(
-      localStorage.getItem("companyId") || storedProfile.companyId || 0,
-    );
-    const companyCode =
-      localStorage.getItem("companyCode") || storedProfile.companyCode || "";
-    const ownerName = (orCr.ownerName || crCr.ownerName || "").trim();
-    const ownerNameParts = ownerName.split(/\s+/).filter(Boolean);
-    const fallbackFirstName = ownerNameParts[0] || "Citizen";
-    const fallbackLastName = ownerNameParts.slice(1).join(" ") || "User";
-    const billingLine =
-      orCr.ownerAddress || crCr.ownerAddress || storedProfile.address || "";
-
-    if (!companyId || !companyCode) {
-      console.error(
-        "[Clearance] Payment setup failed: missing company information",
-        {
-          requestId,
-          companyId,
-          companyCode,
-        },
-      );
-      await showError(
-        "Payment Setup Failed",
-        "Missing company information required for payment processing.",
-      );
-      return;
-    }
-
-    const callbackUrl = `${window.location.origin}/dci-access/new-clearance-request?requestId=${encodeURIComponent(requestId)}&step=3`;
-    const paymentRequest = {
-      customer: {
-        contact: {
-          email: storedEmail,
-          mobile: storedMobile,
-        },
-        first_name: storedFirstName || fallbackFirstName,
-        last_name: storedLastName || fallbackLastName,
-        billing_address: {
-          line1: billingLine,
-          line2: "",
-          zip: "",
-          city_municipality: "",
-          state_province_region: "",
-          country_code: "PH",
-        },
-      },
-      payment: {
-        description: "DCI Clearance Request Fee",
-        amount: "500.00",
-        currency: "PHP",
-        merchant_reference_id: requestId,
-      },
-      route: {
-        callback_url: callbackUrl,
-        notify_user: true,
-      },
-      company_id: companyId,
-      company_code: companyCode,
-      voucher_fee: 500,
-      voucher_count: 1,
-    };
-
-    console.log("[Clearance] TLPE payment request body:", {paymentRequest});
-
+  const handleProceedToPayment = () => {
+    if (isAgent) return;
     setProcessingPayment(true);
-    try {
-      const response = await paymentsService.createTlpePayment(paymentRequest);
-      const payload = response?.data || {};
-      const paymentLink = payload.link;
-
-      if (!paymentLink) {
-        throw new Error("Payment gateway link was not returned.");
-      }
-
-      saveCitizenRequest({
-        currentStep: 2,
-        status: "PAYMENT_PENDING",
-        paymentDone: false,
-        tlpeOrderId: payload.order_id || payload.orderId || null,
-        merchantReferenceId:
-          payload.merchant_reference_id || payload.merchantReferenceId || "",
-        paymentLink,
-      });
-
-      window.location.assign(paymentLink);
-    } catch (error) {
-      console.error("[Clearance] TLPE payment initialization failed", {
-        requestId,
-        paymentRequest,
-        error: {
-          message: error?.message,
-          response: error?.response?.data,
-        },
-      });
+    setTimeout(() => {
       setProcessingPayment(false);
-      await showError(
-        "Payment Initialization Failed",
-        error?.response?.data?.error ||
-          error?.message ||
-          "Unable to start TLPE payment.",
-      );
-    }
+      setPaymentDone(true);
+      setRequestStatus("PENDING");
+      setStep(3);
+      saveCitizenRequest({
+        currentStep: 3,
+        status: "PENDING",
+        paymentDone: true,
+      });
+    }, 1600);
   };
 
   useEffect(() => {
@@ -1439,205 +1333,6 @@ export const ClearanceRequestFlow = () => {
     doc.save(filename);
   };
 
-  const verifyCitizenDocuments = async () => {
-    const verificationPayload = {
-      mvFileNumber: (
-        crCr.mvFileNumber ||
-        orCr.mvFileNumber ||
-        selectedRequest?.mvFileNumber ||
-        ""
-      )
-        .trim()
-        .toUpperCase(),
-      plateNumber: (
-        crCr.plateNumber ||
-        orCr.plateNumber ||
-        selectedRequest?.plateNumber ||
-        ""
-      )
-        .trim()
-        .toUpperCase(),
-      engineNumber: (
-        crCr.engineNumber ||
-        orCr.engineNumber ||
-        selectedRequest?.engineNumber ||
-        ""
-      )
-        .trim()
-        .toUpperCase(),
-      chassisNumber: (
-        crCr.chassisNumber ||
-        orCr.chassisNumber ||
-        selectedRequest?.chassisNumber ||
-        ""
-      )
-        .trim()
-        .toUpperCase(),
-    };
-
-    setIsVerifyingDocuments(true);
-    try {
-      const response = await verificationService.verify(verificationPayload);
-      const payload = response?.data || {};
-
-      if (payload.verificationStatus !== "VERIFIED") {
-        throw new Error(
-          payload.failureReason ||
-            "Vehicle verification failed. Please review OR/CR fields.",
-        );
-      }
-
-      const verifiedOwnerName = [
-        payload.ownerFirstName,
-        payload.ownerMiddleName,
-        payload.ownerLastName,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .trim();
-
-      const verifiedVehicle = {
-        plateNumber: (
-          payload.plateNumber ||
-          verificationPayload.plateNumber ||
-          ""
-        )
-          .trim()
-          .toUpperCase(),
-        mvFileNumber: (
-          payload.mvFileNo ||
-          verificationPayload.mvFileNumber ||
-          ""
-        )
-          .trim()
-          .toUpperCase(),
-        engineNumber: (
-          payload.engineNumber ||
-          verificationPayload.engineNumber ||
-          ""
-        )
-          .trim()
-          .toUpperCase(),
-        chassisNumber: (
-          payload.chassisNumber ||
-          verificationPayload.chassisNumber ||
-          ""
-        )
-          .trim()
-          .toUpperCase(),
-        classification: (payload.classification || "").trim().toUpperCase(),
-        make: (payload.make || "").trim().toUpperCase(),
-        series: (payload.series || "").trim().toUpperCase(),
-        yearModel: (payload.yearModel || "").trim().toUpperCase(),
-        color: (payload.color || "").trim().toUpperCase(),
-        ownerName: (verifiedOwnerName || "").trim().toUpperCase(),
-        ownerAddress: (payload.ownerAddress || "").trim().toUpperCase(),
-      };
-
-      const nextOrCr = mergeVehicleFields(orCr, verifiedVehicle);
-      const nextCrCr = mergeVehicleFields(crCr, verifiedVehicle);
-
-      setOrCr(nextOrCr);
-      setCrCr(nextCrCr);
-      setRequestStatus("DOCUMENTS_VERIFIED");
-      setStep(2);
-
-      saveCitizenRequest({
-        currentStep: 2,
-        status: "DOCUMENTS_VERIFIED",
-        verificationId:
-          payload.verificationId || selectedRequest?.verificationId || "",
-        orCr: nextOrCr,
-        crCr: nextCrCr,
-      });
-    } catch (error) {
-      await showError(
-        "Vehicle Verification Failed",
-        error?.response?.data?.failureReason ||
-          error?.message ||
-          "Unable to verify vehicle with current OR/CR details.",
-      );
-    } finally {
-      setIsVerifyingDocuments(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isAgent || !paymentTransactionId) return;
-    if (handledPaymentTransactionRef.current === paymentTransactionId) return;
-
-    handledPaymentTransactionRef.current = paymentTransactionId;
-    let active = true;
-
-    const verifyPaymentRedirect = async () => {
-      setProcessingPayment(true);
-      try {
-        const result =
-          await merchantCallbackService.fetchSummary(paymentTransactionId);
-        const payload = result?.data || {};
-        const statusCode = String(payload.statusCode || "").toUpperCase();
-        const paymentFailed =
-          result?.success === false ||
-          (statusCode && statusCode.startsWith("ER"));
-
-        if (paymentFailed) {
-          throw new Error(
-            payload.voucherStatusLabel ||
-              payload.report?.result?.message ||
-              result?.message ||
-              "Payment was not completed.",
-          );
-        }
-
-        if (!active) return;
-
-        setPaymentDone(true);
-        setRequestStatus("PENDING");
-        setStep(3);
-        saveCitizenRequest({
-          currentStep: 3,
-          status: "PENDING",
-          paymentDone: true,
-          tlpeTransactionId: paymentTransactionId,
-          merchantReferenceId: payload.merchantReference || "",
-          paymentReference: payload.paymentReference || "",
-        });
-        navigate(
-          `/dci-access/new-clearance-request?requestId=${encodeURIComponent(requestId)}`,
-          { replace: true },
-        );
-      } catch (error) {
-        if (!active) return;
-
-        setRequestStatus("PAYMENT_FAILED");
-        saveCitizenRequest({
-          currentStep: 2,
-          status: "PAYMENT_FAILED",
-          paymentDone: false,
-          tlpeTransactionId: paymentTransactionId,
-        });
-        await showError(
-          "Payment Verification Failed",
-          error?.message || "Unable to confirm payment.",
-        );
-        navigate(
-          `/dci-access/new-clearance-request?requestId=${encodeURIComponent(requestId)}`,
-          { replace: true },
-        );
-      } finally {
-        if (active) {
-          setProcessingPayment(false);
-        }
-      }
-    };
-
-    verifyPaymentRedirect();
-
-    return () => {
-      active = false;
-    };
-  }, [isAgent, navigate, paymentTransactionId, requestId, showError]);
-
   const canNext = () => {
     if (isAgent) {
       if (step === 1) {
@@ -1666,7 +1361,6 @@ export const ClearanceRequestFlow = () => {
     }
 
     if (step === 1) {
-      if (isVerifyingDocuments) return false;
       const orOk =
         orCr.plateNumber &&
         orCr.ownerName &&
@@ -1687,15 +1381,8 @@ export const ClearanceRequestFlow = () => {
     return false;
   };
 
-  const nextStep = async () => {
-    if (step >= maxStep || !canNext()) return;
-
-    if (!isAgent && step === 1) {
-      await verifyCitizenDocuments();
-      return;
-    }
-
-    setStep((prev) => prev + 1);
+  const nextStep = () => {
+    if (step < maxStep && canNext()) setStep((prev) => prev + 1);
   };
 
   const canPrev = () => {
@@ -1730,6 +1417,8 @@ export const ClearanceRequestFlow = () => {
       orCr,
       crCr,
       orNumber,
+      orDate,
+      orAmount,
       crNumber,
       dateCreated,
       currentStep: 6,
@@ -1812,7 +1501,22 @@ export const ClearanceRequestFlow = () => {
                   numberValue={orNumber}
                   onNumberChange={(e) => setOrNumber(e.target.value)}
                   numberPlaceholder="Auto-extracted from OR"
-                  extraInputs={[]}
+                  extraInputs={[
+                    <Input
+                      key="or-date"
+                      label="OR Date"
+                      value={orDate}
+                      onChange={(e) => setOrDate(e.target.value)}
+                      placeholder="Auto-extracted from OR"
+                    />,
+                    <Input
+                      key="or-amount"
+                      label="Amount"
+                      value={orAmount}
+                      onChange={(e) => setOrAmount(e.target.value)}
+                      placeholder="Auto-extracted from OR"
+                    />,
+                  ]}
                   vehicleLabel="Vehicle Details (from OR)"
                   vehicleValues={orCr}
                   vehicleFieldSet="or"
@@ -2449,7 +2153,22 @@ export const ClearanceRequestFlow = () => {
                   numberValue={orNumber}
                   onNumberChange={(e) => setOrNumber(e.target.value)}
                   numberPlaceholder="Auto-extracted from OR"
-                  extraInputs={[]}
+                  extraInputs={[
+                    <Input
+                      key="citizen-or-date"
+                      label="OR Date"
+                      value={orDate}
+                      onChange={(e) => setOrDate(e.target.value)}
+                      placeholder="Auto-extracted from OR"
+                    />,
+                    <Input
+                      key="citizen-or-amount"
+                      label="Amount"
+                      value={orAmount}
+                      onChange={(e) => setOrAmount(e.target.value)}
+                      placeholder="Auto-extracted from OR"
+                    />,
+                  ]}
                   vehicleLabel="Vehicle Details (from OR)"
                   vehicleValues={orCr}
                   vehicleFieldSet="or"
@@ -2881,12 +2600,8 @@ export const ClearanceRequestFlow = () => {
               )}
             </div>
             {step < flowSteps.length ? (
-              <Button
-                onClick={nextStep}
-                disabled={!canNext() || isVerifyingDocuments}
-              >
-                {isVerifyingDocuments ? "Verifying..." : "Next"}{" "}
-                <ChevronRight size={16} />
+              <Button onClick={nextStep} disabled={!canNext()}>
+                Next <ChevronRight size={16} />
               </Button>
             ) : !isAgent && certificateNo ? (
               <Button onClick={finishCitizen}>
