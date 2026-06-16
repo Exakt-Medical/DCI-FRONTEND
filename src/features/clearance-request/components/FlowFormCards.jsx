@@ -9,7 +9,6 @@ const OR_FIELD_CONFIG = [
   { key: "classification", label: "Classification" },
   { key: "vehicleType", label: "Vehicle Type" },
   { key: "fuelType", label: "Fuel Type" },
-  { key: "airconType", label: "Aircon Type" },
   { key: "yearModel", label: "Year Model" },
   { key: "color", label: "Color" },
   { key: "ownerName", label: "Owner Name", required: true },
@@ -36,12 +35,13 @@ export const VehicleFields = ({ values, onChange, fieldSet = "cr" }) => (
         value={values[field.key] || ""}
         onChange={(e) => onChange(field.key, e.target.value)}
         placeholder="Auto-extracted"
-        required={Boolean(field.required)}
+        required={true}
       />
     ))}
     <div className="flex flex-col gap-1.5">
       <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
         Owner Address
+        <span className="text-red-500 ml-1">*</span>
       </label>
       <textarea
         value={values.ownerAddress}
@@ -91,6 +91,7 @@ export const VehicleDocumentUploadCard = ({
         value={numberValue}
         onChange={onNumberChange}
         placeholder={numberPlaceholder}
+        required={true}
       />
       {extraInputs}
       <div className="pt-2 border-t border-gray-200">
@@ -138,6 +139,7 @@ export const MvcMecUploadCard = ({
           value={field.value}
           onChange={field.onChange}
           placeholder={field.placeholder}
+          required={true}
         />
       ))}
     </div>

@@ -240,5 +240,13 @@ export function isLikelyPersonName(value: string): boolean {
   ];
   if (invalidKeywords.some(kw => v.includes(kw))) return false;
 
+  const exactInvalid = [
+    "POLICE OFFICER", "POLICE CORPORAL", "POLICE STAFF SERGEANT", 
+    "POLICE MASTER SERGEANT", "POLICE LIEUTENANT", "POLICE CAPTAIN", 
+    "POLICE MAJOR", "POLICE LIEUTENANT COLONEL", "POLICE COLONEL",
+    "PI EXAMINER", "EXAMINER", "STATION HEAD", "INVESTIGATOR"
+  ];
+  if (exactInvalid.includes(v)) return false;
+
   return true;
 }

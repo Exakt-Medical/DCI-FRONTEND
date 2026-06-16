@@ -43,7 +43,6 @@ const emptyVehicle = {
   classification: "",
   vehicleType: "",
   fuelType: "",
-  airconType: "",
   engineNumber: "",
   chassisNumber: "",
   make: "",
@@ -96,6 +95,51 @@ const mergeVehicleFields = (current = {}, next = {}) => {
     }
   });
   return merged;
+};
+
+const OR_EXPECTED_FIELDS = [
+  "plateNumber",
+  "mvFileNumber",
+  "classification",
+  "vehicleType",
+  "fuelType",
+  "yearModel",
+  "color",
+  "ownerName",
+  "ownerAddress",
+];
+
+const CR_EXPECTED_FIELDS = [
+  "plateNumber",
+  "mvFileNumber",
+  "engineNumber",
+  "chassisNumber",
+  "make",
+  "series",
+  "yearModel",
+  "color",
+  "ownerName",
+  "ownerAddress",
+];
+
+const isDocumentComplete = (doc, expectedKeys = null) => {
+  if (!doc) return false;
+  const keysToCheck = expectedKeys || Object.keys(doc);
+  return keysToCheck.every(
+    (key) => typeof doc[key] === "string" && doc[key].trim() !== "" && doc[key] !== "Extracting..."
+  );
+};
+
+const getMissingFieldsText = (doc, docName, expectedKeys = null) => {
+  if (!doc) return null;
+  const keysToCheck = expectedKeys || Object.keys(doc);
+  const missing = keysToCheck
+    .filter((key) => typeof doc[key] !== "string" || doc[key].trim() === "" || doc[key] === "Extracting...")
+    .map((key) => key.replace(/([A-Z])/g, " $1").replace(/^./, str => str.toUpperCase()));
+  
+  if (missing.length === 0) return null;
+  if (missing.length <= 4) return `Missing in ${docName}: ${missing.join(", ")}`;
+  return `Missing ${missing.length} required fields in ${docName}`;
 };
 
 const evaluateMvcMecValidation = (mvcPayload, mecPayload) => {
@@ -155,8 +199,6 @@ export const ClearanceRequestFlow = () => {
     selectedRequest?.orPreview || null,
   );
   const [orNumber, setOrNumber] = useState(selectedRequest?.orNumber || "");
-  const [orDate, setOrDate] = useState(selectedRequest?.orDate || "");
-  const [orAmount, setOrAmount] = useState(selectedRequest?.orAmount || "");
   const [orCr, setOrCr] = useState(() => selectedRequest?.orCr || emptyVehicle);
 
   const [crPreview, setCrPreview] = useState(
@@ -311,8 +353,6 @@ export const ClearanceRequestFlow = () => {
   const clearOrCrForm = () => {
     setOrPreview(null);
     setOrNumber("");
-    setOrDate("");
-    setOrAmount("");
     setOrCr(emptyVehicle);
     setCrPreview(null);
     setCrNumber("");
@@ -389,8 +429,6 @@ export const ClearanceRequestFlow = () => {
         ? "CERTIFICATE_ISSUED"
         : selectedRequest?.clearanceStatus || "",
       orNumber,
-      orDate,
-      orAmount,
       crNumber,
       orCr,
       crCr,
@@ -419,8 +457,6 @@ export const ClearanceRequestFlow = () => {
     const runId = nextOcrVersion("or");
     const previousState = {
       orNumber,
-      orDate,
-      orAmount,
       orCr,
     };
     setOcrState("or", {
@@ -430,8 +466,6 @@ export const ClearanceRequestFlow = () => {
     });
 
     setOrNumber("Extracting...");
-    setOrDate("Extracting...");
-    setOrAmount("Extracting...");
     updateOrCr("plateNumber", "Extracting...");
 
     try {
@@ -444,8 +478,6 @@ export const ClearanceRequestFlow = () => {
       const parsed = result.fields || {};
       const nextVehicle = mergeVehicleFields(orCr, parsed.vehicle || {});
       setOrNumber(parsed.orNumber || previousState.orNumber || "");
-      setOrDate(parsed.orDate || previousState.orDate || "");
-      setOrAmount(parsed.orAmount || previousState.orAmount || "");
       setOrCr(nextVehicle);
       setOcrState("or", {
         status: OCR_STATUS.SUCCESS,
@@ -456,8 +488,6 @@ export const ClearanceRequestFlow = () => {
       if (!isCurrentOcrVersion("or", runId)) return;
 
       setOrNumber(previousState.orNumber || "");
-      setOrDate(previousState.orDate || "");
-      setOrAmount(previousState.orAmount || "");
       setOrCr(previousState.orCr || emptyVehicle);
       setOcrState("or", {
         status: OCR_STATUS.ERROR,
@@ -520,15 +550,9 @@ export const ClearanceRequestFlow = () => {
   const handleAddToQueue = () => {
     if (!isAgent) return;
 
-    const orOk =
-      orCr.plateNumber &&
-      orCr.ownerName &&
-      orCr.plateNumber !== "Extracting...";
-    const crOk =
-      crCr.plateNumber &&
-      crCr.ownerName &&
-      crCr.plateNumber !== "Extracting...";
-    const match = orCr.plateNumber === crCr.plateNumber;
+    const orOk = isDocumentComplete(orCr, OR_EXPECTED_FIELDS) && orNumber && orNumber !== "Extracting...";
+    const crOk = isDocumentComplete(crCr, CR_EXPECTED_FIELDS) && crNumber && crNumber !== "Extracting...";
+    const match = orCr.plateNumber && orCr.plateNumber === crCr.plateNumber;
     if (!(orOk && crOk && match)) return;
 
     const row = {
@@ -541,8 +565,6 @@ export const ClearanceRequestFlow = () => {
       clearanceStatus: "",
       plateNumber: orCr.plateNumber || crCr.plateNumber || "",
       orNumber,
-      orDate,
-      orAmount,
       crNumber,
       orCr,
       crCr,
@@ -871,14 +893,7 @@ export const ClearanceRequestFlow = () => {
 
   const handleAddAgentMvcMecToQueue = () => {
     if (!agentMvcMecRequestId) return;
-    if (!agentMvcData.mvcNo || !agentMecData.engineNoStencilled || !agentMecData.chassisNoStencilled) return;
-    if (
-      agentMvcData.mvcNo === "Extracting..." ||
-      agentMecData.engineNoStencilled === "Extracting..." ||
-      agentMecData.chassisNoStencilled === "Extracting..."
-    ) {
-      return;
-    }
+    if (!isDocumentComplete(agentMvcData) || !isDocumentComplete(agentMecData)) return;
 
     uploadMvcMecForRow(agentMvcMecRequestId, {
       mvcData: agentMvcData,
@@ -893,7 +908,7 @@ export const ClearanceRequestFlow = () => {
   };
 
   const validateCitizenMvcMec = () => {
-    if (!mvcData.mvcNo || !mecData.engineNoStencilled || !mecData.chassisNoStencilled) return;
+    if (!isDocumentComplete(mvcData) || !isDocumentComplete(mecData)) return;
 
     setCitizenValidationState(VALIDATION_STATE.VALIDATING);
     setCitizenValidationMessage("DCI validation in progress...");
@@ -1361,14 +1376,8 @@ export const ClearanceRequestFlow = () => {
     }
 
     if (step === 1) {
-      const orOk =
-        orCr.plateNumber &&
-        orCr.ownerName &&
-        orCr.plateNumber !== "Extracting...";
-      const crOk =
-        crCr.plateNumber &&
-        crCr.ownerName &&
-        crCr.plateNumber !== "Extracting...";
+      const orOk = isDocumentComplete(orCr, OR_EXPECTED_FIELDS) && orNumber && orNumber !== "Extracting...";
+      const crOk = isDocumentComplete(crCr, CR_EXPECTED_FIELDS) && crNumber && crNumber !== "Extracting...";
       return Boolean(orOk && crOk && !plateMismatch);
     }
     if (step === 2) return paymentDone;
@@ -1416,8 +1425,6 @@ export const ClearanceRequestFlow = () => {
       plateNumber: orCr.plateNumber || crCr.plateNumber || "",
       orCr,
       crCr,
-      orNumber,
-      orDate,
       orAmount,
       crNumber,
       dateCreated,
@@ -1501,22 +1508,7 @@ export const ClearanceRequestFlow = () => {
                   numberValue={orNumber}
                   onNumberChange={(e) => setOrNumber(e.target.value)}
                   numberPlaceholder="Auto-extracted from OR"
-                  extraInputs={[
-                    <Input
-                      key="or-date"
-                      label="OR Date"
-                      value={orDate}
-                      onChange={(e) => setOrDate(e.target.value)}
-                      placeholder="Auto-extracted from OR"
-                    />,
-                    <Input
-                      key="or-amount"
-                      label="Amount"
-                      value={orAmount}
-                      onChange={(e) => setOrAmount(e.target.value)}
-                      placeholder="Auto-extracted from OR"
-                    />,
-                  ]}
+                  extraInputs={[]}
                   vehicleLabel="Vehicle Details (from OR)"
                   vehicleValues={orCr}
                   vehicleFieldSet="or"
@@ -1561,11 +1553,19 @@ export const ClearanceRequestFlow = () => {
                     <p className="text-xs text-gray-600">
                       Upload OR/CR then add each transaction to queue.
                     </p>
+                    {(!isDocumentComplete(orCr, OR_EXPECTED_FIELDS) || !orNumber || !isDocumentComplete(crCr, CR_EXPECTED_FIELDS) || !crNumber || plateMismatch) && (
+                      <div className="mt-2 text-[11px] text-red-600 space-y-0.5 font-medium">
+                        {(!orNumber || orNumber === "Extracting...") && <p>• Missing OR Number</p>}
+                        {getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS)}</p>}
+                        {(!crNumber || crNumber === "Extracting...") && <p>• Missing CR Number</p>}
+                        {getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS)}</p>}
+                      </div>
+                    )}
                   </div>
                   <Button
                     onClick={handleAddToQueue}
                     disabled={
-                      !orCr.plateNumber || !crCr.plateNumber || plateMismatch
+                      !isDocumentComplete(orCr, OR_EXPECTED_FIELDS) || !orNumber || !isDocumentComplete(crCr, CR_EXPECTED_FIELDS) || !crNumber || plateMismatch
                     }
                   >
                     Add To Queue
@@ -1941,8 +1941,17 @@ export const ClearanceRequestFlow = () => {
                   />
                 </div>
 
-                <div className="mt-4 flex justify-end">
-                  <div className="flex gap-2">
+                <div className="mt-4">
+                  {(!agentMvcMecRequestId || !isDocumentComplete(agentMvcData) || !isDocumentComplete(agentMecData)) && (
+                    <div className="mb-3 flex justify-end">
+                      <div className="text-[11px] text-red-600 space-y-0.5 font-medium text-right">
+                        {!agentMvcMecRequestId && <p>• Please select a request from the dropdown</p>}
+                        {getMissingFieldsText(agentMvcData, "MVCC")}
+                        {getMissingFieldsText(agentMecData, "MEC")}
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex justify-end gap-2">
                     <Button
                       variant="secondary"
                       onClick={validateSelectedMvcMecRows}
@@ -1954,12 +1963,8 @@ export const ClearanceRequestFlow = () => {
                       onClick={handleAddAgentMvcMecToQueue}
                       disabled={
                         !agentMvcMecRequestId ||
-                        !agentMvcData.mvcNo ||
-                        !agentMecData.engineNoStencilled ||
-                        !agentMecData.chassisNoStencilled ||
-                        agentMvcData.mvcNo === "Extracting..." ||
-                        agentMecData.engineNoStencilled === "Extracting..." ||
-                        agentMecData.chassisNoStencilled === "Extracting..."
+                        !isDocumentComplete(agentMvcData) ||
+                        !isDocumentComplete(agentMecData)
                       }
                     >
                       Add To MVC/MEC Queue
@@ -2153,22 +2158,7 @@ export const ClearanceRequestFlow = () => {
                   numberValue={orNumber}
                   onNumberChange={(e) => setOrNumber(e.target.value)}
                   numberPlaceholder="Auto-extracted from OR"
-                  extraInputs={[
-                    <Input
-                      key="citizen-or-date"
-                      label="OR Date"
-                      value={orDate}
-                      onChange={(e) => setOrDate(e.target.value)}
-                      placeholder="Auto-extracted from OR"
-                    />,
-                    <Input
-                      key="citizen-or-amount"
-                      label="Amount"
-                      value={orAmount}
-                      onChange={(e) => setOrAmount(e.target.value)}
-                      placeholder="Auto-extracted from OR"
-                    />,
-                  ]}
+                  extraInputs={[]}
                   vehicleLabel="Vehicle Details (from OR)"
                   vehicleValues={orCr}
                   vehicleFieldSet="or"
@@ -2499,13 +2489,18 @@ export const ClearanceRequestFlow = () => {
                     <p className="text-xs text-gray-600">
                       DCI portal validates MVCC/MEC before certificate issuance.
                     </p>
+                    {(!isDocumentComplete(mvcData) || !isDocumentComplete(mecData)) && (
+                      <div className="mt-2 text-[11px] text-red-600 space-y-0.5 font-medium">
+                        {getMissingFieldsText(mvcData, "MVCC")}
+                        {getMissingFieldsText(mecData, "MEC")}
+                      </div>
+                    )}
                   </div>
                   <Button
                     onClick={validateCitizenMvcMec}
                     disabled={
-                      !mvcData.mvcNo ||
-                      !mecData.engineNoStencilled ||
-                      !mecData.chassisNoStencilled ||
+                      !isDocumentComplete(mvcData) ||
+                      !isDocumentComplete(mecData) ||
                       citizenValidationState === VALIDATION_STATE.VALIDATING
                     }
                   >
@@ -2600,9 +2595,19 @@ export const ClearanceRequestFlow = () => {
               )}
             </div>
             {step < flowSteps.length ? (
-              <Button onClick={nextStep} disabled={!canNext()}>
-                Next <ChevronRight size={16} />
-              </Button>
+              <div className="flex items-center gap-3">
+                {!canNext() && step === 1 && !isAgent && (
+                  <div className="text-[11px] text-red-600 space-y-0.5 font-medium text-right mr-2">
+                    {(!orNumber || orNumber === "Extracting...") && <p>• Missing OR Number</p>}
+                    {getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS)}</p>}
+                    {(!crNumber || crNumber === "Extracting...") && <p>• Missing CR Number</p>}
+                    {getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS)}</p>}
+                  </div>
+                )}
+                <Button onClick={nextStep} disabled={!canNext()}>
+                  Next <ChevronRight size={16} />
+                </Button>
+              </div>
             ) : !isAgent && certificateNo ? (
               <Button onClick={finishCitizen}>
                 <CheckCircle size={16} /> Complete
