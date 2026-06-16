@@ -168,6 +168,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useRequest } from "../../context/RequestContext";
 
 export const ClearanceRequestFlow = () => {
+  const { error: showError } = useAlert();
   const { role } = useAuth();
   const {
     requestRecords: availableVoucherRequests,
@@ -198,6 +199,7 @@ export const ClearanceRequestFlow = () => {
   const isAgent = role === "agent_fixer";
   const flowSteps = isAgent ? AGENT_STEPS : CITIZEN_STEPS;
   const maxStep = flowSteps.length;
+  const handledPaymentTransactionRef = useRef("");
 
   const [id, setId] = useState(
     () => selectedRequest?.id || idFromQuery || "",
@@ -237,6 +239,7 @@ export const ClearanceRequestFlow = () => {
   const [crCr, setCrCr] = useState(() => selectedRequest?.crCr || emptyVehicle);
 
   const [processingPayment, setProcessingPayment] = useState(false);
+  const [isVerifyingDocuments, setIsVerifyingDocuments] = useState(false);
   const [paymentDone, setPaymentDone] = useState(
     Boolean(isAgent || selectedRequest?.paymentDone),
   );
@@ -1772,8 +1775,15 @@ export const ClearanceRequestFlow = () => {
     return false;
   };
 
-  const nextStep = () => {
-    if (step < maxStep && canNext()) setStep((prev) => prev + 1);
+  const nextStep = async () => {
+    if (step >= maxStep || !canNext()) return;
+
+    if (!isAgent && step === 1) {
+      await verifyCitizenDocuments();
+      return;
+    }
+
+    setStep((prev) => prev + 1);
   };
 
   const canPrev = () => {
@@ -2988,8 +2998,8 @@ export const ClearanceRequestFlow = () => {
                     {getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS)}</p>}
                   </div>
                 )}
-                <Button onClick={nextStep} disabled={!canNext()}>
-                  Next <ChevronRight size={16} />
+                <Button onClick={nextStep} disabled={!canNext() || isVerifyingDocuments}>
+                  {isVerifyingDocuments ? "Verifying..." : "Next"} <ChevronRight size={16} />
                 </Button>
               </div>
             ) : !isAgent && certificateNo ? (
