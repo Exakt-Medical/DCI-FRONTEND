@@ -40,6 +40,7 @@ import { verificationService } from "../../services/verificationService";
 import { useAlert } from "../../hooks/useAlert";
 import paymentsService from "../../services/paymentsService";
 import merchantCallbackService from "../../services/merchantCallbackService";
+import { transferVoucherService } from "../../services/transferVoucherService";
 
 const emptyVehicle = {
   plateNumber: "",
@@ -73,7 +74,7 @@ const emptyMec = {
   mecResult: "",
 };
 
-const makeRequestId = () =>
+const makeId = () =>
   `REQ-${Date.now()}-${String(Math.random()).slice(2, 6)}`;
 const makeCertificateNo = (index = 0) =>
   `DCI-CERT-${String(Date.now() + index).slice(-8)}`;
@@ -134,7 +135,7 @@ export const ClearanceRequestFlow = () => {
     () => new URLSearchParams(location.search),
     [location.search],
   );
-  const requestIdFromQuery = searchParams.get("requestId") || "";
+  const idFromQuery = searchParams.get("id") || "";
   const paymentTransactionId =
     searchParams.get("transaction_id") ||
     searchParams.get("transactionId") ||
@@ -142,7 +143,7 @@ export const ClearanceRequestFlow = () => {
   const selectedRequest =
     location.state?.request ||
     availableVoucherRequests.find(
-      (item) => item.requestId === requestIdFromQuery,
+      (item) => item.id === idFromQuery,
     ) ||
     null;
   const onCancel = () => navigate("/dci-access/requests");
@@ -151,9 +152,19 @@ export const ClearanceRequestFlow = () => {
   const maxStep = flowSteps.length;
   const handledPaymentTransactionRef = useRef("");
 
-  const [requestId] = useState(
-    () => selectedRequest?.requestId || makeRequestId(),
+  const [id, setId] = useState(
+    () => selectedRequest?.id || idFromQuery || "",
   );
+
+  useEffect(() => {
+    if (id) {
+      const params = new URLSearchParams(location.search);
+      if (params.get("id") !== String(id)) {
+        params.set("id", id);
+        navigate({ search: params.toString() }, { replace: true });
+      }
+    }
+  }, [id, location.search, navigate]);
   const [step, setStep] = useState(() => {
     const storedStep = selectedRequest?.currentStep || 1;
     return Math.min(storedStep, maxStep);
@@ -185,6 +196,7 @@ export const ClearanceRequestFlow = () => {
   );
 
   const [issuingVoucher, setIssuingVoucher] = useState(false);
+  const [fetchVoucherFailed, setFetchVoucherFailed] = useState(false);
   const [voucherCode, setVoucherCode] = useState(
     selectedRequest?.voucherCode || selectedRequest?.voucherReferenceNo || "",
   );
@@ -226,14 +238,14 @@ export const ClearanceRequestFlow = () => {
   const [agentMecPreview, setAgentMecPreview] = useState(null);
   const [agentMecFileName, setAgentMecFileName] = useState("");
   const [agentMecData, setAgentMecData] = useState(emptyMec);
-  const [agentMvcMecRequestId, setAgentMvcMecRequestId] = useState("");
+  const [agentMvcMecId, setAgentMvcMecId] = useState("");
 
   const [isIssuingBulk, setIsIssuingBulk] = useState(false);
   const [isIssuingCertificate, setIsIssuingCertificate] = useState(false);
   const [certificateNo, setCertificateNo] = useState(
     selectedRequest?.certificateNo || "",
   );
-  const [selectedMvcMecRequestIds, setSelectedMvcMecRequestIds] = useState([]);
+  const [selectedMvcMecIds, setSelectedMvcMecIds] = useState([]);
   const [citizenValidationState, setCitizenValidationState] = useState(
     selectedRequest?.mvcMecValidationState || VALIDATION_STATE.IDLE,
   );
@@ -253,7 +265,7 @@ export const ClearanceRequestFlow = () => {
   const [queueRows, setQueueRows] = useState(() => {
     if (!isAgent) return [];
 
-    if (selectedRequest?.requestId) {
+    if (selectedRequest?.id) {
       return [
         {
           ...selectedRequest,
@@ -277,7 +289,7 @@ export const ClearanceRequestFlow = () => {
   const updateCrCr = (field, value) =>
     setCrCr((prev) => ({ ...prev, [field]: value }));
 
-  const isResume = Boolean(selectedRequest?.requestId);
+  const isResume = Boolean(selectedRequest?.id);
 
   const fallbackRows = useMemo(() => {
     if (!isAgent || !isResume) return [];
@@ -313,7 +325,7 @@ export const ClearanceRequestFlow = () => {
   );
 
   const getQueueTimestamp = (row) => {
-    const requestTs = Number(String(row?.requestId || "").split("-")[1]);
+    const requestTs = Number(String(row?.id || "").split("-")[1]);
     if (Number.isFinite(requestTs)) return requestTs;
 
     const createdTs = Date.parse(row?.dateCreated || "");
@@ -355,27 +367,29 @@ export const ClearanceRequestFlow = () => {
     }));
   };
 
-  const persistRow = (row) => {
-    if (!row?.requestId) return;
-    onSaveRequest?.({
-      ...row,
-      requestId: row.requestId,
-      plateNumber: row.plateNumber || row.orCr?.plateNumber || "",
-      voucherReferenceNo: row.voucherReferenceNo || "",
-      voucherStatus: row.voucherId ? "VOUCHER_ISSUED" : "PENDING_ASSIGNMENT",
-      hpgVerified: row.hpgStatus === HPG_STATUS.APPROVED,
-      mvcData: row.mvcData || {},
-      mecData: row.mecData || {},
-      currentStep: row.currentStep || step,
-      status: row.status || "OR_CR_UPLOADED",
-      clearanceStatus: row.clearanceStatus || "",
-      certificateNo: row.certificateNo || "",
-    });
+  const persistRow = async (row) => {
+    if (onSaveRequest) {
+      return await onSaveRequest({
+        ...row,
+        id: row.id,
+        plateNumber: row.plateNumber || row.orCr?.plateNumber || "",
+        voucherReferenceNo: row.voucherReferenceNo || "",
+        voucherStatus: row.voucherId ? "VOUCHER_ISSUED" : "PENDING_ASSIGNMENT",
+        hpgVerified: row.hpgStatus === HPG_STATUS.APPROVED,
+        mvcData: row.mvcData || {},
+        mecData: row.mecData || {},
+        currentStep: row.currentStep || step,
+        status: row.status || "OR_CR_UPLOADED",
+        clearanceStatus: row.clearanceStatus || "",
+        certificateNo: row.certificateNo || "",
+      });
+    }
+    return row.id;
   };
 
-  const saveCitizenRequest = (overrides = {}) => {
+  const saveCitizenRequest = async (overrides = {}) => {
     const record = {
-      requestId,
+      id,
       dateCreated,
       currentStep: step,
       status: requestStatus,
@@ -415,7 +429,13 @@ export const ClearanceRequestFlow = () => {
       ...overrides,
     };
 
-    onSaveRequest?.(record);
+    if (onSaveRequest) {
+      const savedId = await onSaveRequest(record);
+      if (savedId && !id) {
+        setId(savedId);
+        record.id = savedId;
+      }
+    }
     return record;
   };
 
@@ -519,7 +539,7 @@ export const ClearanceRequestFlow = () => {
     }
   };
 
-  const handleAddToQueue = () => {
+  const handleAddToQueue = async () => {
     if (!isAgent) return;
 
     const orOk =
@@ -534,7 +554,6 @@ export const ClearanceRequestFlow = () => {
     if (!(orOk && crOk && match)) return;
 
     const row = {
-      requestId: makeRequestId(),
       role,
       dateCreated: new Date().toISOString().split("T")[0],
       currentStep: 1,
@@ -552,8 +571,9 @@ export const ClearanceRequestFlow = () => {
       mvcMecUploaded: false,
     };
 
+    const newId = await persistRow(row);
+    row.id = newId;
     setQueueRows((prev) => [row, ...prev]);
-    persistRow(row);
     clearOrCrForm();
   };
 
@@ -564,11 +584,11 @@ export const ClearanceRequestFlow = () => {
     );
   };
 
-  const setHpgForRow = (requestIdForRow, nextStatus) => {
+  const setHpgForRow = (idForRow, nextStatus) => {
     setQueueRows((prev) => {
       const source = prev.length > 0 ? prev : fallbackRows;
       return source.map((row) => {
-        if (row.requestId !== requestIdForRow) return row;
+        if (row.id !== idForRow) return row;
         const statusMap = {
           [HPG_STATUS.PENDING]: "PENDING_HPG",
           [HPG_STATUS.INSPECTION]: "UNDER_INSPECTION",
@@ -590,16 +610,16 @@ export const ClearanceRequestFlow = () => {
 
   const setHpgForAll = (nextStatus) => {
     certificationQueue.forEach((row) =>
-      setHpgForRow(row.requestId, nextStatus),
+      setHpgForRow(row.id, nextStatus),
     );
   };
 
-  const uploadMvcMecForRow = (requestIdForRow, uploadPayload = {}) => {
+  const uploadMvcMecForRow = (idForRow, uploadPayload = {}) => {
     const now = new Date().toISOString().split("T")[0];
     setQueueRows((prev) => {
       const source = prev.length > 0 ? prev : fallbackRows;
       return source.map((row) => {
-        if (row.requestId !== requestIdForRow) return row;
+        if (row.id !== idForRow) return row;
         const nextMvcData = uploadPayload.mvcData?.mvcNo
           ? uploadPayload.mvcData
           : {
@@ -639,14 +659,14 @@ export const ClearanceRequestFlow = () => {
   };
 
   const uploadMvcMecForAll = () => {
-    certificationQueue.forEach((row) => uploadMvcMecForRow(row.requestId));
+    certificationQueue.forEach((row) => uploadMvcMecForRow(row.id));
   };
 
-  const validateMvcMecForRow = (requestIdForRow) => {
+  const validateMvcMecForRow = (idForRow) => {
     setQueueRows((prev) => {
       const source = prev.length > 0 ? prev : fallbackRows;
       return source.map((row) => {
-        if (row.requestId !== requestIdForRow) return row;
+        if (row.id !== idForRow) return row;
         const validating = {
           ...row,
           mvcMecValidationState: VALIDATION_STATE.VALIDATING,
@@ -662,7 +682,7 @@ export const ClearanceRequestFlow = () => {
       setQueueRows((prev) => {
         const source = prev.length > 0 ? prev : fallbackRows;
         return source.map((row) => {
-          if (row.requestId !== requestIdForRow) return row;
+          if (row.id !== idForRow) return row;
           const validation = evaluateMvcMecValidation(row.mvcData, row.mecData);
           const validated = {
             ...row,
@@ -683,26 +703,26 @@ export const ClearanceRequestFlow = () => {
   };
 
   const validateSelectedMvcMecRows = () => {
-    selectedMvcMecRequestIds.forEach((requestIdForRow) => {
-      validateMvcMecForRow(requestIdForRow);
+    selectedMvcMecIds.forEach((idForRow) => {
+      validateMvcMecForRow(idForRow);
     });
-    setSelectedMvcMecRequestIds([]);
+    setSelectedMvcMecIds([]);
   };
 
-  const toggleSelectedMvcMecRow = (requestIdForRow) => {
-    setSelectedMvcMecRequestIds((prev) =>
-      prev.includes(requestIdForRow)
-        ? prev.filter((id) => id !== requestIdForRow)
-        : [...prev, requestIdForRow],
+  const toggleSelectedMvcMecRow = (idForRow) => {
+    setSelectedMvcMecIds((prev) =>
+      prev.includes(idForRow)
+        ? prev.filter((id) => id !== idForRow)
+        : [...prev, idForRow],
     );
   };
 
   const toggleSelectAllMvcMecRows = () => {
     const selectableIds = certificationQueue
       .filter((row) => row.mvcMecUploaded)
-      .map((row) => row.requestId);
+      .map((row) => row.id);
 
-    setSelectedMvcMecRequestIds((prev) =>
+    setSelectedMvcMecIds((prev) =>
       prev.length === selectableIds.length && selectableIds.length > 0
         ? []
         : selectableIds,
@@ -710,19 +730,19 @@ export const ClearanceRequestFlow = () => {
   };
 
   const selectedMvcMecRows = certificationQueue.filter((row) =>
-    selectedMvcMecRequestIds.includes(row.requestId),
+    selectedMvcMecIds.includes(row.id),
   );
   const allMvcMecSelectableSelected =
     certificationQueue.some((row) => row.mvcMecUploaded) &&
     certificationQueue
       .filter((row) => row.mvcMecUploaded)
-      .every((row) => selectedMvcMecRequestIds.includes(row.requestId));
+      .every((row) => selectedMvcMecIds.includes(row.id));
   const hasSelectedMvcMecRows = selectedMvcMecRows.length > 0;
 
   useEffect(() => {
-    const validIds = new Set(certificationQueue.map((row) => row.requestId));
-    setSelectedMvcMecRequestIds((prev) =>
-      prev.filter((requestIdForRow) => validIds.has(requestIdForRow)),
+    const validIds = new Set(certificationQueue.map((row) => row.id));
+    setSelectedMvcMecIds((prev) =>
+      prev.filter((idForRow) => validIds.has(idForRow)),
     );
   }, [certificationQueue]);
 
@@ -860,7 +880,7 @@ export const ClearanceRequestFlow = () => {
   };
 
   const handleAddAgentMvcMecToQueue = () => {
-    if (!agentMvcMecRequestId) return;
+    if (!agentMvcMecId) return;
     if (!agentMvcData.mvcNo || !agentMecData.mecNo) return;
     if (
       agentMvcData.mvcNo === "Extracting..." ||
@@ -869,7 +889,7 @@ export const ClearanceRequestFlow = () => {
       return;
     }
 
-    uploadMvcMecForRow(agentMvcMecRequestId, {
+    uploadMvcMecForRow(agentMvcMecId, {
       mvcData: agentMvcData,
       mecData: agentMecData,
       mvcPreview: agentMvcPreview,
@@ -950,7 +970,7 @@ export const ClearanceRequestFlow = () => {
             if (!row.voucherId) return acc;
             return voucherInventoryService.markVoucherUsed(acc, {
               voucherId: row.voucherId,
-              requestId: row.requestId,
+              id: row.id,
             });
           }, inventoryRows);
         });
@@ -986,7 +1006,7 @@ export const ClearanceRequestFlow = () => {
       availableVouchers.length,
     );
     const assignments = Array.from({ length: pairCount }, (_, index) => ({
-      requestId: rowsNeedingVoucher[index].requestId,
+      id: rowsNeedingVoucher[index].id,
       plateNumber: rowsNeedingVoucher[index].plateNumber || "",
       voucherId: availableVouchers[index].voucherId,
       voucherCode: availableVouchers[index].voucherCode,
@@ -998,7 +1018,7 @@ export const ClearanceRequestFlow = () => {
         (inventoryRows, assignment) =>
           voucherInventoryService.assignVoucherToRequest(inventoryRows, {
             voucherId: assignment.voucherId,
-            requestId: assignment.requestId,
+            id: assignment.id,
             plateNumber: assignment.plateNumber,
             assignedBy: role,
           }),
@@ -1007,7 +1027,7 @@ export const ClearanceRequestFlow = () => {
     );
 
     const assignmentByRequest = assignments.reduce((acc, item) => {
-      acc[item.requestId] = item;
+      acc[item.id] = item;
       return acc;
     }, {});
 
@@ -1015,7 +1035,7 @@ export const ClearanceRequestFlow = () => {
       const source = prev.length > 0 ? prev : fallbackRows;
       let changed = false;
       const next = source.map((row) => {
-        const assignment = assignmentByRequest[row.requestId];
+        const assignment = assignmentByRequest[row.id];
         if (!assignment || row.voucherId) return row;
 
         changed = true;
@@ -1038,13 +1058,13 @@ export const ClearanceRequestFlow = () => {
   useEffect(() => {
     if (!isAgent) return;
     if (
-      agentMvcMecRequestId &&
-      selectableMvcMecRows.some((row) => row.requestId === agentMvcMecRequestId)
+      agentMvcMecId &&
+      selectableMvcMecRows.some((row) => row.id === agentMvcMecId)
     ) {
       return;
     }
-    setAgentMvcMecRequestId(selectableMvcMecRows[0]?.requestId || "");
-  }, [agentMvcMecRequestId, isAgent, selectableMvcMecRows]);
+    setAgentMvcMecId(selectableMvcMecRows[0]?.id || "");
+  }, [agentMvcMecId, isAgent, selectableMvcMecRows]);
 
   useEffect(() => {
     if (
@@ -1128,7 +1148,7 @@ export const ClearanceRequestFlow = () => {
       console.error(
         "[Clearance] Payment setup failed: missing company information",
         {
-          requestId,
+          id,
           companyId,
           companyCode,
         },
@@ -1140,7 +1160,7 @@ export const ClearanceRequestFlow = () => {
       return;
     }
 
-    const callbackUrl = `${window.location.origin}/dci-access/new-clearance-request?requestId=${encodeURIComponent(requestId)}&step=3`;
+    const callbackUrl = `${window.location.origin}/dci-access/new-clearance-request?id=${encodeURIComponent(id)}&step=3`;
     const paymentRequest = {
       customer: {
         contact: {
@@ -1160,9 +1180,9 @@ export const ClearanceRequestFlow = () => {
       },
       payment: {
         description: "DCI Clearance Request Fee",
-        amount: "500.00",
+        amount: "60.00",
         currency: "PHP",
-        merchant_reference_id: requestId,
+        merchant_reference_id: id,
       },
       route: {
         callback_url: callbackUrl,
@@ -1170,7 +1190,7 @@ export const ClearanceRequestFlow = () => {
       },
       company_id: companyId,
       company_code: companyCode,
-      voucher_fee: 500,
+      voucher_fee: 60,
       voucher_count: 1,
     };
 
@@ -1183,7 +1203,7 @@ export const ClearanceRequestFlow = () => {
       const paymentLink = payload.link;
 
       if (!paymentLink) {
-        throw new Error("Payment gateway link was not returned.");
+        throw new Error("Payment gateway link was not returned."); 
       }
 
       saveCitizenRequest({
@@ -1199,7 +1219,7 @@ export const ClearanceRequestFlow = () => {
       window.location.assign(paymentLink);
     } catch (error) {
       console.error("[Clearance] TLPE payment initialization failed", {
-        requestId,
+        id,
         paymentRequest,
         error: {
           message: error?.message,
@@ -1219,24 +1239,59 @@ export const ClearanceRequestFlow = () => {
   useEffect(() => {
     if (isAgent) return;
 
-    if (step === 3 && paymentDone && !voucherAssigned && !issuingVoucher) {
+    if (step === 3 && paymentDone && !voucherAssigned && !issuingVoucher && !fetchVoucherFailed) {
       setIssuingVoucher(true);
-      setTimeout(() => {
-        const code = voucherCode || `VCH-${String(Date.now()).slice(-8)}`;
-        setVoucherCode(code);
-        setVoucherAssigned(true);
-        setIssuingVoucher(false);
-        setRequestStatus("VOUCHER_ISSUED");
-        saveCitizenRequest({
-          currentStep: 4,
-          status: "VOUCHER_ISSUED",
-          voucherCode: code,
-          voucherReferenceNo: code,
-          voucherAssigned: true,
-          voucherStatus: "VOUCHER_ISSUED",
-        });
-        setStep(4);
-      }, 900);
+
+      const fetchVoucher = async () => {
+        try {
+          const userId = localStorage.getItem("userId");
+          if (!userId) {
+            throw new Error("User ID not found");
+          }
+
+          // Fetch the user's vouchers
+          const vouchers = await transferVoucherService.getVouchersByUser(userId);
+          const sortedVouchers = [...vouchers].sort((a, b) => b.id - a.id);
+          const txnId = paymentTransactionId || selectedRequest?.tlpeTransactionId;
+
+          // Find the exact voucher from this payment transaction, or fallback to the latest AVAILABLE one
+          const activeVoucher = 
+            (txnId ? sortedVouchers.find((v) => v.tlpeTransactionId === txnId) : null) ||
+            sortedVouchers.find((v) => v.status === "AVAILABLE") ||
+            sortedVouchers.find((v) => v.status === "REDEEMED") ||
+            sortedVouchers[0];
+
+          if (activeVoucher && activeVoucher.voucherCode) {
+            const code = activeVoucher.voucherCode;
+            setVoucherCode(code);
+            setVoucherAssigned(true);
+            setRequestStatus("VOUCHER_ISSUED");
+            saveCitizenRequest({
+              currentStep: 3,
+              status: "VOUCHER_ISSUED",
+              voucherCode: code,
+              voucherReferenceNo: code,
+              voucherAssigned: true,
+              voucherStatus: "VOUCHER_ISSUED",
+            });
+          } else {
+             // If no voucher is found, it might still be generating in the background.
+             // But for now, we just log it or handle it as an error.
+             throw new Error("No voucher found for the user.");
+          }
+        } catch (error) {
+          console.error("[Clearance] Failed to fetch voucher:", error);
+          setFetchVoucherFailed(true);
+          showError(
+            "Voucher Issue Failed",
+            error.message || "Failed to fetch the voucher from the server."
+          );
+        } finally {
+          setIssuingVoucher(false);
+        }
+      };
+
+      fetchVoucher();
     }
   }, [
     isAgent,
@@ -1245,6 +1300,9 @@ export const ClearanceRequestFlow = () => {
     step,
     voucherAssigned,
     voucherCode,
+    fetchVoucherFailed,
+    paymentTransactionId,
+    selectedRequest?.tlpeTransactionId,
   ]);
 
   const handleCitizenHpgVerify = () => {
@@ -1401,7 +1459,7 @@ export const ClearanceRequestFlow = () => {
   const handleDownload = () => {
     if (!certificateNo) return;
     const { doc, filename } = generateClearanceCertificatePDF({
-      requestId,
+      id,
       certificateNo,
       clearanceReferenceNo: certificateNo,
       plateNumber:
@@ -1582,7 +1640,7 @@ export const ClearanceRequestFlow = () => {
           paymentReference: payload.paymentReference || "",
         });
         navigate(
-          `/dci-access/new-clearance-request?requestId=${encodeURIComponent(requestId)}`,
+          `/dci-access/new-clearance-request?id=${encodeURIComponent(id)}`,
           { replace: true },
         );
       } catch (error) {
@@ -1600,7 +1658,7 @@ export const ClearanceRequestFlow = () => {
           error?.message || "Unable to confirm payment.",
         );
         navigate(
-          `/dci-access/new-clearance-request?requestId=${encodeURIComponent(requestId)}`,
+          `/dci-access/new-clearance-request?id=${encodeURIComponent(id)}`,
           { replace: true },
         );
       } finally {
@@ -1614,8 +1672,11 @@ export const ClearanceRequestFlow = () => {
 
     return () => {
       active = false;
+      if (handledPaymentTransactionRef.current === paymentTransactionId) {
+        handledPaymentTransactionRef.current = "";
+      }
     };
-  }, [isAgent, navigate, paymentTransactionId, requestId, showError]);
+  }, [isAgent, navigate, paymentTransactionId, id, showError]);
 
   const canNext = () => {
     if (isAgent) {
@@ -1701,7 +1762,7 @@ export const ClearanceRequestFlow = () => {
 
   const finishCitizen = () => {
     onComplete?.({
-      requestId,
+      id,
       voucherCode,
       certificateNo,
       vehicle: orCr,
@@ -1873,11 +1934,11 @@ export const ClearanceRequestFlow = () => {
                       <tbody>
                         {certificationQueue.map((row) => (
                           <tr
-                            key={row.requestId}
+                            key={row.id}
                             className="border-b border-blue-50"
                           >
                             <td className="py-2 font-mono text-xs text-gray-700">
-                              {row.requestId}
+                              {row.id}
                             </td>
                             <td className="py-2 text-gray-700">
                               {row.plateNumber || "-"}
@@ -1947,11 +2008,11 @@ export const ClearanceRequestFlow = () => {
                   <tbody>
                     {certificationQueue.map((row) => (
                       <tr
-                        key={row.requestId}
+                        key={row.id}
                         className="border-b border-gray-100"
                       >
                         <td className="py-2 font-mono text-xs text-gray-700">
-                          {row.requestId}
+                          {row.id}
                         </td>
                         <td className="py-2 text-gray-700">
                           {row.plateNumber || "-"}
@@ -1966,7 +2027,7 @@ export const ClearanceRequestFlow = () => {
                               variant="secondary"
                               onClick={() =>
                                 setHpgForRow(
-                                  row.requestId,
+                                  row.id,
                                   HPG_STATUS.INSPECTION,
                                 )
                               }
@@ -1976,7 +2037,7 @@ export const ClearanceRequestFlow = () => {
                             <Button
                               size="sm"
                               onClick={() =>
-                                setHpgForRow(row.requestId, HPG_STATUS.APPROVED)
+                                setHpgForRow(row.id, HPG_STATUS.APPROVED)
                               }
                             >
                               Approve
@@ -1985,7 +2046,7 @@ export const ClearanceRequestFlow = () => {
                               size="sm"
                               variant="danger"
                               onClick={() =>
-                                setHpgForRow(row.requestId, HPG_STATUS.REJECTED)
+                                setHpgForRow(row.id, HPG_STATUS.REJECTED)
                               }
                             >
                               Reject
@@ -2020,20 +2081,20 @@ export const ClearanceRequestFlow = () => {
                     Select Request
                   </label>
                   <select
-                    value={agentMvcMecRequestId}
-                    onChange={(e) => setAgentMvcMecRequestId(e.target.value)}
+                    value={agentMvcMecId}
+                    onChange={(e) => setAgentMvcMecId(e.target.value)}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
                   >
                     <option value="">Select request for MVCC/MEC upload</option>
                     {selectableMvcMecRows.map((row) => (
-                      <option key={row.requestId} value={row.requestId}>
-                        {row.requestId} - {row.plateNumber || "NO_PLATE"}
+                      <option key={row.id} value={row.id}>
+                        {row.id} - {row.plateNumber || "NO_PLATE"}
                       </option>
                     ))}
                   </select>
                 </div>
 
-                {!agentMvcMecRequestId && (
+                {!agentMvcMecId && (
                   <p className="mb-4 text-xs text-amber-700">
                     No selectable request found. Add a queue entry in step 1
                     first.
@@ -2184,7 +2245,7 @@ export const ClearanceRequestFlow = () => {
                     <Button
                       onClick={handleAddAgentMvcMecToQueue}
                       disabled={
-                        !agentMvcMecRequestId ||
+                        !agentMvcMecId ||
                         !agentMvcData.mvcNo ||
                         !agentMecData.mecNo ||
                         agentMvcData.mvcNo === "Extracting..." ||
@@ -2242,25 +2303,25 @@ export const ClearanceRequestFlow = () => {
                       <tbody>
                         {certificationQueue.map((row) => (
                           <tr
-                            key={row.requestId}
+                            key={row.id}
                             className="border-b border-gray-100"
                           >
                             <td className="py-2 align-middle pr-3">
                               <input
                                 type="checkbox"
                                 className="h-4 w-4 rounded border-gray-300 text-[#0059b5] focus:ring-[#0059b5]"
-                                checked={selectedMvcMecRequestIds.includes(
-                                  row.requestId,
+                                checked={selectedMvcMecIds.includes(
+                                  row.id,
                                 )}
                                 onChange={() =>
-                                  toggleSelectedMvcMecRow(row.requestId)
+                                  toggleSelectedMvcMecRow(row.id)
                                 }
                                 disabled={!row.mvcMecUploaded}
-                                aria-label={`Select MVC and MEC row for ${row.requestId}`}
+                                aria-label={`Select MVC and MEC row for ${row.id}`}
                               />
                             </td>
                             <td className="py-2 font-mono text-xs text-gray-700">
-                              {row.requestId}
+                              {row.id}
                             </td>
                             <td className="py-2 text-gray-700">
                               {row.plateNumber || "-"}
@@ -2333,14 +2394,14 @@ export const ClearanceRequestFlow = () => {
                       <tbody>
                         {certificationQueue.map((row) => (
                           <tr
-                            key={row.requestId}
+                            key={row.id}
                             className="border-b border-gray-100"
                           >
                             <td className="py-2 align-middle">
                               <CertificateActionButtons row={row} />
                             </td>
                             <td className="py-2 font-mono text-xs text-gray-700">
-                              {row.requestId}
+                              {row.id}
                             </td>
                             <td className="py-2 text-gray-700">
                               {row.plateNumber || "-"}
@@ -2429,7 +2490,7 @@ export const ClearanceRequestFlow = () => {
                 <p className="text-sm text-gray-500 mb-1">
                   Certificate Request Fee
                 </p>
-                <p className="text-3xl font-bold text-gray-900">PHP 500.00</p>
+                <p className="text-3xl font-bold text-gray-900">PHP 60.00</p>
                 <p className="text-xs text-gray-500 mt-1">
                   Single payment covers the whole request.
                 </p>
@@ -2475,20 +2536,22 @@ export const ClearanceRequestFlow = () => {
                   </p>
                 </div>
               ) : voucherAssigned ? (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
-                  <CheckCircle
-                    size={40}
-                    className="text-green-600 mx-auto mb-3"
-                  />
-                  <p className="font-semibold text-green-700 text-lg">
-                    Voucher Issued
-                  </p>
-                  <p className="text-sm font-mono font-bold text-gray-900 mt-2">
-                    {voucherCode}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Plate: {orCr.plateNumber}
-                  </p>
+                <div className="space-y-4">
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
+                    <CheckCircle
+                      size={40}
+                      className="text-green-600 mx-auto mb-3"
+                    />
+                    <p className="font-semibold text-green-700 text-lg">
+                      Voucher Issued
+                    </p>
+                    <p className="text-sm font-mono font-bold text-gray-900 mt-2">
+                      {voucherCode}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Plate: {orCr.plateNumber}
+                    </p>
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-6">

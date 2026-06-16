@@ -1,12 +1,14 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { fetchMyRequests, upsertRequest } from "../services/userRequestRecordService";
+import { useAuth } from "./AuthContext";
 
 const RequestContext = createContext(null);
 
 export function RequestProvider({ children }) {
-  const [requestRecords, setRequestRecords] = useState(() => {
-    const saved = localStorage.getItem("certificateRequests");
-    return saved ? JSON.parse(saved) : [];
-  });
+  const { isAuthenticated } = useAuth();
+  const [requestRecords, setRequestRecords] = useState([]);
+  const [isInitializing, setIsInitializing] = useState(true);
+
 
   const [voucherInventory, setVoucherInventory] = useState(() => {
     const saved = localStorage.getItem("voucherInventory");
@@ -14,34 +16,72 @@ export function RequestProvider({ children }) {
   });
 
   useEffect(() => {
-    localStorage.setItem("certificateRequests", JSON.stringify(requestRecords));
-  }, [requestRecords]);
+    if (isAuthenticated) {
+      fetchMyRequests()
+        .then((data) => {
+          setRequestRecords(data || []);
+          setIsInitializing(false);
+        })
+        .catch((err) => {
+          console.error("Failed to fetch requests", err);
+          setIsInitializing(false);
+        });
+    } else {
+      setRequestRecords([]);
+      setIsInitializing(false);
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     localStorage.setItem("voucherInventory", JSON.stringify(voucherInventory));
   }, [voucherInventory]);
 
   const upsertRequestRecord = (record) => {
+    if (!record.id) {
+      console.warn("Cannot upsert request record without an id.");
+      return;
+    }
+
     setRequestRecords((prev) => {
-      const next = prev.some((item) => item.requestId === record.requestId)
-        ? prev.map((item) => (item.requestId === record.requestId ? { ...item, ...record } : item))
+      const next = prev.some((item) => item.id === record.id)
+        ? prev.map((item) => (item.id === record.id ? { ...item, ...record } : item))
         : [record, ...prev];
       return next;
     });
+
+    if (isAuthenticated) {
+      upsertRequest(record).catch(err => console.error("Failed to sync request to backend", err));
+    }
   };
 
-  const handleRequestSave = (record) => {
-    if (!record?.requestId) return;
-    upsertRequestRecord(record);
+  const handleRequestSave = async (record) => {
+    if (isAuthenticated) {
+      try {
+        const res = await upsertRequest(record);
+        if (res?.id) {
+          const newRecord = { ...record, id: res.id };
+          setRequestRecords((prev) => [newRecord, ...prev]);
+          return res.id;
+        }
+      } catch (err) {
+        console.error("Failed to save request:", err);
+      }
+    } else {
+      const id = record.id || Date.now();
+      const newRecord = { ...record, id };
+      setRequestRecords((prev) => [newRecord, ...prev]);
+      return id;
+    }
+    return null;
   };
 
   const handleVoucherRequestComplete = (payload) => {
     if (payload?.rows?.length) {
       payload.rows.forEach((row) => {
-        if (!row?.requestId) return;
+        if (!row?.id) return;
         upsertRequestRecord(row);
       });
-    } else if (payload?.requestId) {
+    } else if (payload?.id) {
       upsertRequestRecord(payload);
     }
   };
@@ -49,10 +89,10 @@ export function RequestProvider({ children }) {
   const handleClearanceRequestComplete = (payload) => {
     if (payload?.rows?.length) {
       payload.rows.forEach((row) => {
-        if (!row?.requestId) return;
+        if (!row?.id) return;
         upsertRequestRecord({
           ...row,
-          requestId: row.requestId,
+          id: row.id,
           plateNumber: row.plateNumber || row.vehicle?.plateNumber || "",
           clearanceReferenceNo: row.certificateNo || row.clearanceReferenceNo || "",
           clearanceStatus: "CERTIFICATE_ISSUED",
@@ -65,9 +105,9 @@ export function RequestProvider({ children }) {
       return;
     }
 
-    if (!payload?.requestId) return;
+    if (!payload?.id) return;
     upsertRequestRecord({
-      requestId: payload.requestId,
+      id: payload.id,
       plateNumber: payload.vehicle?.plateNumber || payload.plateNumber || "",
       clearanceReferenceNo: payload.certificateNo || "",
       clearanceStatus: "CERTIFICATE_ISSUED",
@@ -82,6 +122,7 @@ export function RequestProvider({ children }) {
     <RequestContext.Provider
       value={{
         requestRecords,
+        isInitializing,
         setRequestRecords,
         voucherInventory,
         setVoucherInventory,

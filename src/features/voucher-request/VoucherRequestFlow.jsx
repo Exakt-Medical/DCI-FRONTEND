@@ -19,7 +19,7 @@ const emptyVehicle = {
   make: "", series: "", yearModel: "", color: "", ownerName: "", ownerAddress: "",
 };
 
-const makeRequestId = () => `REQ-${Date.now()}-${String(Math.random()).slice(2, 6)}`;
+const makeId = () => `REQ-${Date.now()}-${String(Math.random()).slice(2, 6)}`;
 
 export const VoucherRequestFlow = () => {
   const { role } = useAuth();
@@ -46,7 +46,7 @@ export const VoucherRequestFlow = () => {
   const [voucherAssigned, setVoucherAssigned] = useState(false);
   const [batchRows, setBatchRows] = useState(() => {
     if (!isAgent) return [];
-    if (initialRequest?.requestId) {
+    if (initialRequest?.id) {
       return [initialRequest];
     }
     return [];
@@ -70,8 +70,8 @@ export const VoucherRequestFlow = () => {
     setCrCr(emptyVehicle);
   };
 
-  const buildDraftRecord = (requestId) => ({
-    requestId,
+  const buildDraftRecord = (id) => ({
+    id,
     role,
     dateCreated: new Date().toISOString().split("T")[0],
     currentStep: 1,
@@ -177,8 +177,8 @@ export const VoucherRequestFlow = () => {
     const match = orCr.plateNumber === crCr.plateNumber;
     if (!(orOk && crOk && match)) return;
 
-    const requestId = makeRequestId();
-    const draft = buildDraftRecord(requestId);
+    const id = makeId();
+    const draft = buildDraftRecord(id);
     handleRequestSave(draft);
     setBatchRows((prev) => [draft, ...prev]);
     clearEntryForm();
@@ -212,9 +212,9 @@ export const VoucherRequestFlow = () => {
       return;
     }
 
-    const requestId = initialRequest?.requestId || makeRequestId();
+    const id = initialRequest?.id || makeId();
     const record = {
-      requestId,
+      id,
       role,
       dateCreated: initialRequest?.dateCreated || new Date().toISOString().split("T")[0],
       currentStep: 3,
@@ -373,8 +373,8 @@ export const VoucherRequestFlow = () => {
                         </thead>
                         <tbody>
                           {batchRows.map((row) => (
-                            <tr key={row.requestId} className="border-b border-blue-50">
-                              <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
+                            <tr key={row.id} className="border-b border-blue-50">
+                              <td className="py-2 font-mono text-xs text-gray-700">{row.id}</td>
                               <td className="py-2 text-gray-700">{row.plateNumber || "-"}</td>
                               <td className="py-2 text-gray-700">{row.orCr?.ownerName || row.crCr?.ownerName || "-"}</td>
                               <td className="py-2 text-gray-600">{row.voucherStatus || "DRAFT"}</td>
@@ -442,8 +442,8 @@ export const VoucherRequestFlow = () => {
                       </thead>
                       <tbody>
                         {batchRows.map((row) => (
-                          <tr key={row.requestId} className="border-b border-green-100">
-                            <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
+                          <tr key={row.id} className="border-b border-green-100">
+                            <td className="py-2 font-mono text-xs text-gray-700">{row.id}</td>
                             <td className="py-2 text-gray-700">{row.plateNumber || "-"}</td>
                             <td className="py-2 font-mono text-xs font-semibold text-gray-900">{row.voucherReferenceNo || row.voucherCode || "-"}</td>
                           </tr>

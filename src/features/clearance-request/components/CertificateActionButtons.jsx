@@ -41,7 +41,7 @@ export const CertificateActionButtons = ({ row, disabled = false }) => {
     const subject = `Clearance Certificate ${row.certificateNo}`;
     const body = [
       `Certificate No: ${row.certificateNo}`,
-      `Request ID: ${row.requestId || "-"}`,
+      `Request ID: ${row.id || "-"}`,
       `Plate Number: ${row.plateNumber || "-"}`,
       "",
       "Please see the clearance certificate attached or download it from the DCI portal.",

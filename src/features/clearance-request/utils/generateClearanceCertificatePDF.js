@@ -56,11 +56,11 @@ export const generateClearanceCertificatePDF = (row = {}) => {
   const valueWidth = contentWidth - labelWidth;
 
   const certificateNo =
-    row.certificateNo || row.clearanceReferenceNo || row.requestId || "UNKNOWN";
+    row.certificateNo || row.clearanceReferenceNo || row.id || "UNKNOWN";
   const plateNumber = row.plateNumber || row.orCr?.plateNumber || "-";
   const voucherCode =
     row.voucherCode || row.voucherReferenceNo || row.voucherId || "-";
-  const requestId = row.requestId || "-";
+  const id = row.id || "-";
   const issuedDate = formatDate(row.certificateIssuedAt || row.dateCreated || new Date());
   const status = row.clearanceStatus || row.status || "CERTIFICATE_ISSUED";
 
@@ -95,7 +95,7 @@ export const generateClearanceCertificatePDF = (row = {}) => {
 
   const fields = [
     { label: "Certificate No.", value: certificateNo },
-    { label: "Request ID", value: requestId },
+    { label: "Request ID", value: id },
     { label: "Plate Number", value: plateNumber },
     { label: "Voucher Code", value: voucherCode },
     { label: "Issued Date", value: issuedDate },

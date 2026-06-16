@@ -113,7 +113,7 @@ export const MyRequestsPage = () => {
           ((request.voucherReferenceNo || "").toLowerCase().includes(search.toLowerCase()) ||
             (request.clearanceReferenceNo || "").toLowerCase().includes(search.toLowerCase()) ||
             (request.plateNumber || "").toLowerCase().includes(search.toLowerCase()) ||
-            (request.requestId || "").toLowerCase().includes(search.toLowerCase())),
+            (request.id || "").toLowerCase().includes(search.toLowerCase())),
       )
       .sort((left, right) => getDateValue(right.dateCreated) - getDateValue(left.dateCreated));
   }, [requests, search, activeFilter]);
@@ -247,7 +247,7 @@ export const MyRequestsPage = () => {
               </thead>
               <tbody>
                 {filtered.map((req) => (
-                  <tr key={req.requestId || req.voucherReferenceNo || req.clearanceReferenceNo} className="border-b border-gray-100 hover:bg-gray-50">
+                  <tr key={req.id || req.voucherReferenceNo || req.clearanceReferenceNo} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-3">
                       {clearanceDone(req) && req.certificateNo ? (
                         <CertificateActionButtons row={req} />
@@ -267,7 +267,7 @@ export const MyRequestsPage = () => {
                     </td>
                     <td className="py-3">
                       <span className="font-mono text-xs font-medium text-gray-900">
-                        {req.requestId || req.voucherReferenceNo || req.clearanceReferenceNo}
+                        {req.id || req.voucherReferenceNo || req.clearanceReferenceNo}
                       </span>
                       {req.clearanceReferenceNo && req.voucherReferenceNo && (
                         <div className="text-[10px] text-gray-400 font-mono mt-0.5">{req.clearanceReferenceNo}</div>

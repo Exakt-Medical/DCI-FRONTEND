@@ -21,7 +21,7 @@ export const voucherInventoryService = {
         voucherId: makeVoucherId(),
         voucherCode: makeVoucherCode(),
         inventoryStatus: VOUCHER_INVENTORY_STATUS.AVAILABLE,
-        assignedToRequestId: null,
+        assignedToId: null,
         assignedToPlate: "",
         assignedBy: "",
         role: options.role || "agent_fixer",
@@ -59,8 +59,8 @@ export const voucherInventoryService = {
     return VOUCHER_INVENTORY_STATUS_LABELS[status] || status || "Unknown";
   },
 
-  assignVoucherToRequest(vouchers = [], { voucherId, requestId, plateNumber = "", assignedBy = "agent_fixer" }) {
-    if (!voucherId || !requestId) return vouchers;
+  assignVoucherToRequest(vouchers = [], { voucherId, id, plateNumber = "", assignedBy = "agent_fixer" }) {
+    if (!voucherId || !id) return vouchers;
 
     const now = new Date().toISOString();
     return vouchers.map((item) => {
@@ -68,7 +68,7 @@ export const voucherInventoryService = {
         return {
           ...item,
           inventoryStatus: VOUCHER_INVENTORY_STATUS.ASSIGNED,
-          assignedToRequestId: requestId,
+          assignedToId: id,
           assignedToPlate: plateNumber || item.assignedToPlate || "",
           assignedBy,
           dateAssigned: item.dateAssigned || now,
@@ -76,14 +76,14 @@ export const voucherInventoryService = {
       }
 
       if (
-        item.assignedToRequestId === requestId &&
+        item.assignedToId === id &&
         item.voucherId !== voucherId &&
         item.inventoryStatus === VOUCHER_INVENTORY_STATUS.ASSIGNED
       ) {
         return {
           ...item,
           inventoryStatus: VOUCHER_INVENTORY_STATUS.AVAILABLE,
-          assignedToRequestId: null,
+          assignedToId: null,
           assignedToPlate: "",
           assignedBy: "",
           dateAssigned: "",
@@ -94,7 +94,7 @@ export const voucherInventoryService = {
     });
   },
 
-  markVoucherUsed(vouchers = [], { voucherId, requestId }) {
+  markVoucherUsed(vouchers = [], { voucherId, id }) {
     if (!voucherId) return vouchers;
 
     return vouchers.map((item) => {
@@ -103,7 +103,7 @@ export const voucherInventoryService = {
       return {
         ...item,
         inventoryStatus: VOUCHER_INVENTORY_STATUS.USED,
-        assignedToRequestId: requestId || item.assignedToRequestId || null,
+        assignedToId: id || item.assignedToId || null,
         dateUsed: new Date().toISOString(),
       };
     });

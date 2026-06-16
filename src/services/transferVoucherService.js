@@ -68,6 +68,15 @@ export const transferVoucherService = {
 
   // ─── Vouchers ─────────────────────────────────────────────────────────────
 
+  async getVouchersByUser(userId) {
+    try {
+      const res = await api.get(`${VOUCHER_URL}/by-user/${userId}`);
+      return handleResponse(res);
+    } catch (error) {
+      throw normalizeError(error);
+    }
+  },
+
   async getVoucherCounts(userId) {
     try {
       const res = await api.get(`${VOUCHER_URL}/count/by-user/${userId}`);
