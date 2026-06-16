@@ -24,6 +24,10 @@ export type FormFields = {
   nhqPid: string;
   examinedBy: string;
   notedBy: string;
+  vehicleType: string;
+  remarks: string;
+  engineNoStencilled: string;
+  chassisNoStencilled: string;
 };
 
 export type OcrWord = {
@@ -79,6 +83,10 @@ export const INITIAL_FIELDS: FormFields = {
   nhqPid: "",
   examinedBy: "",
   notedBy: "",
+  vehicleType: "",
+  remarks: "",
+  engineNoStencilled: "",
+  chassisNoStencilled: "",
 };
 
 export const EMPTY_EXTRACTION: FieldExtractionMap = {
@@ -107,4 +115,8 @@ export const EMPTY_EXTRACTION: FieldExtractionMap = {
   nhqPid: { label: "NHQ-PID/RFU/PFU/CFU", candidates: {}, selected: "", valid: false, source: "none", confidence: 0 },
   examinedBy: { label: "EXAMINED BY", candidates: {}, selected: "", valid: false, source: "none", confidence: 0 },
   notedBy: { label: "NOTED BY", candidates: {}, selected: "", valid: false, source: "none", confidence: 0 },
+  vehicleType: { label: "VEHICLE TYPE", candidates: {}, selected: "", valid: false, source: "none", confidence: 0 },
+  remarks: { label: "REMARKS", candidates: {}, selected: "", valid: false, source: "none", confidence: 0 },
+  engineNoStencilled: { label: "ENGINE NO. (STENCILLED)", candidates: {}, selected: "", valid: false, source: "none", confidence: 0 },
+  chassisNoStencilled: { label: "CHASSIS / FRAME NO. (STENCILLED)", candidates: {}, selected: "", valid: false, source: "none", confidence: 0 },
 };

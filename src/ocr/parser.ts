@@ -614,11 +614,13 @@ export function parseFields(
   const flat = lines.join("\n");
   const docType = detectDocumentType(flat);
 
+  const pageHeight = words.length ? Math.max(...words.map(w => w.y + w.height)) : 0;
+
   const stacked = findStackedVehicleIds(normalizedText);
   const findings = extractFromFindingsBlock(normalizedText);
   const mvccSpecific =
     docType === "MVCC" ? extractMVCCFields(lines, words) : null;
-  const mecSpecific = docType === "MEC" ? extractMECFields(lines, words) : null;
+  const mecSpecific = docType === "MEC" ? extractMECFields(lines, words, pageWidth, pageHeight) : null;
 
   const lineScan = {
     mvccControlNo:
@@ -665,6 +667,8 @@ export function parseFields(
       isLikelyMakeBrand,
     ),
     date: extractAroundLabel(lines, FIELD_ALIASES.date, isLikelyDate),
+    vehicleType: extractAroundLabel(lines, FIELD_ALIASES.vehicleType, (v) => v.length >= 3),
+    remarks: extractAroundLabel(lines, FIELD_ALIASES.remarks, (v) => v.length >= 3),
     orNumber:
       extractAroundLabel(lines, FIELD_ALIASES.orNumber, isLikelyReceiptNo) ||
       extractInlineAfterLabel(lines, FIELD_ALIASES.orNumber, isLikelyReceiptNo),
@@ -754,6 +758,12 @@ export function parseFields(
       findRightText(FIELD_ALIASES.tin, words, isLikelyTin) ||
       findBelowText(FIELD_ALIASES.tin, words, isLikelyTin) ||
       findAboveText(FIELD_ALIASES.tin, words, isLikelyTin),
+    vehicleType:
+      findRightText(FIELD_ALIASES.vehicleType, words) ||
+      findBelowText(FIELD_ALIASES.vehicleType, words),
+    remarks:
+      findRightText(FIELD_ALIASES.remarks, words) ||
+      findBelowText(FIELD_ALIASES.remarks, words),
   };
 
   const regex = {
@@ -957,6 +967,7 @@ export function parseFields(
       regex: regex.purpose,
     }),
     hpgTechnician: pickField("HPG TECHNICIAN", (v) => v.length >= 3, {
+      specific: mecSpecific?.examinedBy ?? "",
       regex: regex.hpgTechnician,
     }),
     mvrrNumber: pickField("MVRR NUMBER", isLikelyMvrrNumber, {
@@ -1004,6 +1015,20 @@ export function parseFields(
     notedBy: pickField("NOTED BY", isLikelyOfficerName, {
       specific: mecSpecific?.notedBy ?? "",
       regex: regex.notedBy,
+    }),
+    vehicleType: pickField("VEHICLE TYPE", (v) => v.length >= 3, {
+      lineScan: lineScan.vehicleType,
+      coord: coord.vehicleType,
+    }),
+    remarks: pickField("REMARKS", (v) => v.length >= 3, {
+      lineScan: lineScan.remarks,
+      coord: coord.remarks,
+    }),
+    engineNoStencilled: pickField("ENGINE NO. (STENCILLED)", isLikelyEngine, {
+      specific: mecSpecific?.engineNo ?? "",
+    }),
+    chassisNoStencilled: pickField("CHASSIS / FRAME NO. (STENCILLED)", isLikelyChassis, {
+      specific: mecSpecific?.chassisNo ?? "",
     }),
   };
 
@@ -1266,6 +1291,10 @@ export function parseFields(
     nhqPid: cleanFieldValue("nhqPid", extraction.nhqPid.selected),
     examinedBy: cleanFieldValue("examinedBy", extraction.examinedBy.selected),
     notedBy: cleanFieldValue("notedBy", extraction.notedBy.selected),
+    vehicleType: cleanFieldValue("vehicleType", extraction.vehicleType.selected),
+    remarks: cleanFieldValue("remarks", extraction.remarks.selected),
+    engineNoStencilled: cleanFieldValue("engineNoStencilled", extraction.engineNoStencilled.selected),
+    chassisNoStencilled: cleanFieldValue("chassisNoStencilled", extraction.chassisNoStencilled.selected),
   };
 
   // 1. Explicitly Scrub Boilerplate Paragraphs

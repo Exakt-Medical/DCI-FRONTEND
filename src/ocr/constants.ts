@@ -61,6 +61,9 @@ export const LABEL_CANONICALS = new Set([
   "INSPECTEDBY",
   "NOTEDBY",
   "NOTED",
+  "REMARKS",
+  "FINDINGS",
+  "CONCLUSION",
   "MAKETYPESERIESYEAR",
   "MEDATEORLTOCCNEWMV",
   "MVFILENUMBER",
@@ -200,6 +203,7 @@ export const FIELD_ALIASES = {
   nhqPid: ["NHQ-PID/RFU/PFU/CFU", "NHQ PID", "PID NO"],
   examinedBy: ["EXAMINED BY", "INSPECTED BY"],
   notedBy: ["NOTED BY", "NOTED"],
+  remarks: ["REMARKS", "FINDINGS", "CONCLUSION"],
   orNumber: [
     "RECEIPT NO",
     "OR NO",

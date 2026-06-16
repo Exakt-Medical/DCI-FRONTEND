@@ -4,6 +4,7 @@ import { toCanonical, isLabelLine, repairOcrText } from "./normalize";
 import {
   isLikelyPlate, isLikelyEngine, isLikelyChassis,
   isLikelyColor, isLikelyYearModel, isLikelyDate, isLikelyMakeBrand,
+  isLikelyPersonName
 } from "./validators";
 
 // ─── Word helpers ─────────────────────────────────────────────────────────────
@@ -355,3 +356,56 @@ export function findTextBetweenAnchors(
   }
   return "";
 }
+
+export function extractExaminerBlock(words: OcrWord[], pageWidth: number, pageHeight: number): string {
+  const anchorAliases = ["EXAMINED BY"];
+  const anchor = getLabelWord(anchorAliases, words);
+  if (!anchor) return "";
+
+  const candidates = words.filter(w => 
+    w.y > pageHeight * 0.55 &&
+    w.x > pageWidth * 0.45 &&
+    w.y > anchor.y + anchor.height * 0.5 &&
+    w.y < anchor.y + 350 &&
+    !isLabelLine(w.text) &&
+    isLikelyPersonName(w.text)
+  );
+
+  if (candidates.length === 0) return "";
+
+  const ranks = [
+    "POLICE OFFICER", "POLICE CORPORAL", "POLICE STAFF SERGEANT", 
+    "POLICE MASTER SERGEANT", "POLICE LIEUTENANT", "POLICE CAPTAIN", 
+    "POLICE MAJOR", "POLICE LIEUTENANT COLONEL", "POLICE COLONEL"
+  ];
+
+  const positions = ["PI EXAMINER", "EXAMINER", "STATION HEAD", "INVESTIGATOR"];
+
+  let bestCandidate = candidates[0];
+  let bestScore = -1;
+
+  for (const c of candidates) {
+    let score = 0;
+    
+    const yDist = c.y - anchor.y;
+    score += Math.max(0, 100 - yDist);
+
+    const nearbyWords = words.filter(w => 
+      w.y > c.y && w.y < c.y + 150 && Math.abs(w.x - c.x) < 250
+    );
+
+    const hasRank = nearbyWords.some(w => ranks.some(r => w.text.toUpperCase().includes(r)));
+    if (hasRank) score += 500;
+
+    const hasPosition = nearbyWords.some(w => positions.some(p => w.text.toUpperCase().includes(p)));
+    if (hasPosition) score += 300;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestCandidate = c;
+    }
+  }
+
+  return bestCandidate.text;
+}
+

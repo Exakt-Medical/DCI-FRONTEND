@@ -15,7 +15,12 @@ export function normalizeIdForCompare(value: string): string {
 
 export function cleanFieldValue(field: keyof FormFields, value: string): string {
   const base = value.replace(/\s{2,}/g, " ").trim();
-  if (field === "engineNo" || field === "chassisNo") {
+  if (
+    field === "engineNo" ||
+    field === "chassisNo" ||
+    field === "engineNoStencilled" ||
+    field === "chassisNoStencilled"
+  ) {
     return base.replace(/\s+/g, "").replace(/[|!]/g, "1").replace(/[OQD]/g, "0").replace(/[IL]/g, "1");
   }
   if (field === "plateNo" || field === "yearModel") {

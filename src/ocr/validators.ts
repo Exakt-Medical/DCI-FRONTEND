@@ -214,3 +214,39 @@ export function isLikelyFuelType(value: string): boolean {
 export function isLikelyWeight(value: string): boolean {
   return /^\d+(?:\.\d+)?(?:\s*KG)?$/i.test(value.trim());
 }
+
+export function isLikelyPersonName(value: string): boolean {
+  const v = value.trim().toUpperCase();
+  if (v.length < 5 || v.length > 50) return false;
+
+  const words = v.split(/\s+/);
+  if (words.length < 2) return false;
+
+  const alphaCount = v.replace(/[^A-Z]/g, "").length;
+  if (alphaCount / v.length < 0.6) return false;
+
+  if (/[^A-Z\s.,'-]/.test(v)) return false;
+
+  const invalidKeywords = [
+    "NOT TAMPERED",
+    "CONCLUSION",
+    "FINDINGS",
+    "EXAMINED BY",
+    "ENGINE NUMBER",
+    "CHASSIS NUMBER",
+    "VALID FOR",
+    "DATE",
+    "CERTIFICATE"
+  ];
+  if (invalidKeywords.some(kw => v.includes(kw))) return false;
+
+  const exactInvalid = [
+    "POLICE OFFICER", "POLICE CORPORAL", "POLICE STAFF SERGEANT", 
+    "POLICE MASTER SERGEANT", "POLICE LIEUTENANT", "POLICE CAPTAIN", 
+    "POLICE MAJOR", "POLICE LIEUTENANT COLONEL", "POLICE COLONEL",
+    "PI EXAMINER", "EXAMINER", "STATION HEAD", "INVESTIGATOR"
+  ];
+  if (exactInvalid.includes(v)) return false;
+
+  return true;
+}
