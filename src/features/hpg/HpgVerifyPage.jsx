@@ -5,18 +5,7 @@ import { Input } from "../../components/Input";
 import { Spinner } from "../../components/Spinner";
 import { Shield, Search, CheckCircle, Car, User, ScanLine } from "lucide-react";
 import { HpgQrScannerModal } from "./HpgQrScannerModal";
-
-const MOCK_VEHICLE_DATA = {
-  plateNumber: "ABC1234",
-  ownerName: "Juan Dela Cruz",
-  make: "TOYOTA",
-  series: "VIOS",
-  yearModel: "2020",
-  color: "WHITE",
-  mvFileNumber: "13242500000003A",
-  engineNumber: "ENG-123456",
-  chassisNumber: "CHA-789012",
-};
+import api from "../../services/api";
 
 export const HpgVerifyPage = () => {
   const [voucherCode, setVoucherCode] = useState("");
@@ -43,23 +32,46 @@ export const HpgVerifyPage = () => {
     }
     setIsVerifying(true);
     setError("");
+    setVerified(false);
+    setVehicleData(null);
+    setMarkedVerified(false);
 
-    setTimeout(() => {
-      setIsVerifying(false);
-      if (voucherCode.toUpperCase().startsWith("VCH")) {
-        setVehicleData(MOCK_VEHICLE_DATA);
+    api.get(`/certificate-requests/by-voucher/${voucherCode.trim()}`)
+      .then((res) => {
+        const data = res.data;
+        setVehicleData(data.vehicleData || null);
         setVerified(true);
         setError("");
-      } else {
-        setError("Voucher not found or invalid");
+        
+        if (data.status === "HPG_VERIFIED") {
+          setMarkedVerified(true);
+        }
+      })
+      .catch((err) => {
+        const msg = err.response?.data?.error || "Voucher not found or invalid";
+        setError(msg);
         setVehicleData(null);
         setVerified(false);
-      }
-    }, 1500);
+      })
+      .finally(() => {
+        setIsVerifying(false);
+      });
   };
 
   const handleMarkVerified = () => {
-    setMarkedVerified(true);
+    setIsVerifying(true);
+    setError("");
+    api.post(`/certificate-requests/by-voucher/${voucherCode.trim()}/verify`)
+      .then(() => {
+        setMarkedVerified(true);
+      })
+      .catch((err) => {
+        const msg = err.response?.data?.error || "Failed to mark as verified";
+        setError(msg);
+      })
+      .finally(() => {
+        setIsVerifying(false);
+      });
   };
 
   const handleReset = () => {

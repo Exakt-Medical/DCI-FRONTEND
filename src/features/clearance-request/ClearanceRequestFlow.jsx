@@ -465,16 +465,7 @@ export const ClearanceRequestFlow = () => {
         : selectedRequest?.clearanceStatus || "",
       orNumber,
       crNumber,
-      orCr,
-      crCr,
-      orPreview,
-      crPreview,
-      mvcPreview,
-      mecPreview,
-      mvcFileName,
-      mecFileName,
-      mvcData,
-      mecData,
+      verificationId: selectedRequest?.verificationId || "",
       ...overrides,
     };
 
@@ -1791,10 +1782,7 @@ export const ClearanceRequestFlow = () => {
 
     if (certificateNo) return false;
     if (processingPayment) return false;
-    if (paymentDone) {
-      const target = step - 1;
-      if (target < 3) return false;
-    }
+    if (step >= 2) return false;
     return step > 1;
   };
 
