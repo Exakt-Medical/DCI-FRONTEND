@@ -33,7 +33,7 @@ export const VehicleFields = ({ values, onChange, fieldSet = "cr" }) => (
         key={field.key}
         label={field.label}
         value={values[field.key] || ""}
-        onChange={(e) => onChange(field.key, e.target.value)}
+        onChange={(e) => onChange(field.key, e.target.value.toUpperCase())}
         placeholder="Auto-extracted"
         required={true}
       />
@@ -45,7 +45,7 @@ export const VehicleFields = ({ values, onChange, fieldSet = "cr" }) => (
       </label>
       <textarea
         value={values.ownerAddress}
-        onChange={(e) => onChange("ownerAddress", e.target.value)}
+        onChange={(e) => onChange("ownerAddress", e.target.value.toUpperCase())}
         placeholder="Auto-extracted"
         rows={3}
         className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
@@ -89,7 +89,11 @@ export const VehicleDocumentUploadCard = ({
       <Input
         label={numberLabel}
         value={numberValue}
-        onChange={onNumberChange}
+        onChange={(e) => {
+          if (onNumberChange) {
+            onNumberChange({ target: { value: e.target.value.toUpperCase() } });
+          }
+        }}
         placeholder={numberPlaceholder}
         required={true}
       />
@@ -137,7 +141,11 @@ export const MvcMecUploadCard = ({
           key={field.key}
           label={field.label}
           value={field.value}
-          onChange={field.onChange}
+          onChange={(e) => {
+            if (field.onChange) {
+              field.onChange({ target: { value: e.target.value.toUpperCase() } });
+            }
+          }}
           placeholder={field.placeholder}
           required={true}
         />
