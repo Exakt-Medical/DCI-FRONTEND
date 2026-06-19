@@ -273,7 +273,7 @@ export const ClearanceRequestFlow = () => {
   const selectedRequest =
     location.state?.request ||
     availableVoucherRequests.find(
-      (item) => item.id === idFromQuery,
+      (item) => String(item.id) === String(idFromQuery),
     ) ||
     null;
   const onCancel = () => navigate("/dci-access/requests");
@@ -281,10 +281,14 @@ export const ClearanceRequestFlow = () => {
   const flowSteps = isAgent ? AGENT_STEPS : CITIZEN_STEPS;
   const maxStep = flowSteps.length;
   const handledPaymentTransactionRef = useRef("");
-
+  const hasSyncedStep = useRef(false);
   const [id, setId] = useState(
     () => selectedRequest?.id || idFromQuery || "",
   );
+
+  useEffect(() => {
+    hasSyncedStep.current = false;
+  }, [id]);
 
   useEffect(() => {
     if (id) {
@@ -386,7 +390,10 @@ export const ClearanceRequestFlow = () => {
   useEffect(() => {
     if (selectedRequest) {
       if (selectedRequest.id && !id) setId(selectedRequest.id);
-      if (selectedRequest.currentStep) setStep(Math.min(selectedRequest.currentStep, maxStep));
+      if (selectedRequest.currentStep && !hasSyncedStep.current) {
+        setStep(Math.min(selectedRequest.currentStep, maxStep));
+        hasSyncedStep.current = true;
+      }
       if (selectedRequest.status) setRequestStatus(selectedRequest.status);
       if (selectedRequest.orNumber) setOrNumber(selectedRequest.orNumber);
       if (selectedRequest.orCr) setOrCr(selectedRequest.orCr);
