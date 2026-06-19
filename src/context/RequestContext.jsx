@@ -59,9 +59,13 @@ export function RequestProvider({ children }) {
       try {
         const res = await upsertRequest(record);
         if (res?.id) {
-          const newRecord = { ...record, id: res.id };
+          const newRecord = { 
+            ...record, 
+            id: res.id,
+            certificateNo: res.certificateNo || record.certificateNo
+          };
           setRequestRecords((prev) => [newRecord, ...prev]);
-          return res.id;
+          return res;
         }
       } catch (err) {
         console.error("Failed to save request:", err);
@@ -70,7 +74,7 @@ export function RequestProvider({ children }) {
       const id = record.id || Date.now();
       const newRecord = { ...record, id };
       setRequestRecords((prev) => [newRecord, ...prev]);
-      return id;
+      return { id };
     }
     return null;
   };

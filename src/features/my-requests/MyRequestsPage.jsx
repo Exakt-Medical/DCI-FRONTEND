@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
 import { CertificateActionButtons } from "../clearance-request/components/CertificateActionButtons";
 import { useAuth } from "../../context/AuthContext";
-import { useRequest } from "../../context/RequestContext";
+import { fetchMyRequests } from "../../services/certificateRequestService";
 import {
   FileText, Plus, Eye, Search, CheckCircle, Clock, CreditCard,
 } from "lucide-react";
@@ -101,7 +101,21 @@ export const MyRequestsPage = () => {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const { role } = useAuth();
-  const { requestRecords: requests } = useRequest();
+  const [requests, setRequests] = useState([]);
+
+  const loadAllRequests = async () => {
+    try {
+      const data = await fetchMyRequests();
+      setRequests(data || []);
+    } catch (error) {
+      console.error("Failed to load requests:", error);
+    }
+  };
+
+  useEffect(() => {
+    loadAllRequests();
+  }, []);
+
   const navigate = useNavigate();
   const isAgent = role === "agent_fixer";
 
