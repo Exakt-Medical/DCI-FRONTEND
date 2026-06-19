@@ -166,6 +166,7 @@ const evaluateMvcMecValidation = (mvcPayload, mecPayload) => {
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useRequest } from "../../context/RequestContext";
+import { fetchMyRequests } from "../../services/certificateRequestService";
 
 export const ClearanceRequestFlow = () => {
   const { error: showError } = useAlert();
@@ -176,6 +177,7 @@ export const ClearanceRequestFlow = () => {
     setVoucherInventory,
     handleRequestSave: onSaveRequest,
     handleClearanceRequestComplete: onComplete,
+    setRequestRecords,
   } = useRequest();
 
   const location = useLocation();
@@ -1345,16 +1347,42 @@ export const ClearanceRequestFlow = () => {
     selectedRequest?.tlpeTransactionId,
   ]);
 
-  const handleCitizenHpgVerify = () => {
-    setHpgVerified(true);
-    setRequestStatus("HPG_VERIFIED");
-    setStep(5);
-    saveCitizenRequest({
-      currentStep: 5,
-      status: "HPG_VERIFIED",
-      hpgVerified: true,
-    });
-  };
+  useEffect(() => {
+    if (isAgent || step !== 4 || hpgVerified) return;
+
+    let intervalId;
+    let isActive = true;
+
+    const pollRequestStatus = async () => {
+      try {
+        const records = await fetchMyRequests();
+        if (!isActive) return;
+        const currentRecord = records.find((r) => String(r.id) === String(id));
+        if (currentRecord) {
+          const isVerified = Boolean(
+            currentRecord.hpgVerified || currentRecord.status === "HPG_VERIFIED"
+          );
+          if (isVerified) {
+            setHpgVerified(true);
+            setRequestStatus("HPG_VERIFIED");
+            if (setRequestRecords) {
+              setRequestRecords(records);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error polling request status:", err);
+      }
+    };
+
+    pollRequestStatus();
+    intervalId = setInterval(pollRequestStatus, 3000);
+
+    return () => {
+      isActive = false;
+      clearInterval(intervalId);
+    };
+  }, [id, step, hpgVerified, isAgent, setRequestRecords]);
 
   const handleMvcUpload = async (file, preview) => {
     setMvcPreview(preview);
@@ -2658,31 +2686,51 @@ export const ClearanceRequestFlow = () => {
             </Card>
           )}
 
-          {!isAgent && step === 4 && (
-            <Card className="p-5">
-              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
-                <FileText size={18} className="text-[#0059b5]" />
-                <h3 className="text-base font-bold text-gray-900">
-                  HPG Pending
-                </h3>
-              </div>
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                <p className="text-sm text-amber-800">
-                  Please present your voucher to HPG/LTO. In this frontend demo,
-                  click the button below to simulate verification.
-                </p>
-                <p className="text-xs text-gray-600 mt-2">
-                  Voucher Code:{" "}
-                  <span className="font-mono font-semibold">{voucherCode}</span>
-                </p>
-              </div>
-              <div className="mt-4">
-                <Button onClick={handleCitizenHpgVerify}>
-                  <CheckCircle size={16} /> Has been verified by HPG
-                </Button>
-              </div>
-            </Card>
-          )}
+            {!isAgent && step === 4 && (
+              <Card className="p-5">
+                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
+                  <FileText size={18} className="text-[#0059b5]" />
+                  <h3 className="text-base font-bold text-gray-900">
+                    HPG Verification Status
+                  </h3>
+                </div>
+                {hpgVerified ? (
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
+                    <CheckCircle size={40} className="text-green-600 mx-auto mb-3 animate-bounce" />
+                    <p className="font-bold text-green-700 text-lg">
+                      HPG Verified
+                    </p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Your vehicle has been successfully verified by HPG.
+                    </p>
+                    <p className="text-xs text-gray-400 mt-2">
+                      Voucher Code: <span className="font-mono font-semibold">{voucherCode}</span>
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
+                    <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-3">
+                      <Spinner size="md" className="text-amber-600" />
+                    </div>
+                    <p className="font-bold text-amber-700 text-lg">
+                      Verify your voucher code to HPG
+                    </p>
+                    <p className="text-sm text-gray-600 mt-2 max-w-md mx-auto">
+                      Please present your voucher code to the HPG officer for physical inspection and verification.
+                    </p>
+                    <div className="mt-4 inline-block bg-white border border-amber-300 rounded-lg px-4 py-2 shadow-sm">
+                      <span className="text-xs text-gray-500 block">VOUCHER CODE</span>
+                      <span className="text-base font-mono font-bold text-gray-900 tracking-wider">
+                        {voucherCode}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-3 animate-pulse">
+                      Waiting for HPG officer verification...
+                    </p>
+                  </div>
+                )}
+              </Card>
+            )}
 
           {!isAgent && step === 5 && (
             <div className="space-y-4">
