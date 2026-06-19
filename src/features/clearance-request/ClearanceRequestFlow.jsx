@@ -96,7 +96,7 @@ const mergeVehicleFields = (current = {}, next = {}) => {
   const merged = { ...current };
   Object.entries(next).forEach(([key, value]) => {
     if (typeof value === "string" && value.trim()) {
-      merged[key] = value.trim();
+      merged[key] = value.trim().toUpperCase();
     }
   });
   return merged;
@@ -330,15 +330,24 @@ export const ClearanceRequestFlow = () => {
     return [];
   });
 
-  const plateMismatch =
-    orCr.plateNumber &&
-    crCr.plateNumber &&
-    orCr.plateNumber !== crCr.plateNumber;
+  const getMismatches = () => {
+    const m = [];
+    if (orCr.plateNumber && crCr.plateNumber && orCr.plateNumber !== crCr.plateNumber) m.push("Plate Number");
+    if (orCr.yearModel && crCr.yearModel && orCr.yearModel !== crCr.yearModel) m.push("Year Model");
+    if (orCr.color && crCr.color && orCr.color !== crCr.color) m.push("Color");
+    if (orCr.mvFileNumber && crCr.mvFileNumber && orCr.mvFileNumber !== crCr.mvFileNumber) m.push("MV File Number");
+    if (orCr.ownerName && crCr.ownerName && orCr.ownerName !== crCr.ownerName) m.push("Owner Name");
+    if (orCr.ownerAddress && crCr.ownerAddress && orCr.ownerAddress !== crCr.ownerAddress) m.push("Owner Address");
+    return m;
+  };
+
+  const mismatches = getMismatches();
+  const hasMismatch = mismatches.length > 0;
 
   const updateOrCr = (field, value) =>
-    setOrCr((prev) => ({ ...prev, [field]: value }));
+    setOrCr((prev) => ({ ...prev, [field]: value ? value.toUpperCase() : "" }));
   const updateCrCr = (field, value) =>
-    setCrCr((prev) => ({ ...prev, [field]: value }));
+    setCrCr((prev) => ({ ...prev, [field]: value ? value.toUpperCase() : "" }));
 
   const isResume = Boolean(selectedRequest?.id);
 
@@ -586,8 +595,7 @@ export const ClearanceRequestFlow = () => {
 
     const orOk = isDocumentComplete(orCr, OR_EXPECTED_FIELDS) && orNumber && orNumber !== "Extracting...";
     const crOk = isDocumentComplete(crCr, CR_EXPECTED_FIELDS) && crNumber && crNumber !== "Extracting...";
-    const match = orCr.plateNumber && orCr.plateNumber === crCr.plateNumber;
-    if (!(orOk && crOk && match)) return;
+    if (!(orOk && crOk && !hasMismatch)) return;
 
     const row = {
       role,
@@ -839,17 +847,17 @@ export const ClearanceRequestFlow = () => {
 
       const parsed = result.fields || {};
       setAgentMvcData({
-        mvcNo: parsed.mvcNo || previousState.mvcNo || "",
-        mvcIssueDate: parsed.mvcIssueDate || previousState.mvcIssueDate || "",
-        mvcStatus: parsed.mvcStatus || previousState.mvcStatus || "CLEAR",
-        remarks: parsed.remarks || previousState.remarks || "",
-        plateNo: parsed.plateNo || previousState.plateNo || "",
-        mvFileNo: parsed.mvFileNo || previousState.mvFileNo || "",
-        engineNo: parsed.engineNo || previousState.engineNo || "",
-        chassisNo: parsed.chassisNo || previousState.chassisNo || "",
-        vehicleType: parsed.vehicleType || previousState.vehicleType || "",
-        ownerName: parsed.ownerName || previousState.ownerName || "",
-        ownerAddress: parsed.ownerAddress || previousState.ownerAddress || "",
+        mvcNo: String(parsed.mvcNo || previousState.mvcNo || "").toUpperCase(),
+        mvcIssueDate: String(parsed.mvcIssueDate || previousState.mvcIssueDate || "").toUpperCase(),
+        mvcStatus: String(parsed.mvcStatus || previousState.mvcStatus || "CLEAR").toUpperCase(),
+        remarks: String(parsed.remarks || previousState.remarks || "").toUpperCase(),
+        plateNo: String(parsed.plateNo || previousState.plateNo || "").toUpperCase(),
+        mvFileNo: String(parsed.mvFileNo || previousState.mvFileNo || "").toUpperCase(),
+        engineNo: String(parsed.engineNo || previousState.engineNo || "").toUpperCase(),
+        chassisNo: String(parsed.chassisNo || previousState.chassisNo || "").toUpperCase(),
+        vehicleType: String(parsed.vehicleType || previousState.vehicleType || "").toUpperCase(),
+        ownerName: String(parsed.ownerName || previousState.ownerName || "").toUpperCase(),
+        ownerAddress: String(parsed.ownerAddress || previousState.ownerAddress || "").toUpperCase(),
       });
       setOcrState("agentMvc", {
         status: OCR_STATUS.SUCCESS,
@@ -904,9 +912,9 @@ export const ClearanceRequestFlow = () => {
 
       const parsed = result.fields || {};
       setAgentMecData({
-        engineNoStencilled: parsed.engineNoStencilled || previousState.engineNoStencilled || "",
-        chassisNoStencilled: parsed.chassisNoStencilled || previousState.chassisNoStencilled || "",
-        hpgTechnician: parsed.hpgTechnician || previousState.hpgTechnician || "",
+        engineNoStencilled: String(parsed.engineNoStencilled || previousState.engineNoStencilled || "").toUpperCase(),
+        chassisNoStencilled: String(parsed.chassisNoStencilled || previousState.chassisNoStencilled || "").toUpperCase(),
+        hpgTechnician: String(parsed.hpgTechnician || previousState.hpgTechnician || "").toUpperCase(),
       });
       setOcrState("agentMec", {
         status: OCR_STATUS.SUCCESS,
@@ -1426,17 +1434,17 @@ export const ClearanceRequestFlow = () => {
 
       const parsed = result.fields || {};
       const next = {
-        mvcNo: parsed.mvcNo || previousState.mvcNo || "",
-        mvcIssueDate: parsed.mvcIssueDate || previousState.mvcIssueDate || "",
-        mvcStatus: parsed.mvcStatus || previousState.mvcStatus || "CLEAR",
-        remarks: parsed.remarks || previousState.remarks || "",
-        plateNo: parsed.plateNo || previousState.plateNo || "",
-        mvFileNo: parsed.mvFileNo || previousState.mvFileNo || "",
-        engineNo: parsed.engineNo || previousState.engineNo || "",
-        chassisNo: parsed.chassisNo || previousState.chassisNo || "",
-        vehicleType: parsed.vehicleType || previousState.vehicleType || "",
-        ownerName: parsed.ownerName || previousState.ownerName || "",
-        ownerAddress: parsed.ownerAddress || previousState.ownerAddress || "",
+        mvcNo: String(parsed.mvcNo || previousState.mvcNo || "").toUpperCase(),
+        mvcIssueDate: String(parsed.mvcIssueDate || previousState.mvcIssueDate || "").toUpperCase(),
+        mvcStatus: String(parsed.mvcStatus || previousState.mvcStatus || "CLEAR").toUpperCase(),
+        remarks: String(parsed.remarks || previousState.remarks || "").toUpperCase(),
+        plateNo: String(parsed.plateNo || previousState.plateNo || "").toUpperCase(),
+        mvFileNo: String(parsed.mvFileNo || previousState.mvFileNo || "").toUpperCase(),
+        engineNo: String(parsed.engineNo || previousState.engineNo || "").toUpperCase(),
+        chassisNo: String(parsed.chassisNo || previousState.chassisNo || "").toUpperCase(),
+        vehicleType: String(parsed.vehicleType || previousState.vehicleType || "").toUpperCase(),
+        ownerName: String(parsed.ownerName || previousState.ownerName || "").toUpperCase(),
+        ownerAddress: String(parsed.ownerAddress || previousState.ownerAddress || "").toUpperCase(),
       };
       setMvcData(next);
       setOcrState("mvc", {
@@ -1499,9 +1507,9 @@ export const ClearanceRequestFlow = () => {
 
       const parsed = result.fields || {};
       const next = {
-        engineNoStencilled: parsed.engineNoStencilled || previousState.engineNoStencilled || "",
-        chassisNoStencilled: parsed.chassisNoStencilled || previousState.chassisNoStencilled || "",
-        hpgTechnician: parsed.hpgTechnician || previousState.hpgTechnician || "",
+        engineNoStencilled: String(parsed.engineNoStencilled || previousState.engineNoStencilled || "").toUpperCase(),
+        chassisNoStencilled: String(parsed.chassisNoStencilled || previousState.chassisNoStencilled || "").toUpperCase(),
+        hpgTechnician: String(parsed.hpgTechnician || previousState.hpgTechnician || "").toUpperCase(),
       };
       setMecData(next);
       setOcrState("mec", {
@@ -1782,7 +1790,7 @@ export const ClearanceRequestFlow = () => {
     if (step === 1) {
       const orOk = isDocumentComplete(orCr, OR_EXPECTED_FIELDS) && orNumber && orNumber !== "Extracting...";
       const crOk = isDocumentComplete(crCr, CR_EXPECTED_FIELDS) && crNumber && crNumber !== "Extracting...";
-      return Boolean(orOk && crOk && !plateMismatch);
+      return Boolean(orOk && crOk && !hasMismatch);
     }
     if (step === 2) return paymentDone;
     if (step === 3) return voucherAssigned;
@@ -1940,14 +1948,11 @@ export const ClearanceRequestFlow = () => {
                 />
               </div>
 
-              {plateMismatch && (
+              {hasMismatch && (
                 <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
                   <AlertTriangle size={18} className="text-red-500 shrink-0" />
                   <p className="text-sm text-red-700">
-                    Plate number mismatch: OR says{" "}
-                    <strong>{orCr.plateNumber}</strong>, CR says{" "}
-                    <strong>{crCr.plateNumber}</strong>. Both must match to add
-                    queue entry.
+                    Mismatched fields: <strong>{mismatches.join(", ")}</strong>. OR and CR details must match to add queue entry.
                   </p>
                 </div>
               )}
@@ -1961,7 +1966,7 @@ export const ClearanceRequestFlow = () => {
                     <p className="text-xs text-gray-600">
                       Upload OR/CR then add each transaction to queue.
                     </p>
-                    {(!isDocumentComplete(orCr, OR_EXPECTED_FIELDS) || !orNumber || !isDocumentComplete(crCr, CR_EXPECTED_FIELDS) || !crNumber || plateMismatch) && (
+                    {(!isDocumentComplete(orCr, OR_EXPECTED_FIELDS) || !orNumber || !isDocumentComplete(crCr, CR_EXPECTED_FIELDS) || !crNumber || hasMismatch) && (
                       <div className="mt-2 text-[11px] text-red-600 space-y-0.5 font-medium">
                         {(!orNumber || orNumber === "Extracting...") && <p>• Missing OR Number</p>}
                         {getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS)}</p>}
@@ -1973,7 +1978,7 @@ export const ClearanceRequestFlow = () => {
                   <Button
                     onClick={handleAddToQueue}
                     disabled={
-                      !isDocumentComplete(orCr, OR_EXPECTED_FIELDS) || !orNumber || !isDocumentComplete(crCr, CR_EXPECTED_FIELDS) || !crNumber || plateMismatch
+                      !isDocumentComplete(orCr, OR_EXPECTED_FIELDS) || !orNumber || !isDocumentComplete(crCr, CR_EXPECTED_FIELDS) || !crNumber || hasMismatch
                     }
                   >
                     Add To Queue
@@ -2589,14 +2594,11 @@ export const ClearanceRequestFlow = () => {
                   onVehicleChange={updateCrCr}
                 />
               </div>
-              {plateMismatch && (
+              {hasMismatch && (
                 <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
                   <AlertTriangle size={18} className="text-red-500 shrink-0" />
                   <p className="text-sm text-red-700">
-                    Plate number mismatch: OR says{" "}
-                    <strong>{orCr.plateNumber}</strong>, CR says{" "}
-                    <strong>{crCr.plateNumber}</strong>. Both must match to
-                    proceed.
+                    Mismatched fields: <strong>{mismatches.join(", ")}</strong>. OR and CR details must match to proceed.
                   </p>
                 </div>
               )}
