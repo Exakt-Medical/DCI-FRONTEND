@@ -1,5 +1,5 @@
 // components/CreateTicketModal.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Send, User, FileText, AlertCircle, Paperclip } from "lucide-react";
 import { Card } from "../../components/Card";
 import { ConcernTypeSelector } from "./components/modals/ConcernTypeSelector";
@@ -68,6 +68,7 @@ export const CreateTicketModal = ({
   onClose,
   onSubmit,
   isLoginPageMode = false,
+  prefilledData = null,
 }) => {
   const [formData, setFormData] = useState({
     requestedBy: { name: "", email: "" },
@@ -101,6 +102,37 @@ export const CreateTicketModal = ({
   const [error, setError] = useState("");
   const [activeSection, setActiveSection] = useState("requestor");
   const [uploadProgress, setUploadProgress] = useState(null);
+
+  useEffect(() => {
+    if (isOpen && prefilledData) {
+      setFormData((prev) => {
+        const merged = {
+          ...prev,
+          ...prefilledData,
+          requestedBy: {
+            name: prefilledData.requestedBy?.name || prev.requestedBy?.name || localStorage.getItem("username") || "",
+            email: prefilledData.requestedBy?.email || prev.requestedBy?.email || localStorage.getItem("email") || "",
+          },
+          vehicleInfo: {
+            ...prev.vehicleInfo,
+            ...prefilledData.vehicleInfo,
+          },
+          otherInfo: {
+            ...prev.otherInfo,
+            ...prefilledData.otherInfo,
+          }
+        };
+        return merged;
+      });
+
+      if (prefilledData.concernType) {
+        handleConcernTypeChange(prefilledData.concernType);
+      }
+      if (prefilledData.vehicleSubType) {
+        handleVehicleSubTypeChange(prefilledData.vehicleSubType);
+      }
+    }
+  }, [isOpen, prefilledData]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

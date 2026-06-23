@@ -233,10 +233,13 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useRequest } from "../../context/RequestContext";
 import { fetchMyRequests } from "../../services/certificateRequestService";
+import { CreateTicketModal } from "../Tickets/CreateTicketModal";
+import { ticketService } from "../../services/ticketService";
 
 export const ClearanceRequestFlow = () => {
-  const { error: showError } = useAlert();
+  const { error: showError, success: showSuccessAlert } = useAlert();
   const { role } = useAuth();
+  const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
   const {
     voucherInventory,
     setVoucherInventory,
@@ -730,6 +733,24 @@ export const ClearanceRequestFlow = () => {
     const orOk = isDocumentComplete(orCr, OR_EXPECTED_FIELDS) && orNumber && orNumber !== "Extracting...";
     const crOk = isDocumentComplete(crCr, CR_EXPECTED_FIELDS) && crNumber && crNumber !== "Extracting...";
     if (!(orOk && crOk && !hasMismatch)) return;
+
+    const normalizeStr = (str) => (str || "").trim().toUpperCase();
+    const newPlate = normalizeStr(orCr.plateNumber || crCr.plateNumber || "");
+
+    const isDuplicate = certificationQueue.some((row) => {
+      const existingPlate = normalizeStr(row.plateNumber || row.orCr?.plateNumber || row.crCr?.plateNumber || "");
+      return (
+        (newPlate && existingPlate && newPlate === existingPlate)
+      );
+    });
+
+    if (isDuplicate) {
+      await showError(
+        "Duplicate Entry",
+        "An entry with the same Plate Number already exists in the staging queue."
+      );
+      return;
+    }
 
     const row = {
       role,
@@ -1657,9 +1678,9 @@ export const ClearanceRequestFlow = () => {
     }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!certificateNo) return;
-    const { doc, filename } = generateClearanceCertificatePDF({
+    const { doc, filename } = await generateClearanceCertificatePDF({
       id,
       certificateNo,
       clearanceReferenceNo: certificateNo,
@@ -1713,8 +1734,7 @@ export const ClearanceRequestFlow = () => {
         .toUpperCase(),
     };
 
-    setIsVerifyingDocuments(true);
-    try {
+    setIsVerifyingDocuments(true);    try {
       const response = await verificationService.verify(verificationPayload);
       const payload = response?.data || {};
 
@@ -1879,6 +1899,108 @@ export const ClearanceRequestFlow = () => {
       }
     };
   }, [isAgent, navigate, paymentTransactionId, id, showError]);
+
+  const getTicketPrefilledData = () => {
+    const currentStepNum = step;
+    const concernType = "vehicle";
+    const vehicleSubType = "dataMismatch";
+    let plateNo = "";
+    let make = "";
+    let model = "";
+    let mvFileNo = "";
+    let engineNo = "";
+    let chassisNo = "";
+
+    if (isAgent) {
+      if (currentStepNum === 1) {
+        plateNo = orCr?.plateNumber || crCr?.plateNumber || "";
+        make = orCr?.make || crCr?.make || "";
+        model = orCr?.series || crCr?.series || "";
+        mvFileNo = orCr?.mvFileNumber || crCr?.mvFileNumber || "";
+        engineNo = orCr?.engineNumber || crCr?.engineNumber || "";
+        chassisNo = orCr?.chassisNumber || crCr?.chassisNumber || "";
+      } else if (currentStepNum === 3) {
+        plateNo = agentMvcData?.plateNo || agentMecData?.plateNo || "";
+        engineNo = agentMvcData?.engineNo || agentMecData?.engineNoStencilled || "";
+        chassisNo = agentMvcData?.chassisNo || agentMecData?.chassisNoStencilled || "";
+      }
+    } else {
+      if (currentStepNum === 1) {
+        plateNo = orCr?.plateNumber || crCr?.plateNumber || "";
+        make = orCr?.make || crCr?.make || "";
+        model = orCr?.series || crCr?.series || "";
+        mvFileNo = orCr?.mvFileNumber || crCr?.mvFileNumber || "";
+        engineNo = orCr?.engineNumber || crCr?.engineNumber || "";
+        chassisNo = orCr?.chassisNumber || crCr?.chassisNumber || "";
+      } else if (currentStepNum === 5) {
+        plateNo = mvcData?.plateNo || "";
+        engineNo = mvcData?.engineNo || mecData?.engineNoStencilled || "";
+        chassisNo = mvcData?.chassisNo || mecData?.chassisNoStencilled || "";
+      }
+    }
+
+    return {
+      concernType,
+      vehicleSubType,
+      subject: `Issue in Clearance Request Step ${currentStepNum}`,
+      description: `Encountered an issue during Step ${currentStepNum} of the Clearance Request Flow (${isAgent ? "Agent" : "Citizen"} mode).`,
+      vehicleInfo: {
+        plateNo,
+        make,
+        model,
+        mvFileNo,
+        engineNo,
+        chassisNo,
+      }
+    };
+  };
+
+  const handleCreateTicket = async (formData) => {
+    const typeLabel =
+      formData.vehicleSubType === "dataMismatch"
+        ? "Data Mismatch"
+        : formData.vehicleSubType === "vehicleNotFound"
+          ? "Vehicle Not Found"
+          : formData.concernType === "other"
+            ? "Other"
+            : formData.concernType
+              ? formData.concernType.charAt(0).toUpperCase() +
+                formData.concernType.slice(1)
+              : "General";
+
+    const pad = (n) => String(n).padStart(4, "0");
+    const now = new Date();
+    const datePart = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+    const randPart = pad(Math.floor(Math.random() * 9000) + 1000);
+    const referenceNumber = `REF-${datePart}-${randPart}`;
+
+    const payload = {
+      referenceNumber,
+      requestedBy: formData.requestedBy?.name ?? "",
+      type: typeLabel,
+      status: "PENDING",
+      address: formData.description ?? "",
+      name: formData.requestedBy?.name ?? "",
+      processedBy: null,
+      dateRequested: new Date().toISOString(),
+      dateUpdated: new Date().toISOString(),
+      escalated: "NO",
+      roleBased: role?.toUpperCase() ?? null,
+      plateNo: formData.vehicleInfo?.plateNo ?? null,
+      mvFileNo: formData.vehicleInfo?.mvFileNo ?? null,
+      make: formData.vehicleInfo?.make ?? null,
+      series: formData.vehicleInfo?.model ?? null,
+      engineNo: formData.vehicleInfo?.engineNo ?? null,
+      chassisNo: formData.vehicleInfo?.chassisNo ?? null,
+    };
+
+    const created = await ticketService.create(payload);
+    await showSuccessAlert(
+      "Ticket Submitted",
+      `Your support ticket has been successfully submitted. Reference Number: ${referenceNumber}`
+    );
+    return created;
+  };
 
   const canNext = () => {
     if (isAgent) {
@@ -2093,12 +2215,12 @@ export const ClearanceRequestFlow = () => {
                     <p className="text-xs text-gray-600">
                       Upload OR/CR then add each transaction to queue.
                     </p>
-                    {(!isDocumentComplete(orCr, OR_EXPECTED_FIELDS) || !orNumber || !isDocumentComplete(crCr, CR_EXPECTED_FIELDS) || !crNumber || hasMismatch) && (
+                    {(orPreview || crPreview) && (!isDocumentComplete(orCr, OR_EXPECTED_FIELDS) || !orNumber || !isDocumentComplete(crCr, CR_EXPECTED_FIELDS) || !crNumber || hasMismatch) && (
                       <div className="mt-2 text-[11px] text-red-600 space-y-0.5 font-medium">
-                        {(!orNumber || orNumber === "Extracting...") && <p>• Missing OR Number</p>}
-                        {getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS)}</p>}
-                        {(!crNumber || crNumber === "Extracting...") && <p>• Missing CR Number</p>}
-                        {getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS)}</p>}
+                        {orPreview && (!orNumber || orNumber === "Extracting...") && <p>• Missing OR Number</p>}
+                        {orPreview && getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS)}</p>}
+                        {crPreview && (!crNumber || crNumber === "Extracting...") && <p>• Missing CR Number</p>}
+                        {crPreview && getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS)}</p>}
                       </div>
                     )}
                   </div>
@@ -2416,12 +2538,12 @@ export const ClearanceRequestFlow = () => {
                 </div>
 
                 <div className="mt-4">
-                  {(!agentMvcMecRequestId || !isDocumentComplete(agentMvcData) || !isDocumentComplete(agentMecData)) && (
+                  {(!agentMvcMecRequestId || (agentMvcPreview && !isDocumentComplete(agentMvcData)) || (agentMecPreview && !isDocumentComplete(agentMecData))) && (
                     <div className="mb-3 flex justify-end">
                       <div className="text-[11px] text-red-600 space-y-0.5 font-medium text-right">
                         {!agentMvcMecRequestId && <p>• Please select a request from the dropdown</p>}
-                        {getMissingFieldsText(agentMvcData, "MVCC")}
-                        {getMissingFieldsText(agentMecData, "MEC")}
+                        {agentMvcPreview && getMissingFieldsText(agentMvcData, "MVCC")}
+                        {agentMecPreview && getMissingFieldsText(agentMecData, "MEC")}
                       </div>
                     </div>
                   )}
@@ -2960,27 +3082,34 @@ export const ClearanceRequestFlow = () => {
           )}
 
           <div className="flex justify-between mt-6">
-            <div>
+            <div className="flex gap-2">
               {step === 1 && (
                 <Button variant="ghost" onClick={onCancel}>
                   <X size={16} /> Cancel
                 </Button>
               )}
+              <Button
+                variant="ghost"
+                onClick={() => setIsTicketModalOpen(true)}
+                className="text-gray-500 hover:text-gray-700 font-medium"
+              >
+                Report an Issue
+              </Button>
             </div>
             {step < flowSteps.length ? (
               <div className="flex items-center gap-3">
-                {!canNext() && step === 1 && !isAgent && (
+                {!canNext() && step === 1 && !isAgent && (orPreview || crPreview) && (
                   <div className="text-[11px] text-red-600 space-y-0.5 font-medium text-right mr-2">
-                    {(!orNumber || orNumber === "Extracting...") && <p>• Missing OR Number</p>}
-                    {getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS)}</p>}
-                    {(!crNumber || crNumber === "Extracting...") && <p>• Missing CR Number</p>}
-                    {getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS)}</p>}
+                    {orPreview && (!orNumber || orNumber === "Extracting...") && <p>• Missing OR Number</p>}
+                    {orPreview && getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS)}</p>}
+                    {crPreview && (!crNumber || crNumber === "Extracting...") && <p>• Missing CR Number</p>}
+                    {crPreview && getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS)}</p>}
                   </div>
                 )}
-                {!canNext() && step === 5 && !isAgent && (
+                {!canNext() && step === 5 && !isAgent && (mvcPreview || mecPreview) && (
                   <div className="text-[11px] text-red-600 space-y-0.5 font-medium text-right mr-2">
-                    {getMissingFieldsText(mvcData, "MVCC") && <p>• {getMissingFieldsText(mvcData, "MVCC")}</p>}
-                    {getMissingFieldsText(mecData, "MEC") && <p>• {getMissingFieldsText(mecData, "MEC")}</p>}
+                    {mvcPreview && getMissingFieldsText(mvcData, "MVCC") && <p>• {getMissingFieldsText(mvcData, "MVCC")}</p>}
+                    {mecPreview && getMissingFieldsText(mecData, "MEC") && <p>• {getMissingFieldsText(mecData, "MEC")}</p>}
                   </div>
                 )}
                 <Button onClick={nextStep} disabled={!canNext() || isVerifyingDocuments}>
@@ -2991,6 +3120,12 @@ export const ClearanceRequestFlow = () => {
           </div>
         </div>
       </div>
+      <CreateTicketModal
+        isOpen={isTicketModalOpen}
+        onClose={() => setIsTicketModalOpen(false)}
+        onSubmit={handleCreateTicket}
+        prefilledData={getTicketPrefilledData()}
+      />
     </div>
   );
 };

@@ -20,22 +20,22 @@ export const CertificateActionButtons = ({ row, disabled = false }) => {
 
   const buildPdf = () => generateClearanceCertificatePDF(row);
 
-  const handleView = () => {
+  const handleView = async () => {
     if (isDisabled) return;
-    const { doc } = buildPdf();
+    const { doc } = await buildPdf();
     openPdfInNewTab(doc.output("blob"));
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (isDisabled) return;
-    const { doc, filename } = buildPdf();
+    const { doc, filename } = await buildPdf();
     doc.save(filename);
   };
 
   const handleShare = async () => {
     if (isDisabled) return;
 
-    const { doc, filename } = buildPdf();
+    const { doc, filename } = await buildPdf();
     const blob = doc.output("blob");
     const file = new File([blob], filename, { type: "application/pdf" });
     const subject = `Clearance Certificate ${row.certificateNo}`;
