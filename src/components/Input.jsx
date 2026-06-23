@@ -9,10 +9,11 @@ export const Input = ({
   required,
   icon,
   className,
+  error,
 }) => (
   <div className={cn("flex flex-col gap-1.5", className)}>
     {label && (
-      <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+      <label className={cn("text-xs font-semibold text-gray-600 uppercase tracking-wider", error && "text-red-500")}>
         {label}
         {required && (
           <span className="text-red-500 ml-1">*</span>
@@ -34,7 +35,8 @@ export const Input = ({
         placeholder={placeholder}
         className={cn(
           "w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400",
-          "focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all",
+          error ? "border-red-500 ring-2 ring-red-100 focus:border-red-500 focus:ring-red-100" : "focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100",
+          "transition-all",
           icon && "pl-9"
         )}
       />

@@ -27,9 +27,9 @@ export const CLEARANCE_REQUEST_STATUS_STYLES = {
 };
 
 export const CITIZEN_STEPS = [
+  "Select Option",
   "Upload OR/CR",
   "Pay",
-  "Issue Voucher",
   "Go To HPG",
   "Upload MVCC/MEC",
   "Issue Certificate",

@@ -69,6 +69,7 @@ export function RequestProvider({ children }) {
         }
       } catch (err) {
         console.error("Failed to save request:", err);
+        throw err;
       }
     } else {
       const id = record.id || Date.now();

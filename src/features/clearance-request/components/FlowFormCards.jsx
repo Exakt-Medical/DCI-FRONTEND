@@ -2,6 +2,7 @@ import { Upload } from "lucide-react";
 import { Card } from "../../../components/Card";
 import { Input } from "../../../components/Input";
 import { FileUpload } from "../../../components/FileUpload";
+import { cn } from "../../../utils/cn";
 
 const OR_FIELD_CONFIG = [
   { key: "plateNumber", label: "Plate Number", required: true },
@@ -26,7 +27,7 @@ const CR_FIELD_CONFIG = [
   { key: "ownerName", label: "Owner Name", required: true },
 ];
 
-export const VehicleFields = ({ values, onChange, fieldSet = "cr" }) => (
+export const VehicleFields = ({ values, onChange, fieldSet = "cr", errors = {} }) => (
   <div className="space-y-3">
     {(fieldSet === "or" ? OR_FIELD_CONFIG : CR_FIELD_CONFIG).map((field) => (
       <Input
@@ -36,10 +37,11 @@ export const VehicleFields = ({ values, onChange, fieldSet = "cr" }) => (
         onChange={(e) => onChange(field.key, e.target.value.toUpperCase())}
         placeholder="Auto-extracted"
         required={true}
+        error={errors[field.key]}
       />
     ))}
     <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
+      <label className={cn("text-xs font-semibold text-gray-600 uppercase tracking-wider", errors.ownerAddress && "text-red-500")}>
         Owner Address
         <span className="text-red-500 ml-1">*</span>
       </label>
@@ -48,7 +50,10 @@ export const VehicleFields = ({ values, onChange, fieldSet = "cr" }) => (
         onChange={(e) => onChange("ownerAddress", e.target.value.toUpperCase())}
         placeholder="Auto-extracted"
         rows={3}
-        className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
+        className={cn(
+          "w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all",
+          errors.ownerAddress && "border-red-500 ring-2 ring-red-100 focus:border-red-500 focus:ring-red-100"
+        )}
       />
     </div>
   </div>
@@ -69,6 +74,7 @@ export const VehicleDocumentUploadCard = ({
   vehicleValues,
   vehicleFieldSet,
   onVehicleChange,
+  errors = {},
 }) => (
   <Card className="p-5">
     <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
@@ -96,6 +102,7 @@ export const VehicleDocumentUploadCard = ({
         }}
         placeholder={numberPlaceholder}
         required={true}
+        error={errors[vehicleFieldSet === "or" ? "orNumber" : "crNumber"]}
       />
       {extraInputs}
       <div className="pt-2 border-t border-gray-200">
@@ -106,6 +113,7 @@ export const VehicleDocumentUploadCard = ({
           values={vehicleValues}
           onChange={onVehicleChange}
           fieldSet={vehicleFieldSet}
+          errors={errors}
         />
       </div>
     </div>
