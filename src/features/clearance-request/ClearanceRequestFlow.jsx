@@ -1,3 +1,10 @@
+import { useClearanceRequestFlow } from "../../hooks/useClearanceRequestFlow";
+import {
+  isDocumentComplete,
+  OR_EXPECTED_FIELDS,
+  CR_EXPECTED_FIELDS,
+  getMissingFieldsText,
+} from "./utils/clearanceHelpers";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
@@ -28,6 +35,7 @@ import {
   MvcMecUploadCard,
   VehicleDocumentUploadCard,
 } from "./components/FlowFormCards";
+import { AgentQueueStaging } from "./components/AgentQueueStaging";
 import { CertificateActionButtons } from "./components/CertificateActionButtons";
 import {
   CLEARANCE_OCR_DOCUMENT_TYPE,
@@ -42,1836 +50,147 @@ import paymentsService from "../../services/paymentsService";
 import merchantCallbackService from "../../services/merchantCallbackService";
 import { transferVoucherService } from "../../services/transferVoucherService";
 
-const emptyVehicle = {
-  plateNumber: "",
-  mvFileNumber: "",
-  classification: "",
-  vehicleType: "",
-  fuelType: "",
-  engineNumber: "",
-  chassisNumber: "",
-  make: "",
-  series: "",
-  yearModel: "",
-  color: "",
-  ownerName: "",
-  ownerAddress: "",
-};
-
-const emptyMvc = {
-  engineNo: "",
-  chassisNo: "",
-  plateNo: "",
-  color: "",
-};
-
-const emptyMec = {
-  engineNoStencilled: "",
-  chassisNoStencilled: "",
-  plateNo: "",
-  color: "",
-};
-
-const makeId = () =>
-  `REQ-${Date.now()}-${String(Math.random()).slice(2, 6)}`;
-const makeCertificateNo = (index = 0) =>
-  `DCI-CERT-${String(Date.now() + index).slice(-8)}`;
-
-const emptyOcrUploadState = {
-  or: { status: OCR_STATUS.IDLE, confidence: 0, error: "" },
-  cr: { status: OCR_STATUS.IDLE, confidence: 0, error: "" },
-  mvc: { status: OCR_STATUS.IDLE, confidence: 0, error: "" },
-  mec: { status: OCR_STATUS.IDLE, confidence: 0, error: "" },
-  agentMvc: { status: OCR_STATUS.IDLE, confidence: 0, error: "" },
-  agentMec: { status: OCR_STATUS.IDLE, confidence: 0, error: "" },
-};
-
-const mergeVehicleFields = (current = {}, next = {}) => {
-  const merged = { ...current };
-  Object.entries(next).forEach(([key, value]) => {
-    if (typeof value === "string" && value.trim()) {
-      merged[key] = value.trim().toUpperCase();
-    }
-  });
-  return merged;
-};
-
-const OR_EXPECTED_FIELDS = [
-  "plateNumber",
-  "mvFileNumber",
-  "classification",
-  "vehicleType",
-  "fuelType",
-  "yearModel",
-  "color",
-  "ownerName",
-  "ownerAddress",
-];
-
-const CR_EXPECTED_FIELDS = [
-  "plateNumber",
-  "mvFileNumber",
-  "engineNumber",
-  "chassisNumber",
-  "make",
-  "series",
-  "yearModel",
-  "color",
-  "ownerName",
-  "ownerAddress",
-];
-
-const isDocumentComplete = (doc, expectedKeys = null) => {
-  if (!doc) return false;
-  const keysToCheck = expectedKeys || Object.keys(doc);
-  return keysToCheck.every(
-    (key) => typeof doc[key] === "string" && doc[key].trim() !== "" && doc[key] !== "Extracting..."
-  );
-};
-
-const getMissingFieldsText = (doc, docName, expectedKeys = null) => {
-  if (!doc) return null;
-  const keysToCheck = expectedKeys || Object.keys(doc);
-  const missing = keysToCheck
-    .filter((key) => typeof doc[key] !== "string" || doc[key].trim() === "" || doc[key] === "Extracting...")
-    .map((key) => key.replace(/([A-Z])/g, " $1").replace(/^./, str => str.toUpperCase()));
-  
-  if (missing.length === 0) return null;
-  if (missing.length <= 4) return `Missing in ${docName}: ${missing.join(", ")}`;
-  return `Missing ${missing.length} required fields in ${docName}`;
-};
-
-const evaluateMvcMecValidation = (mvcPayload, mecPayload, verifiedVehicle = {}) => {
-  const norm = (str) => (str || "").trim().toUpperCase();
-
-  const originalEngine = norm(verifiedVehicle.engineNumber);
-  const originalChassis = norm(verifiedVehicle.chassisNumber);
-  const originalPlate = norm(verifiedVehicle.plateNumber);
-  const originalColor = norm(verifiedVehicle.color);
-  const originalStatus = norm(verifiedVehicle.verificationStatus);
-
-  // 0. Verification status check
-  if (originalStatus !== "VERIFIED" && originalStatus !== "COMPLETED") {
-    return { valid: false, reason: `DCI validation failed: Verification status is "${originalStatus || "UNKNOWN"}". It must be VERIFIED to proceed.` };
-  }
-
-  const mvcEngine = norm(mvcPayload.engineNo || mvcPayload.engineNumber);
-  const mvcChassis = norm(mvcPayload.chassisNo || mvcPayload.chassisNumber);
-  const mvcPlate = norm(mvcPayload.plateNo || mvcPayload.plateNumber);
-  const mvcColor = norm(mvcPayload.color);
-
-  const mecEngine = norm(mecPayload.engineNoStencilled || mecPayload.engineNo || mecPayload.engineNumber);
-  const mecChassis = norm(mecPayload.chassisNoStencilled || mecPayload.chassisNo || mecPayload.chassisNumber);
-  const mecPlate = norm(mecPayload.plateNo || mecPayload.plateNumber);
-  const mecColor = norm(mecPayload.color);
-
-  // 1. Basic presence checks
-  if (!mvcEngine) return { valid: false, reason: "Missing Engine Number in MVCC." };
-  if (!mvcChassis) return { valid: false, reason: "Missing Chassis Number in MVCC." };
-  if (!mvcPlate) return { valid: false, reason: "Missing Plate Number in MVCC." };
-  if (!mvcColor) return { valid: false, reason: "Missing Color in MVCC." };
-
-  if (!mecEngine) return { valid: false, reason: "Missing Engine Number in MEC." };
-  if (!mecChassis) return { valid: false, reason: "Missing Chassis Number in MEC." };
-  if (!mecPlate) return { valid: false, reason: "Missing Plate Number in MEC." };
-  if (!mecColor) return { valid: false, reason: "Missing Color in MEC." };
-
-  // 2. Mismatch checks between documents and verified vehicle
-  if (originalEngine) {
-    if (mvcEngine !== originalEngine) {
-      return { valid: false, reason: `MVCC Engine Number (${mvcEngine}) does not match verified Engine Number (${originalEngine}).` };
-    }
-    if (mecEngine !== originalEngine) {
-      return { valid: false, reason: `MEC Engine Number (${mecEngine}) does not match verified Engine Number (${originalEngine}).` };
-    }
-  }
-  if (originalChassis) {
-    if (mvcChassis !== originalChassis) {
-      return { valid: false, reason: `MVCC Chassis Number (${mvcChassis}) does not match verified Chassis Number (${originalChassis}).` };
-    }
-    if (mecChassis !== originalChassis) {
-      return { valid: false, reason: `MEC Chassis Number (${mecChassis}) does not match verified Chassis Number (${originalChassis}).` };
-    }
-  }
-  if (originalPlate) {
-    if (mvcPlate !== originalPlate) {
-      return { valid: false, reason: `MVCC Plate Number (${mvcPlate}) does not match verified Plate Number (${originalPlate}).` };
-    }
-    if (mecPlate !== originalPlate) {
-      return { valid: false, reason: `MEC Plate Number (${mecPlate}) does not match verified Plate Number (${originalPlate}).` };
-    }
-  }
-
-  // 3. Color validation checks
-  if (originalColor) {
-    if (mvcColor !== originalColor) {
-      return { valid: false, reason: `MVCC Color (${mvcColor}) does not match verified Color (${originalColor}).` };
-    }
-    if (mecColor !== originalColor) {
-      return { valid: false, reason: `MEC Color (${mecColor}) does not match verified Color (${originalColor}).` };
-    }
-  }
-
-  // Double check consistency between MVCC and MEC directly
-  if (mvcEngine !== mecEngine) {
-    return { valid: false, reason: `Engine Numbers do not match: MVCC (${mvcEngine}) vs MEC (${mecEngine}).` };
-  }
-  if (mvcChassis !== mecChassis) {
-    return { valid: false, reason: `Chassis Numbers do not match: MVCC (${mvcChassis}) vs MEC (${mecChassis}).` };
-  }
-  if (mvcPlate !== mecPlate) {
-    return { valid: false, reason: `Plate Numbers do not match: MVCC (${mvcPlate}) vs MEC (${mecPlate}).` };
-  }
-  if (mvcColor !== mecColor) {
-    return { valid: false, reason: `Colors do not match: MVCC (${mvcColor}) vs MEC (${mecColor}).` };
-  }
-
-  return { valid: true, reason: "Validated by DCI portal." };
-};
-
-import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
-import { useRequest } from "../../context/RequestContext";
-import { fetchMyRequests } from "../../services/certificateRequestService";
-
 export const ClearanceRequestFlow = () => {
-  const { error: showError } = useAlert();
-  const { role } = useAuth();
   const {
-    voucherInventory,
-    setVoucherInventory,
-    handleRequestSave: onSaveRequest,
-    handleClearanceRequestComplete: onComplete,
-  } = useRequest();
-
-  const [availableVoucherRequests, setAvailableVoucherRequests] = useState([]);
-
-  const loadAllRequests = async () => {
-    try {
-      const data = await fetchMyRequests();
-      setAvailableVoucherRequests(data || []);
-    } catch (error) {
-      console.error("Failed to load requests:", error);
-    }
-  };
-
-  useEffect(() => {
-    loadAllRequests();
-  }, []);
-
-  const location = useLocation();
-  const navigate = useNavigate();
-  const searchParams = useMemo(
-    () => new URLSearchParams(location.search),
-    [location.search],
-  );
-  const idFromQuery = searchParams.get("id") || "";
-  const paymentTransactionId =
-    searchParams.get("transaction_id") ||
-    searchParams.get("transactionId") ||
-    "";
-  const selectedRequest =
-    location.state?.request ||
-    availableVoucherRequests.find(
-      (item) => item.id === idFromQuery,
-    ) ||
-    null;
-  const onCancel = () => navigate("/dci-access/requests");
-  const isAgent = role === "agent_fixer";
-  const flowSteps = isAgent ? AGENT_STEPS : CITIZEN_STEPS;
-  const maxStep = flowSteps.length;
-  const handledPaymentTransactionRef = useRef("");
-
-  const [id, setId] = useState(
-    () => selectedRequest?.id || idFromQuery || "",
-  );
-
-  useEffect(() => {
-    if (id) {
-      const params = new URLSearchParams(location.search);
-      if (params.get("id") !== String(id)) {
-        params.set("id", id);
-        navigate({ search: params.toString() }, { replace: true });
-      }
-    }
-  }, [id, location.search, navigate]);
-  const [step, setStep] = useState(() => {
-    const storedStep = selectedRequest?.currentStep || 1;
-    return Math.min(storedStep, maxStep);
-  });
-  const [requestStatus, setRequestStatus] = useState(
-    () => selectedRequest?.status || "DRAFT",
-  );
-  const [dateCreated] = useState(
-    () =>
-      selectedRequest?.dateCreated || new Date().toISOString().split("T")[0],
-  );
-
-  const [orPreview, setOrPreview] = useState(
-    selectedRequest?.orPreview || null,
-  );
-  const [orNumber, setOrNumber] = useState(selectedRequest?.orNumber || "");
-  const [orCr, setOrCr] = useState(() => selectedRequest?.orCr || emptyVehicle);
-
-  const [crPreview, setCrPreview] = useState(
-    selectedRequest?.crPreview || null,
-  );
-  const [crNumber, setCrNumber] = useState(selectedRequest?.crNumber || "");
-  const [crCr, setCrCr] = useState(() => selectedRequest?.crCr || emptyVehicle);
-
-  const [processingPayment, setProcessingPayment] = useState(false);
-  const [isVerifyingDocuments, setIsVerifyingDocuments] = useState(false);
-  const [paymentDone, setPaymentDone] = useState(
-    Boolean(isAgent || selectedRequest?.paymentDone),
-  );
-
-  const [issuingVoucher, setIssuingVoucher] = useState(false);
-  const [fetchVoucherFailed, setFetchVoucherFailed] = useState(false);
-  const [voucherCode, setVoucherCode] = useState(
-    selectedRequest?.voucherCode || selectedRequest?.voucherReferenceNo || "",
-  );
-  const [voucherAssigned, setVoucherAssigned] = useState(
-    Boolean(
-      selectedRequest?.voucherAssigned ||
-      selectedRequest?.voucherCode ||
-      selectedRequest?.voucherReferenceNo,
-    ),
-  );
-
-  const [hpgVerified, setHpgVerified] = useState(
-    Boolean(selectedRequest?.hpgVerified),
-  );
-
-  const [mvcPreview, setMvcPreview] = useState(
-    selectedRequest?.mvcPreview || null,
-  );
-  const [mvcFileName, setMvcFileName] = useState(
-    selectedRequest?.mvcFileName || "",
-  );
-  const [mvcData, setMvcData] = useState(
-    () => selectedRequest?.mvcData || emptyMvc,
-  );
-
-  const [mecPreview, setMecPreview] = useState(
-    selectedRequest?.mecPreview || null,
-  );
-  const [mecFileName, setMecFileName] = useState(
-    selectedRequest?.mecFileName || "",
-  );
-  const [mecData, setMecData] = useState(
-    () => selectedRequest?.mecData || emptyMec,
-  );
-
-  const [agentMvcPreview, setAgentMvcPreview] = useState(null);
-  const [agentMvcFileName, setAgentMvcFileName] = useState("");
-  const [agentMvcData, setAgentMvcData] = useState(emptyMvc);
-  const [agentMecPreview, setAgentMecPreview] = useState(null);
-  const [agentMecFileName, setAgentMecFileName] = useState("");
-  const [agentMecData, setAgentMecData] = useState(emptyMec);
-  const [agentMvcMecId, setAgentMvcMecId] = useState("");
-
-  const [isIssuingBulk, setIsIssuingBulk] = useState(false);
-  const [isIssuingCertificate, setIsIssuingCertificate] = useState(false);
-  const [certificateNo, setCertificateNo] = useState(
-    selectedRequest?.certificateNo || "",
-  );
-  const [selectedMvcMecIds, setSelectedMvcMecIds] = useState([]);
-  const [citizenValidationState, setCitizenValidationState] = useState(
-    selectedRequest?.mvcMecValidationState || VALIDATION_STATE.IDLE,
-  );
-  const [citizenValidationMessage, setCitizenValidationMessage] = useState(
-    selectedRequest?.mvcMecValidationMessage || "",
-  );
-
-  useEffect(() => {
-    if (selectedRequest) {
-      if (selectedRequest.id && !id) setId(selectedRequest.id);
-      if (selectedRequest.currentStep) setStep(Math.min(selectedRequest.currentStep, maxStep));
-      if (selectedRequest.status) setRequestStatus(selectedRequest.status);
-      if (selectedRequest.orNumber) setOrNumber(selectedRequest.orNumber);
-      if (selectedRequest.orCr) setOrCr(selectedRequest.orCr);
-      if (selectedRequest.crNumber) setCrNumber(selectedRequest.crNumber);
-      if (selectedRequest.crCr) setCrCr(selectedRequest.crCr);
-      if (selectedRequest.voucherCode || selectedRequest.voucherReferenceNo) {
-        const code = selectedRequest.voucherCode || selectedRequest.voucherReferenceNo;
-        setVoucherCode(code);
-        setVoucherAssigned(true);
-      }
-      if (selectedRequest.paymentDone) setPaymentDone(true);
-      if (selectedRequest.hpgVerified || selectedRequest.status === "HPG_VERIFIED") setHpgVerified(true);
-      if (selectedRequest.certificateNo) setCertificateNo(selectedRequest.certificateNo);
-      if (selectedRequest.mvcMecValidationState) setCitizenValidationState(selectedRequest.mvcMecValidationState);
-      if (selectedRequest.mvcMecValidationMessage) setCitizenValidationMessage(selectedRequest.mvcMecValidationMessage);
-      if (selectedRequest.mvcData) setMvcData(selectedRequest.mvcData);
-      if (selectedRequest.mecData) setMecData(selectedRequest.mecData);
-    }
-  }, [selectedRequest, maxStep, id]);
-
-  const [ocrUploadState, setOcrUploadState] = useState(emptyOcrUploadState);
-  const ocrUploadVersionRef = useRef({
-    or: 0,
-    cr: 0,
-    mvc: 0,
-    mec: 0,
-    agentMvc: 0,
-    agentMec: 0,
-  });
-
-  const [queueRows, setQueueRows] = useState(() => {
-    if (!isAgent) return [];
-
-    if (selectedRequest?.id) {
-      return [
-        {
-          ...selectedRequest,
-          hpgStatus: selectedRequest.hpgStatus || HPG_STATUS.PENDING,
-          mvcMecUploaded: Boolean(
-            selectedRequest.mvcData?.mvcNo && selectedRequest.mecData?.engineNoStencilled,
-          ),
-        },
-      ];
-    }
-    return [];
-  });
-
-  const getMismatches = () => {
-    const m = [];
-    if (orCr.plateNumber && crCr.plateNumber && orCr.plateNumber !== crCr.plateNumber) m.push("Plate Number");
-    if (orCr.yearModel && crCr.yearModel && orCr.yearModel !== crCr.yearModel) m.push("Year Model");
-    if (orCr.color && crCr.color && orCr.color !== crCr.color) m.push("Color");
-    if (orCr.mvFileNumber && crCr.mvFileNumber && orCr.mvFileNumber !== crCr.mvFileNumber) m.push("MV File Number");
-    if (orCr.ownerName && crCr.ownerName && orCr.ownerName !== crCr.ownerName) m.push("Owner Name");
-    if (orCr.ownerAddress && crCr.ownerAddress && orCr.ownerAddress !== crCr.ownerAddress) m.push("Owner Address");
-    return m;
-  };
-
-  const mismatches = getMismatches();
-  const hasMismatch = mismatches.length > 0;
-
-  const updateOrCr = (field, value) =>
-    setOrCr((prev) => ({ ...prev, [field]: value ? value.toUpperCase() : "" }));
-  const updateCrCr = (field, value) =>
-    setCrCr((prev) => ({ ...prev, [field]: value ? value.toUpperCase() : "" }));
-
-  const isResume = Boolean(selectedRequest?.id);
-
-  const fallbackRows = useMemo(() => {
-    if (!isAgent || !isResume) return [];
-
-    return availableVoucherRequests
-      .filter(
-        (item) =>
-          item.status !== "CERTIFICATE_ISSUED" &&
-          item.clearanceStatus !== "CERTIFICATE_ISSUED",
-      )
-      .map((item) => ({
-        ...item,
-        hpgStatus: item.hpgStatus || HPG_STATUS.PENDING,
-        mvcMecUploaded: Boolean(item.mvcData?.mvcNo && item.mecData?.engineNoStencilled),
-      }));
-  }, [availableVoucherRequests, isAgent, isResume]);
-
-  const certificationQueue = queueRows.length > 0 ? queueRows : fallbackRows;
-
-  const pendingMvcMecRows = useMemo(
-    () => certificationQueue.filter((row) => !row.mvcMecUploaded),
-    [certificationQueue],
-  );
-
-  const selectableMvcMecRows = useMemo(
-    () =>
-      certificationQueue.filter(
-        (row) =>
-          row.status !== "CERTIFICATE_ISSUED" &&
-          row.clearanceStatus !== "CERTIFICATE_ISSUED",
-      ),
-    [certificationQueue],
-  );
-
-  const getQueueTimestamp = (row) => {
-    const requestTs = Number(String(row?.id || "").split("-")[1]);
-    if (Number.isFinite(requestTs)) return requestTs;
-
-    const createdTs = Date.parse(row?.dateCreated || "");
-    if (Number.isFinite(createdTs)) return createdTs;
-
-    return Number.MAX_SAFE_INTEGER;
-  };
-
-  const clearOrCrForm = () => {
-    setOrPreview(null);
-    setOrNumber("");
-    setOrCr(emptyVehicle);
-    setCrPreview(null);
-    setCrNumber("");
-    setCrCr(emptyVehicle);
-    setOcrUploadState((prev) => ({
-      ...prev,
-      or: emptyOcrUploadState.or,
-      cr: emptyOcrUploadState.cr,
-    }));
-  };
-
-  const nextOcrVersion = (key) => {
-    const current = (ocrUploadVersionRef.current[key] || 0) + 1;
-    ocrUploadVersionRef.current[key] = current;
-    return current;
-  };
-
-  const isCurrentOcrVersion = (key, version) =>
-    ocrUploadVersionRef.current[key] === version;
-
-  const setOcrState = (key, patch) => {
-    setOcrUploadState((prev) => ({
-      ...prev,
-      [key]: {
-        ...prev[key],
-        ...patch,
-      },
-    }));
-  };
-
-  const persistRow = async (row) => {
-    if (onSaveRequest) {
-      const resObj = await onSaveRequest({
-        ...row,
-        id: row.id,
-        plateNumber: row.plateNumber || row.orCr?.plateNumber || "",
-        voucherReferenceNo: row.voucherReferenceNo || "",
-        voucherStatus: row.voucherId ? "VOUCHER_ISSUED" : "PENDING_ASSIGNMENT",
-        hpgVerified: row.hpgStatus === HPG_STATUS.APPROVED,
-        mvcData: row.mvcData || {},
-        mecData: row.mecData || {},
-        currentStep: row.currentStep || step,
-        status: row.status || "OR_CR_UPLOADED",
-        clearanceStatus: row.clearanceStatus || "",
-        certificateNo: row.certificateNo || "",
-      });
-      const savedId = resObj?.id || resObj;
-      if (resObj?.certificateNo && row.certificateNo !== resObj.certificateNo) {
-        setQueueRows((prev) =>
-          prev.map((r) =>
-            r.id === row.id
-              ? {
-                  ...r,
-                  certificateNo: resObj.certificateNo,
-                  clearanceReferenceNo: resObj.certificateNo,
-                  clearanceStatus: "CERTIFICATE_ISSUED",
-                }
-              : r,
-          ),
-        );
-      }
-      return savedId;
-    }
-    return row.id;
-  };
-
-  const saveCitizenRequest = async (overrides = {}) => {
-    const record = {
-      id,
-      dateCreated,
-      currentStep: step,
-      status: requestStatus,
-      role,
-      plateNumber:
-        orCr.plateNumber ||
-        crCr.plateNumber ||
-        selectedRequest?.plateNumber ||
-        "",
-      voucherCode,
-      voucherReferenceNo: voucherCode,
-      voucherAssigned,
-      voucherStatus: voucherAssigned
-        ? "VOUCHER_ISSUED"
-        : selectedRequest?.voucherStatus ||
-          (selectedRequest?.voucherCode ? "VOUCHER_ISSUED" : ""),
-
-      paymentDone,
-      hpgVerified,
-      certificateNo,
-      clearanceReferenceNo: certificateNo,
-      clearanceStatus: certificateNo
-        ? "CERTIFICATE_ISSUED"
-        : selectedRequest?.clearanceStatus || "",
-      orNumber,
-      crNumber,
-      verificationId: selectedRequest?.verificationId || "",
-      ...overrides,
-    };
-
-    if (onSaveRequest) {
-      const resObj = await onSaveRequest(record);
-      const savedId = resObj?.id || resObj;
-      if (savedId && !id) {
-        setId(savedId);
-        record.id = savedId;
-      }
-      if (resObj?.certificateNo) {
-        setCertificateNo(resObj.certificateNo);
-        record.certificateNo = resObj.certificateNo;
-        record.clearanceReferenceNo = resObj.certificateNo;
-        record.clearanceStatus = "CERTIFICATE_ISSUED";
-      }
-    }
-    return record;
-  };
-
-  const handleOrUpload = async (file, preview) => {
-    setOrPreview(preview);
-    if (!file) {
-      setOcrState("or", { status: OCR_STATUS.IDLE, confidence: 0, error: "" });
-      return;
-    }
-
-    const runId = nextOcrVersion("or");
-    const previousState = {
-      orNumber,
-      orCr,
-    };
-    setOcrState("or", {
-      status: OCR_STATUS.EXTRACTING,
-      confidence: 0,
-      error: "",
-    });
-
-    setOrNumber("Extracting...");
-    updateOrCr("plateNumber", "Extracting...");
-
-    try {
-      const result = await extractClearanceDocumentData(
-        file,
-        CLEARANCE_OCR_DOCUMENT_TYPE.OR,
-      );
-      if (!isCurrentOcrVersion("or", runId)) return;
-
-      const parsed = result.fields || {};
-      const nextVehicle = mergeVehicleFields(orCr, parsed.vehicle || {});
-      setOrNumber(parsed.orNumber || previousState.orNumber || "");
-      setOrCr(nextVehicle);
-      setOcrState("or", {
-        status: OCR_STATUS.SUCCESS,
-        confidence: result.confidence || 0,
-        error: "",
-      });
-    } catch (error) {
-      if (!isCurrentOcrVersion("or", runId)) return;
-
-      setOrNumber(previousState.orNumber || "");
-      setOrCr(previousState.orCr || emptyVehicle);
-      setOcrState("or", {
-        status: OCR_STATUS.ERROR,
-        confidence: 0,
-        error: error?.message || "Unable to extract OR details.",
-      });
-    }
-  };
-
-  const handleCrUpload = async (file, preview) => {
-    setCrPreview(preview);
-    if (!file) {
-      setOcrState("cr", { status: OCR_STATUS.IDLE, confidence: 0, error: "" });
-      return;
-    }
-
-    const runId = nextOcrVersion("cr");
-    const previousState = {
-      crNumber,
-      crCr,
-    };
-    setOcrState("cr", {
-      status: OCR_STATUS.EXTRACTING,
-      confidence: 0,
-      error: "",
-    });
-
-    setCrNumber("Extracting...");
-    updateCrCr("plateNumber", "Extracting...");
-
-    try {
-      const result = await extractClearanceDocumentData(
-        file,
-        CLEARANCE_OCR_DOCUMENT_TYPE.CR,
-      );
-      if (!isCurrentOcrVersion("cr", runId)) return;
-
-      const parsed = result.fields || {};
-      const nextVehicle = mergeVehicleFields(crCr, parsed.vehicle || {});
-      setCrNumber(parsed.crNumber || previousState.crNumber || "");
-      setCrCr(nextVehicle);
-      setOcrState("cr", {
-        status: OCR_STATUS.SUCCESS,
-        confidence: result.confidence || 0,
-        error: "",
-      });
-    } catch (error) {
-      if (!isCurrentOcrVersion("cr", runId)) return;
-
-      setCrNumber(previousState.crNumber || "");
-      setCrCr(previousState.crCr || emptyVehicle);
-      setOcrState("cr", {
-        status: OCR_STATUS.ERROR,
-        confidence: 0,
-        error: error?.message || "Unable to extract CR details.",
-      });
-    }
-  };
-
-  const handleAddToQueue = async () => {
-    if (!isAgent) return;
-
-    const orOk = isDocumentComplete(orCr, OR_EXPECTED_FIELDS) && orNumber && orNumber !== "Extracting...";
-    const crOk = isDocumentComplete(crCr, CR_EXPECTED_FIELDS) && crNumber && crNumber !== "Extracting...";
-    if (!(orOk && crOk && !hasMismatch)) return;
-
-    const row = {
-      role,
-      dateCreated: new Date().toISOString().split("T")[0],
-      currentStep: 1,
-      status: "OR_CR_UPLOADED",
-      voucherStatus: "PENDING_ASSIGNMENT",
-      clearanceStatus: "",
-      plateNumber: orCr.plateNumber || crCr.plateNumber || "",
-      orNumber,
-      crNumber,
-      orCr,
-      crCr,
-      orPreview,
-      crPreview,
-      hpgStatus: HPG_STATUS.PENDING,
-      mvcMecUploaded: false,
-    };
-
-    const newId = await persistRow(row);
-    row.id = newId;
-    setQueueRows((prev) => [row, ...prev]);
-    clearOrCrForm();
-  };
-
-  const updateVoucherInventory = (updater) => {
-    if (!setVoucherInventory) return;
-    setVoucherInventory((prev) =>
-      updater(Array.isArray(prev) ? prev : voucherInventory),
-    );
-  };
-
-  const setHpgForRow = (idForRow, nextStatus) => {
-    setQueueRows((prev) => {
-      const source = prev.length > 0 ? prev : fallbackRows;
-      return source.map((row) => {
-        if (row.id !== idForRow) return row;
-        const statusMap = {
-          [HPG_STATUS.PENDING]: "PENDING_HPG",
-          [HPG_STATUS.INSPECTION]: "UNDER_INSPECTION",
-          [HPG_STATUS.APPROVED]: "HPG_VERIFIED",
-          [HPG_STATUS.REJECTED]: "HPG_REJECTED",
-        };
-        const updated = {
-          ...row,
-          hpgStatus: nextStatus,
-          hpgVerified: nextStatus === HPG_STATUS.APPROVED,
-          status: statusMap[nextStatus],
-          currentStep: 2,
-        };
-        persistRow(updated);
-        return updated;
-      });
-    });
-  };
-
-  const setHpgForAll = (nextStatus) => {
-    certificationQueue.forEach((row) =>
-      setHpgForRow(row.id, nextStatus),
-    );
-  };
-
-  const uploadMvcMecForRow = (idForRow, uploadPayload = {}) => {
-    const now = new Date().toISOString().split("T")[0];
-    setQueueRows((prev) => {
-      const source = prev.length > 0 ? prev : fallbackRows;
-      return source.map((row) => {
-        if (row.id !== idForRow) return row;
-        const nextMvcData = {
-          engineNo: row.engineNumber || row.orCr?.engineNumber || row.crCr?.engineNumber || "",
-          chassisNo: row.chassisNumber || row.orCr?.chassisNumber || row.crCr?.chassisNumber || "",
-          plateNo: row.plateNumber || "",
-          color: row.color || row.orCr?.color || row.crCr?.color || "",
-        };
-        const nextMecData = {
-          engineNoStencilled: row.engineNumber || row.orCr?.engineNumber || row.crCr?.engineNumber || "",
-          chassisNoStencilled: row.chassisNumber || row.orCr?.chassisNumber || row.crCr?.chassisNumber || "",
-          plateNo: row.plateNumber || "",
-          color: row.color || row.orCr?.color || row.crCr?.color || "",
-        };
-        const updated = {
-          ...row,
-          mvcMecUploaded: true,
-          mvcMecValidationState: VALIDATION_STATE.PENDING,
-          mvcMecValidationMessage: "Awaiting DCI validation.",
-          mvcData: nextMvcData,
-          mecData: nextMecData,
-          mvcPreview: uploadPayload.mvcPreview || row.mvcPreview || null,
-          mecPreview: uploadPayload.mecPreview || row.mecPreview || null,
-          mvcFileName: uploadPayload.mvcFileName || row.mvcFileName || "",
-          mecFileName: uploadPayload.mecFileName || row.mecFileName || "",
-          status: "MVC_MEC_VALIDATION_PENDING",
-          currentStep: 3,
-        };
-        persistRow(updated);
-        return updated;
-      });
-    });
-  };
-
-  const uploadMvcMecForAll = () => {
-    certificationQueue.forEach((row) => uploadMvcMecForRow(row.id));
-  };
-
-  const validateMvcMecForRow = (idForRow) => {
-    setQueueRows((prev) => {
-      const source = prev.length > 0 ? prev : fallbackRows;
-      return source.map((row) => {
-        if (row.id !== idForRow) return row;
-        const validating = {
-          ...row,
-          mvcMecValidationState: VALIDATION_STATE.VALIDATING,
-          mvcMecValidationMessage: "DCI validation in progress...",
-          status: "MVC_MEC_VALIDATING",
-        };
-        persistRow(validating);
-        return validating;
-      });
-    });
-
-    setTimeout(() => {
-      setQueueRows((prev) => {
-        const source = prev.length > 0 ? prev : fallbackRows;
-        return source.map((row) => {
-          if (row.id !== idForRow) return row;
-          const targetVehicle = row.orCr || row.crCr || row;
-          const validation = evaluateMvcMecValidation(row.mvcData, row.mecData, {
-            ...targetVehicle,
-            verificationStatus: targetVehicle.verificationStatus || row.verificationStatus,
-          });
-          const validated = {
-            ...row,
-            mvcMecValidationState: validation.valid
-              ? VALIDATION_STATE.PASSED
-              : VALIDATION_STATE.FAILED,
-            mvcMecValidationMessage: validation.reason,
-            status: validation.valid
-              ? "MVC_MEC_VALIDATED"
-              : "MVC_MEC_VALIDATION_PENDING",
-            currentStep: 3,
-          };
-          persistRow(validated);
-          return validated;
-        });
-      });
-    }, 1300);
-  };
-
-  const validateSelectedMvcMecRows = () => {
-    selectedMvcMecIds.forEach((idForRow) => {
-      validateMvcMecForRow(idForRow);
-    });
-    setSelectedMvcMecIds([]);
-  };
-
-  const toggleSelectedMvcMecRow = (idForRow) => {
-    setSelectedMvcMecIds((prev) =>
-      prev.includes(idForRow)
-        ? prev.filter((id) => id !== idForRow)
-        : [...prev, idForRow],
-    );
-  };
-
-  const toggleSelectAllMvcMecRows = () => {
-    const selectableIds = certificationQueue
-      .filter((row) => row.mvcMecUploaded)
-      .map((row) => row.id);
-
-    setSelectedMvcMecIds((prev) =>
-      prev.length === selectableIds.length && selectableIds.length > 0
-        ? []
-        : selectableIds,
-    );
-  };
-
-  const selectedMvcMecRows = certificationQueue.filter((row) =>
-    selectedMvcMecIds.includes(row.id),
-  );
-  const allMvcMecSelectableSelected =
-    certificationQueue.some((row) => row.mvcMecUploaded) &&
-    certificationQueue
-      .filter((row) => row.mvcMecUploaded)
-      .every((row) => selectedMvcMecIds.includes(row.id));
-  const hasSelectedMvcMecRows = selectedMvcMecRows.length > 0;
-
-  useEffect(() => {
-    const validIds = new Set(certificationQueue.map((row) => row.id));
-    setSelectedMvcMecIds((prev) =>
-      prev.filter((idForRow) => validIds.has(idForRow)),
-    );
-  }, [certificationQueue]);
-
-  const clearAgentMvcMecForm = () => {
-    setAgentMvcPreview(null);
-    setAgentMvcFileName("");
-    setAgentMvcData(emptyMvc);
-    setAgentMecPreview(null);
-    setAgentMecFileName("");
-    setAgentMecData(emptyMec);
-  };
-
-  const handleAgentMvcUpload = async (file, preview) => {
-    setAgentMvcPreview(preview);
-    setAgentMvcFileName(file?.name || "");
-    if (!file) {
-      setOcrState("agentMvc", {
-        status: OCR_STATUS.IDLE,
-        confidence: 0,
-        error: "",
-      });
-      return;
-    }
-
-    const runId = nextOcrVersion("agentMvc");
-    const previousState = { ...agentMvcData };
-    setOcrState("agentMvc", {
-      status: OCR_STATUS.EXTRACTING,
-      confidence: 0,
-      error: "",
-    });
-
-    setAgentMvcData((prev) => ({
-      ...prev,
-      engineNo: "Extracting...",
-      chassisNo: "Extracting...",
-      plateNo: "Extracting...",
-      color: "Extracting...",
-    }));
-
-    try {
-      const result = await extractClearanceDocumentData(
-        file,
-        CLEARANCE_OCR_DOCUMENT_TYPE.MVC,
-      );
-      if (!isCurrentOcrVersion("agentMvc", runId)) return;
-
-      const parsed = result.fields || {};
-      setAgentMvcData({
-        engineNo: String(parsed.engineNo || parsed.engineNumber || previousState.engineNo || "").toUpperCase(),
-        chassisNo: String(parsed.chassisNo || parsed.chassisNumber || previousState.chassisNo || "").toUpperCase(),
-        plateNo: String(parsed.plateNo || parsed.plateNumber || previousState.plateNo || "").toUpperCase(),
-        color: String(parsed.color || previousState.color || "").toUpperCase(),
-      });
-      setOcrState("agentMvc", {
-        status: OCR_STATUS.SUCCESS,
-        confidence: result.confidence || 0,
-        error: "",
-      });
-    } catch (error) {
-      if (!isCurrentOcrVersion("agentMvc", runId)) return;
-
-      setAgentMvcData(previousState);
-      setOcrState("agentMvc", {
-        status: OCR_STATUS.ERROR,
-        confidence: 0,
-        error: error?.message || "Unable to extract MVC details.",
-      });
-    }
-  };
-
-  const handleAgentMecUpload = async (file, preview) => {
-    setAgentMecPreview(preview);
-    setAgentMecFileName(file?.name || "");
-    if (!file) {
-      setOcrState("agentMec", {
-        status: OCR_STATUS.IDLE,
-        confidence: 0,
-        error: "",
-      });
-      return;
-    }
-
-    const runId = nextOcrVersion("agentMec");
-    const previousState = { ...agentMecData };
-    setOcrState("agentMec", {
-      status: OCR_STATUS.EXTRACTING,
-      confidence: 0,
-      error: "",
-    });
-
-    setAgentMecData((prev) => ({
-      ...prev,
-      engineNoStencilled: "Extracting...",
-      chassisNoStencilled: "Extracting...",
-      plateNo: "Extracting...",
-      color: "Extracting...",
-    }));
-
-    try {
-      const result = await extractClearanceDocumentData(
-        file,
-        CLEARANCE_OCR_DOCUMENT_TYPE.MEC,
-      );
-      if (!isCurrentOcrVersion("agentMec", runId)) return;
-
-      const parsed = result.fields || {};
-      setAgentMecData({
-        engineNoStencilled: String(parsed.engineNoStencilled || parsed.engineNo || parsed.engineNumber || previousState.engineNoStencilled || "").toUpperCase(),
-        chassisNoStencilled: String(parsed.chassisNoStencilled || parsed.chassisNo || parsed.chassisNumber || previousState.chassisNoStencilled || "").toUpperCase(),
-        plateNo: String(parsed.plateNo || parsed.plateNumber || previousState.plateNo || "").toUpperCase(),
-        color: String(parsed.color || previousState.color || "").toUpperCase(),
-      });
-      setOcrState("agentMec", {
-        status: OCR_STATUS.SUCCESS,
-        confidence: result.confidence || 0,
-        error: "",
-      });
-    } catch (error) {
-      if (!isCurrentOcrVersion("agentMec", runId)) return;
-
-      setAgentMecData(previousState);
-      setOcrState("agentMec", {
-        status: OCR_STATUS.ERROR,
-        confidence: 0,
-        error: error?.message || "Unable to extract MEC details.",
-      });
-    }
-  };
-
-  const handleAddAgentMvcMecToQueue = () => {
-    if (!agentMvcMecRequestId) return;
-    if (!isDocumentComplete(agentMvcData) || !isDocumentComplete(agentMecData)) return;
-
-    uploadMvcMecForRow(agentMvcMecId, {
-      mvcData: agentMvcData,
-      mecData: agentMecData,
-      mvcPreview: agentMvcPreview,
-      mecPreview: agentMecPreview,
-      mvcFileName: agentMvcFileName,
-      mecFileName: agentMecFileName,
-    });
-
-    clearAgentMvcMecForm();
-  };
-
-  const validateCitizenMvcMecStep = async () => {
-    if (!isDocumentComplete(mvcData) || !isDocumentComplete(mecData)) return;
-
-    setIsVerifyingDocuments(true);
-    setCitizenValidationState(VALIDATION_STATE.VALIDATING);
-    setCitizenValidationMessage("DCI validation in progress...");
-    setRequestStatus("MVC_MEC_VALIDATING");
-
-    try {
-      await saveCitizenRequest({
-        currentStep: 5,
-        status: "MVC_MEC_VALIDATING",
-        mvcMecValidationState: VALIDATION_STATE.VALIDATING,
-        mvcMecValidationMessage: "DCI validation in progress...",
-      });
-
-      // Simulate DCI validation latency
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      const validation = evaluateMvcMecValidation(mvcData, mecData, {
-        ...orCr,
-        verificationStatus: orCr.verificationStatus || selectedRequest?.verificationStatus,
-      });
-
-      if (!validation.valid) {
-        setCitizenValidationState(VALIDATION_STATE.FAILED);
-        setCitizenValidationMessage(validation.reason);
-        setRequestStatus("MVC_MEC_VALIDATION_PENDING");
-
-        await saveCitizenRequest({
-          currentStep: 5,
-          status: "MVC_MEC_VALIDATION_PENDING",
-          mvcMecValidationState: VALIDATION_STATE.FAILED,
-          mvcMecValidationMessage: validation.reason,
-          clearanceStatus: "PENDING_VALIDATION",
-        });
-
-        await showError("DCI Validation Failed", validation.reason);
-        return;
-      }
-
-      setCitizenValidationState(VALIDATION_STATE.PASSED);
-      setCitizenValidationMessage(validation.reason);
-      setRequestStatus("MVC_MEC_VALIDATED");
-      setStep(6);
-
-      await saveCitizenRequest({
-        currentStep: 6,
-        status: "MVC_MEC_VALIDATED",
-        mvcMecValidationState: VALIDATION_STATE.PASSED,
-        mvcMecValidationMessage: validation.reason,
-      });
-    } catch (error) {
-      await showError(
-        "DCI Validation Error",
-        error?.message || "An error occurred during DCI validation.",
-      );
-    } finally {
-      setIsVerifyingDocuments(false);
-    }
-  };
-
-  const issueCertificatesForAll = () => {
-    if (isIssuingBulk) return;
-    setIsIssuingBulk(true);
-
-    setTimeout(() => {
-      setQueueRows((prev) => {
-        const source = prev.length > 0 ? prev : fallbackRows;
-        const next = source.map((row, idx) => {
-          if (row.certificateNo) return row;
-          const updated = {
-            ...row,
-            certificateNo: "", // Let backend generate a unique certificate number
-            clearanceReferenceNo: "",
-            clearanceStatus: "CERTIFICATE_ISSUED",
-            status: "CERTIFICATE_ISSUED",
-            currentStep: 4,
-          };
-          persistRow(updated);
-          return updated;
-        });
-
-        updateVoucherInventory((inventoryRows) => {
-          return next.reduce((acc, row) => {
-            if (!row.voucherId) return acc;
-            return voucherInventoryService.markVoucherUsed(acc, {
-              voucherId: row.voucherId,
-              id: row.id,
-            });
-          }, inventoryRows);
-        });
-
-        return next;
-      });
-
-      setIsIssuingBulk(false);
-    }, 1200);
-  };
-
-  useEffect(() => {
-    if (!isAgent) return;
-
-    const rowsInOrder = [...certificationQueue].sort(
-      (a, b) => getQueueTimestamp(a) - getQueueTimestamp(b),
-    );
-    const rowsNeedingVoucher = rowsInOrder.filter((row) => !row.voucherId);
-    if (rowsNeedingVoucher.length === 0) return;
-
-    const availableVouchers = [...voucherInventory]
-      .filter(
-        (item) => item.inventoryStatus === VOUCHER_INVENTORY_STATUS.AVAILABLE,
-      )
-      .sort(
-        (a, b) =>
-          Date.parse(a.dateCreated || "") - Date.parse(b.dateCreated || ""),
-      );
-    if (availableVouchers.length === 0) return;
-
-    const pairCount = Math.min(
-      rowsNeedingVoucher.length,
-      availableVouchers.length,
-    );
-    const assignments = Array.from({ length: pairCount }, (_, index) => ({
-      id: rowsNeedingVoucher[index].id,
-      plateNumber: rowsNeedingVoucher[index].plateNumber || "",
-      voucherId: availableVouchers[index].voucherId,
-      voucherCode: availableVouchers[index].voucherCode,
-    }));
-    if (assignments.length === 0) return;
-
-    updateVoucherInventory((prev) =>
-      assignments.reduce(
-        (inventoryRows, assignment) =>
-          voucherInventoryService.assignVoucherToRequest(inventoryRows, {
-            voucherId: assignment.voucherId,
-            id: assignment.id,
-            plateNumber: assignment.plateNumber,
-            assignedBy: role,
-          }),
-        prev,
-      ),
-    );
-
-    const assignmentByRequest = assignments.reduce((acc, item) => {
-      acc[item.id] = item;
-      return acc;
-    }, {});
-
-    setQueueRows((prev) => {
-      const source = prev.length > 0 ? prev : fallbackRows;
-      let changed = false;
-      const next = source.map((row) => {
-        const assignment = assignmentByRequest[row.id];
-        if (!assignment || row.voucherId) return row;
-
-        changed = true;
-        const updated = {
-          ...row,
-          voucherId: assignment.voucherId,
-          voucherReferenceNo: assignment.voucherCode,
-          voucherStatus: "VOUCHER_ISSUED",
-          status: "VOUCHER_ASSIGNED",
-          currentStep: Math.max(row.currentStep || 1, 2),
-        };
-        persistRow(updated);
-        return updated;
-      });
-
-      return changed ? next : prev;
-    });
-  }, [certificationQueue, fallbackRows, isAgent, role, voucherInventory]);
-
-  useEffect(() => {
-    if (!isAgent) return;
-    if (
-      agentMvcMecId &&
-      selectableMvcMecRows.some((row) => row.id === agentMvcMecId)
-    ) {
-      return;
-    }
-    setAgentMvcMecId(selectableMvcMecRows[0]?.id || "");
-  }, [agentMvcMecId, isAgent, selectableMvcMecRows]);
-
-  useEffect(() => {
-    if (
-      isAgent ||
-      step !== 6 ||
-      citizenValidationState !== VALIDATION_STATE.PASSED
-    )
-      return;
-    if (certificateNo || isIssuingCertificate) return;
-    if (!voucherAssigned) return;
-
-    setIsIssuingCertificate(true);
-    setTimeout(() => {
-      setIsIssuingCertificate(false);
-      setRequestStatus("CERTIFICATE_ISSUED");
-      saveCitizenRequest({
-        currentStep: 6,
-        status: "CERTIFICATE_ISSUED",
-        certificateNo: "", // Let backend generate a unique certificate number
-        clearanceReferenceNo: "",
-        clearanceStatus: "CERTIFICATE_ISSUED",
-        voucherAssigned: true,
-        voucherStatus: "VOUCHER_ISSUED",
-        voucherCode: voucherCode,
-        voucherReferenceNo: voucherCode,
-      });
-    }, 1500);
-  }, [
-    certificateNo,
-    citizenValidationState,
-    isAgent,
-    isIssuingCertificate,
-    step,
-    voucherAssigned,
-    voucherCode,
-  ]);
-
-  useEffect(() => {
-    if (!isAgent || step !== 4 || isIssuingBulk) return;
-    const allValidated =
-      certificationQueue.length > 0 &&
-      certificationQueue.every(
-        (row) => row.mvcMecValidationState === VALIDATION_STATE.PASSED,
-      );
-    const hasPendingCert = certificationQueue.some((row) => !row.certificateNo);
-
-    if (allValidated && hasPendingCert) {
-      issueCertificatesForAll();
-    }
-  }, [certificationQueue, isAgent, isIssuingBulk, step]);
-
-  const handleProceedToPayment = async () => {
-    if (isAgent || processingPayment) return;
-
-    const storedProfile = JSON.parse(
-      localStorage.getItem("userProfile") || "{}",
-    );
-    const storedFirstName =
-      localStorage.getItem("firstname") || storedProfile.firstName || "";
-    const storedLastName =
-      localStorage.getItem("lastname") || storedProfile.lastName || "";
-    const storedEmail =
-      localStorage.getItem("email") || storedProfile.email || "";
-    const storedMobile =
-      localStorage.getItem("mobile") || storedProfile.mobile || "";
-    const companyId = Number(
-      localStorage.getItem("companyId") || storedProfile.companyId || 0,
-    );
-    const companyCode =
-      localStorage.getItem("companyCode") || storedProfile.companyCode || "";
-    const ownerName = (orCr.ownerName || crCr.ownerName || "").trim();
-    const ownerNameParts = ownerName.split(/\s+/).filter(Boolean);
-    const fallbackFirstName = ownerNameParts[0] || "Citizen";
-    const fallbackLastName = ownerNameParts.slice(1).join(" ") || "User";
-    const billingLine =
-      orCr.ownerAddress || crCr.ownerAddress || storedProfile.address || "";
-
-    if (!companyId || !companyCode) {
-      console.error(
-        "[Clearance] Payment setup failed: missing company information",
-        {
-          id,
-          companyId,
-          companyCode,
-        },
-      );
-      await showError(
-        "Payment Setup Failed",
-        "Missing company information required for payment processing.",
-      );
-      return;
-    }
-
-    const callbackUrl = `${window.location.origin}/dci-access/new-clearance-request?id=${encodeURIComponent(id)}&step=3`;
-    const paymentRequest = {
-      customer: {
-        contact: {
-          email: storedEmail,
-          mobile: storedMobile,
-        },
-        first_name: storedFirstName || fallbackFirstName,
-        last_name: storedLastName || fallbackLastName,
-        billing_address: {
-          line1: billingLine,
-          line2: "",
-          zip: "",
-          city_municipality: "",
-          state_province_region: "",
-          country_code: "PH",
-        },
-      },
-      payment: {
-        description: "DCI Clearance Request Fee",
-        amount: "60.00",
-        currency: "PHP",
-        merchant_reference_id: id,
-      },
-      route: {
-        callback_url: callbackUrl,
-        notify_user: true,
-      },
-      company_id: companyId,
-      company_code: companyCode,
-      voucher_fee: 60,
-      voucher_count: 1,
-    };
-
-    console.log("[Clearance] TLPE payment request body:", {paymentRequest});
-
-    setProcessingPayment(true);
-    try {
-      const response = await paymentsService.createTlpePayment(paymentRequest);
-      const payload = response?.data || {};
-      const paymentLink = payload.link;
-
-      if (!paymentLink) {
-        throw new Error("Payment gateway link was not returned."); 
-      }
-
-      saveCitizenRequest({
-        currentStep: 2,
-        status: "PAYMENT_PENDING",
-        paymentDone: false,
-        tlpeOrderId: payload.order_id || payload.orderId || null,
-        merchantReferenceId:
-          payload.merchant_reference_id || payload.merchantReferenceId || "",
-        paymentLink,
-      });
-
-      window.location.assign(paymentLink);
-    } catch (error) {
-      console.error("[Clearance] TLPE payment initialization failed", {
-        id,
-        paymentRequest,
-        error: {
-          message: error?.message,
-          response: error?.response?.data,
-        },
-      });
-      setProcessingPayment(false);
-      setPaymentDone(true);
-      setRequestStatus("PENDING");
-      setStep(3);
-      saveCitizenRequest({
-        currentStep: 3,
-        status: "PENDING",
-        paymentDone: true,
-      });
-    };
-  };
-
-  useEffect(() => {
-    if (isAgent) return;
-
-    if (step === 3 && paymentDone && !voucherAssigned && !issuingVoucher && !fetchVoucherFailed) {
-      setIssuingVoucher(true);
-
-      const fetchVoucher = async () => {
-        try {
-          const userId = localStorage.getItem("userId");
-          if (!userId) {
-            throw new Error("User ID not found");
-          }
-
-          // Fetch the user's vouchers
-          const vouchers = await transferVoucherService.getVouchersByUser(userId);
-          const sortedVouchers = [...vouchers].sort((a, b) => b.id - a.id);
-          const txnId = paymentTransactionId || selectedRequest?.tlpeTransactionId;
-
-          // Find the exact voucher from this payment transaction, or fallback to the latest AVAILABLE one
-          const activeVoucher = 
-            (txnId ? sortedVouchers.find((v) => v.tlpeTransactionId === txnId) : null) ||
-            sortedVouchers.find((v) => v.status === "AVAILABLE") ||
-            sortedVouchers.find((v) => v.status === "REDEEMED") ||
-            sortedVouchers[0];
-
-          if (activeVoucher && activeVoucher.voucherCode) {
-            const code = activeVoucher.voucherCode;
-            setVoucherCode(code);
-            setVoucherAssigned(true);
-            setRequestStatus("VOUCHER_ISSUED");
-            saveCitizenRequest({
-              currentStep: 3,
-              status: "VOUCHER_ISSUED",
-              voucherCode: code,
-              voucherReferenceNo: code,
-              voucherAssigned: true,
-              voucherStatus: "VOUCHER_ISSUED",
-            });
-          } else {
-             // If no voucher is found, it might still be generating in the background.
-             // But for now, we just log it or handle it as an error.
-             throw new Error("No voucher found for the user.");
-          }
-        } catch (error) {
-          console.error("[Clearance] Failed to fetch voucher:", error);
-          setFetchVoucherFailed(true);
-          showError(
-            "Voucher Issue Failed",
-            error.message || "Failed to fetch the voucher from the server."
-          );
-        } finally {
-          setIssuingVoucher(false);
-        }
-      };
-
-      fetchVoucher();
-    }
-  }, [
-    isAgent,
-    issuingVoucher,
-    paymentDone,
-    step,
-    voucherAssigned,
-    voucherCode,
-    fetchVoucherFailed,
+    showError,
+    role,
+    availableVoucherRequests,
+    setAvailableVoucherRequests,
+    loadAllRequests,
+    location,
+    navigate,
+    searchParams,
+    idFromQuery,
     paymentTransactionId,
-    selectedRequest?.tlpeTransactionId,
-  ]);
-
-  useEffect(() => {
-    if (isAgent || step !== 4 || hpgVerified) return;
-
-    let intervalId;
-    let isActive = true;
-
-    const pollRequestStatus = async () => {
-      try {
-        const records = await fetchMyRequests();
-        if (!isActive) return;
-        const currentRecord = records.find((r) => String(r.id) === String(id));
-        if (currentRecord) {
-          const isVerified = Boolean(
-            currentRecord.hpgVerified || currentRecord.status === "HPG_VERIFIED"
-          );
-          if (isVerified) {
-            setHpgVerified(true);
-            setRequestStatus("HPG_VERIFIED");
-            setAvailableVoucherRequests(records);
-          }
-        }
-      } catch (err) {
-        console.error("Error polling request status:", err);
-      }
-    };
-
-    pollRequestStatus();
-    intervalId = setInterval(pollRequestStatus, 3000);
-
-    return () => {
-      isActive = false;
-      clearInterval(intervalId);
-    };
-  }, [id, step, hpgVerified, isAgent, setAvailableVoucherRequests]);
-
-  const handleMvcUpload = async (file, preview) => {
-    setMvcPreview(preview);
-    setMvcFileName(file?.name || "");
-    setCitizenValidationState(VALIDATION_STATE.PENDING);
-    setCitizenValidationMessage("Awaiting DCI validation.");
-    if (!file) {
-      setOcrState("mvc", { status: OCR_STATUS.IDLE, confidence: 0, error: "" });
-      return;
-    }
-
-    const runId = nextOcrVersion("mvc");
-    const previousState = { ...mvcData };
-    setOcrState("mvc", {
-      status: OCR_STATUS.EXTRACTING,
-      confidence: 0,
-      error: "",
-    });
-
-    setMvcData((prev) => ({
-      ...prev,
-      engineNo: "Extracting...",
-      chassisNo: "Extracting...",
-      plateNo: "Extracting...",
-      color: "Extracting...",
-    }));
-
-    try {
-      const result = await extractClearanceDocumentData(
-        file,
-        CLEARANCE_OCR_DOCUMENT_TYPE.MVC,
-      );
-      if (!isCurrentOcrVersion("mvc", runId)) return;
-
-      const parsed = result.fields || {};
-      const next = {
-        engineNo: String(parsed.engineNo || parsed.engineNumber || previousState.engineNo || "").toUpperCase(),
-        chassisNo: String(parsed.chassisNo || parsed.chassisNumber || previousState.chassisNo || "").toUpperCase(),
-        plateNo: String(parsed.plateNo || parsed.plateNumber || previousState.plateNo || "").toUpperCase(),
-        color: String(parsed.color || previousState.color || "").toUpperCase(),
-      };
-      setMvcData(next);
-      setOcrState("mvc", {
-        status: OCR_STATUS.SUCCESS,
-        confidence: result.confidence || 0,
-        error: "",
-      });
-      saveCitizenRequest({
-        currentStep: 5,
-        status: "MVC_MEC_VALIDATION_PENDING",
-        mvcData: next,
-        mvcMecValidationState: VALIDATION_STATE.PENDING,
-        mvcMecValidationMessage: "Awaiting DCI validation.",
-        mvcPreview: preview,
-        mvcFileName: file.name,
-      });
-    } catch (error) {
-      if (!isCurrentOcrVersion("mvc", runId)) return;
-
-      setMvcData(previousState);
-      setOcrState("mvc", {
-        status: OCR_STATUS.ERROR,
-        confidence: 0,
-        error: error?.message || "Unable to extract MVC details.",
-      });
-    }
-  };
-
-  const handleMecUpload = async (file, preview) => {
-    setMecPreview(preview);
-    setMecFileName(file?.name || "");
-    setCitizenValidationState(VALIDATION_STATE.PENDING);
-    setCitizenValidationMessage("Awaiting DCI validation.");
-    if (!file) {
-      setOcrState("mec", { status: OCR_STATUS.IDLE, confidence: 0, error: "" });
-      return;
-    }
-
-    const runId = nextOcrVersion("mec");
-    const previousState = { ...mecData };
-    setOcrState("mec", {
-      status: OCR_STATUS.EXTRACTING,
-      confidence: 0,
-      error: "",
-    });
-
-    setMecData((prev) => ({
-      ...prev,
-      engineNoStencilled: "Extracting...",
-      chassisNoStencilled: "Extracting...",
-      plateNo: "Extracting...",
-      color: "Extracting...",
-    }));
-
-    try {
-      const result = await extractClearanceDocumentData(
-        file,
-        CLEARANCE_OCR_DOCUMENT_TYPE.MEC,
-      );
-      if (!isCurrentOcrVersion("mec", runId)) return;
-
-      const parsed = result.fields || {};
-      const next = {
-        engineNoStencilled: String(parsed.engineNoStencilled || parsed.engineNo || parsed.engineNumber || previousState.engineNoStencilled || "").toUpperCase(),
-        chassisNoStencilled: String(parsed.chassisNoStencilled || parsed.chassisNo || parsed.chassisNumber || previousState.chassisNoStencilled || "").toUpperCase(),
-        plateNo: String(parsed.plateNo || parsed.plateNumber || previousState.plateNo || "").toUpperCase(),
-        color: String(parsed.color || previousState.color || "").toUpperCase(),
-      };
-      setMecData(next);
-      setOcrState("mec", {
-        status: OCR_STATUS.SUCCESS,
-        confidence: result.confidence || 0,
-        error: "",
-      });
-      saveCitizenRequest({
-        currentStep: 5,
-        status: "MVC_MEC_VALIDATION_PENDING",
-        mecData: next,
-        mvcMecValidationState: VALIDATION_STATE.PENDING,
-        mvcMecValidationMessage: "Awaiting DCI validation.",
-        mecPreview: preview,
-        mecFileName: file.name,
-      });
-    } catch (error) {
-      if (!isCurrentOcrVersion("mec", runId)) return;
-
-      setMecData(previousState);
-      setOcrState("mec", {
-        status: OCR_STATUS.ERROR,
-        confidence: 0,
-        error: error?.message || "Unable to extract MEC details.",
-      });
-    }
-  };
-
-  const handleDownload = () => {
-    if (!certificateNo) return;
-    const { doc, filename } = generateClearanceCertificatePDF({
-      id,
-      certificateNo,
-      clearanceReferenceNo: certificateNo,
-      plateNumber:
-        orCr.plateNumber ||
-        crCr.plateNumber ||
-        selectedRequest?.plateNumber ||
-        "",
-      voucherCode,
-      voucherReferenceNo: voucherCode,
-      dateCreated,
-      status: requestStatus,
-      clearanceStatus: "CERTIFICATE_ISSUED",
-    });
-    doc.save(filename);
-  };
-
-  const verifyCitizenDocuments = async () => {
-    const verificationPayload = {
-      mvFileNumber: (
-        crCr.mvFileNumber ||
-        orCr.mvFileNumber ||
-        selectedRequest?.mvFileNumber ||
-        ""
-      )
-        .trim()
-        .toUpperCase(),
-      plateNumber: (
-        crCr.plateNumber ||
-        orCr.plateNumber ||
-        selectedRequest?.plateNumber ||
-        ""
-      )
-        .trim()
-        .toUpperCase(),
-      engineNumber: (
-        crCr.engineNumber ||
-        orCr.engineNumber ||
-        selectedRequest?.engineNumber ||
-        ""
-      )
-        .trim()
-        .toUpperCase(),
-      chassisNumber: (
-        crCr.chassisNumber ||
-        orCr.chassisNumber ||
-        selectedRequest?.chassisNumber ||
-        ""
-      )
-        .trim()
-        .toUpperCase(),
-    };
-
-    setIsVerifyingDocuments(true);
-    try {
-      const response = await verificationService.verify(verificationPayload);
-      const payload = response?.data || {};
-
-      if (payload.verificationStatus !== "VERIFIED") {
-        throw new Error(
-          payload.failureReason ||
-            "Vehicle verification failed. Please review OR/CR fields.",
-        );
-      }
-
-      const verifiedOwnerName = [
-        payload.ownerFirstName,
-        payload.ownerMiddleName,
-        payload.ownerLastName,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .trim();
-
-      const verifiedVehicle = {
-        plateNumber: (
-          payload.plateNumber ||
-          verificationPayload.plateNumber ||
-          ""
-        )
-          .trim()
-          .toUpperCase(),
-        mvFileNumber: (
-          payload.mvFileNo ||
-          verificationPayload.mvFileNumber ||
-          ""
-        )
-          .trim()
-          .toUpperCase(),
-        engineNumber: (
-          payload.engineNumber ||
-          verificationPayload.engineNumber ||
-          ""
-        )
-          .trim()
-          .toUpperCase(),
-        chassisNumber: (
-          payload.chassisNumber ||
-          verificationPayload.chassisNumber ||
-          ""
-        )
-          .trim()
-          .toUpperCase(),
-        classification: (payload.classification || "").trim().toUpperCase(),
-        make: (payload.make || "").trim().toUpperCase(),
-        series: (payload.series || "").trim().toUpperCase(),
-        yearModel: (payload.yearModel || "").trim().toUpperCase(),
-        color: (payload.color || "").trim().toUpperCase(),
-        verificationStatus: (payload.verificationStatus || "VERIFIED").trim().toUpperCase(),
-        ownerName: (verifiedOwnerName || "").trim().toUpperCase(),
-        ownerAddress: (payload.ownerAddress || "").trim().toUpperCase(),
-      };
-
-      const nextOrCr = mergeVehicleFields(orCr, verifiedVehicle);
-      const nextCrCr = mergeVehicleFields(crCr, verifiedVehicle);
-
-      setOrCr(nextOrCr);
-      setCrCr(nextCrCr);
-      setRequestStatus("DOCUMENTS_VERIFIED");
-      setStep(2);
-
-      saveCitizenRequest({
-        currentStep: 2,
-        status: "DOCUMENTS_VERIFIED",
-        verificationId:
-          payload.verificationId || selectedRequest?.verificationId || "",
-        orCr: nextOrCr,
-        crCr: nextCrCr,
-      });
-    } catch (error) {
-      await showError(
-        "Vehicle Verification Failed",
-        error?.response?.data?.failureReason ||
-          error?.message ||
-          "Unable to verify vehicle with current OR/CR details.",
-      );
-    } finally {
-      setIsVerifyingDocuments(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isAgent || !paymentTransactionId) return;
-    if (handledPaymentTransactionRef.current === paymentTransactionId) return;
-
-    handledPaymentTransactionRef.current = paymentTransactionId;
-    let active = true;
-
-    const verifyPaymentRedirect = async () => {
-      setProcessingPayment(true);
-      try {
-        const result =
-          await merchantCallbackService.fetchSummary(paymentTransactionId);
-        const payload = result?.data || {};
-        const statusCode = String(payload.statusCode || "").toUpperCase();
-        const paymentFailed =
-          result?.success === false ||
-          (statusCode && statusCode.startsWith("ER"));
-
-        if (paymentFailed) {
-          throw new Error(
-            payload.voucherStatusLabel ||
-              payload.report?.result?.message ||
-              result?.message ||
-              "Payment was not completed.",
-          );
-        }
-
-        if (!active) return;
-
-        setPaymentDone(true);
-        setRequestStatus("PENDING");
-        setStep(3);
-        saveCitizenRequest({
-          currentStep: 3,
-          status: "PENDING",
-          paymentDone: true,
-          tlpeTransactionId: paymentTransactionId,
-          merchantReferenceId: payload.merchantReference || "",
-          paymentReference: payload.paymentReference || "",
-        });
-        navigate(
-          `/dci-access/new-clearance-request?id=${encodeURIComponent(id)}`,
-          { replace: true },
-        );
-      } catch (error) {
-        if (!active) return;
-
-        setRequestStatus("PAYMENT_FAILED");
-        saveCitizenRequest({
-          currentStep: 2,
-          status: "PAYMENT_FAILED",
-          paymentDone: false,
-          tlpeTransactionId: paymentTransactionId,
-        });
-        await showError(
-          "Payment Verification Failed",
-          error?.message || "Unable to confirm payment.",
-        );
-        navigate(
-          `/dci-access/new-clearance-request?id=${encodeURIComponent(id)}`,
-          { replace: true },
-        );
-      } finally {
-        if (active) {
-          setProcessingPayment(false);
-        }
-      }
-    };
-
-    verifyPaymentRedirect();
-
-    return () => {
-      active = false;
-      if (handledPaymentTransactionRef.current === paymentTransactionId) {
-        handledPaymentTransactionRef.current = "";
-      }
-    };
-  }, [isAgent, navigate, paymentTransactionId, id, showError]);
+    selectedRequest,
+    onCancel,
+    isAgent,
+    flowSteps,
+    maxStep,
+    handledPaymentTransactionRef,
+    id,
+    setId,
+    step,
+    setStep,
+    requestStatus,
+    setRequestStatus,
+    dateCreated,
+    orPreview,
+    setOrPreview,
+    orNumber,
+    setOrNumber,
+    orCr,
+    setOrCr,
+    crPreview,
+    setCrPreview,
+    crNumber,
+    setCrNumber,
+    crCr,
+    setCrCr,
+    processingPayment,
+    setProcessingPayment,
+    isVerifyingDocuments,
+    setIsVerifyingDocuments,
+    paymentDone,
+    setPaymentDone,
+    issuingVoucher,
+    setIssuingVoucher,
+    fetchVoucherFailed,
+    setFetchVoucherFailed,
+    voucherCode,
+    setVoucherCode,
+    voucherAssigned,
+    setVoucherAssigned,
+    hpgVerified,
+    setHpgVerified,
+    mvcPreview,
+    setMvcPreview,
+    mvcFileName,
+    setMvcFileName,
+    mvcData,
+    setMvcData,
+    mecPreview,
+    setMecPreview,
+    mecFileName,
+    setMecFileName,
+    mecData,
+    setMecData,
+    agentMvcPreview,
+    setAgentMvcPreview,
+    agentMvcFileName,
+    setAgentMvcFileName,
+    agentMvcData,
+    setAgentMvcData,
+    agentMecPreview,
+    setAgentMecPreview,
+    agentMecFileName,
+    setAgentMecFileName,
+    agentMecData,
+    setAgentMecData,
+    agentMvcMecId,
+    setAgentMvcMecId,
+    isIssuingBulk,
+    setIsIssuingBulk,
+    isIssuingCertificate,
+    setIsIssuingCertificate,
+    certificateNo,
+    setCertificateNo,
+    selectedMvcMecIds,
+    setSelectedMvcMecIds,
+    citizenValidationState,
+    setCitizenValidationState,
+    citizenValidationMessage,
+    setCitizenValidationMessage,
+    ocrUploadState,
+    setOcrUploadState,
+    ocrUploadVersionRef,
+    queueRows,
+    setQueueRows,
+    getMismatches,
+    mismatches,
+    hasMismatch,
+    updateOrCr,
+    updateCrCr,
+    isResume,
+    fallbackRows,
+    certificationQueue,
+    pendingMvcMecRows,
+    selectableMvcMecRows,
+    getQueueTimestamp,
+    clearOrCrForm,
+    nextOcrVersion,
+    isCurrentOcrVersion,
+    setOcrState,
+    persistRow,
+    saveCitizenRequest,
+    handleOrUpload,
+    handleCrUpload,
+    updateVoucherInventory,
+    setHpgForRow,
+    setHpgForAll,
+    uploadMvcMecForRow,
+    uploadMvcMecForAll,
+    validateMvcMecForRow,
+    validateSelectedMvcMecRows,
+    toggleSelectedMvcMecRow,
+    toggleSelectAllMvcMecRows,
+    selectedMvcMecRows,
+    allMvcMecSelectableSelected,
+    hasSelectedMvcMecRows,
+    clearAgentMvcMecForm,
+    handleAgentMvcUpload,
+    handleAgentMecUpload,
+    handleAddAgentMvcMecToQueue,
+    validateCitizenMvcMecStep,
+    issueCertificatesForAll,
+    handleProceedToPayment,
+    handleMvcUpload,
+    handleMecUpload,
+    handleDownload,
+    verifyCitizenDocuments,
+    isAddingToQueue,
+    handleAddToQueue
+  } = useClearanceRequestFlow();
 
   const canNext = () => {
     if (isAgent) {
@@ -2077,84 +396,16 @@ export const ClearanceRequestFlow = () => {
                 </div>
               )}
 
-              <Card className="mt-4 p-4 border border-blue-100 bg-blue-50/40">
-                <div className="flex items-center justify-between gap-3 mb-3">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">
-                      Bulk Queue Staging
-                    </p>
-                    <p className="text-xs text-gray-600">
-                      Upload OR/CR then add each transaction to queue.
-                    </p>
-                    {(!isDocumentComplete(orCr, OR_EXPECTED_FIELDS) || !orNumber || !isDocumentComplete(crCr, CR_EXPECTED_FIELDS) || !crNumber || hasMismatch) && (
-                      <div className="mt-2 text-[11px] text-red-600 space-y-0.5 font-medium">
-                        {(!orNumber || orNumber === "Extracting...") && <p>• Missing OR Number</p>}
-                        {getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS)}</p>}
-                        {(!crNumber || crNumber === "Extracting...") && <p>• Missing CR Number</p>}
-                        {getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS)}</p>}
-                      </div>
-                    )}
-                  </div>
-                  <Button
-                    onClick={handleAddToQueue}
-                    disabled={
-                      !isDocumentComplete(orCr, OR_EXPECTED_FIELDS) || !orNumber || !isDocumentComplete(crCr, CR_EXPECTED_FIELDS) || !crNumber || hasMismatch
-                    }
-                  >
-                    Add To Queue
-                  </Button>
-                </div>
-
-                {certificationQueue.length === 0 ? (
-                  <p className="text-sm text-gray-500">
-                    No staged entries yet.
-                  </p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-blue-100 text-left">
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Request ID
-                          </th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Plate
-                          </th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Owner
-                          </th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Status
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {certificationQueue.map((row) => (
-                          <tr
-                            key={row.id}
-                            className="border-b border-blue-50"
-                          >
-                            <td className="py-2 font-mono text-xs text-gray-700">
-                              {row.id}
-                            </td>
-                            <td className="py-2 text-gray-700">
-                              {row.plateNumber || "-"}
-                            </td>
-                            <td className="py-2 text-gray-700">
-                              {row.orCr?.ownerName ||
-                                row.crCr?.ownerName ||
-                                "-"}
-                            </td>
-                            <td className="py-2 text-gray-600">
-                              {row.status || "OR_CR_UPLOADED"}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </Card>
+              <AgentQueueStaging
+                orCr={orCr}
+                crCr={crCr}
+                orNumber={orNumber}
+                crNumber={crNumber}
+                hasMismatch={hasMismatch}
+                ocrUploadState={ocrUploadState}
+                handleAddToQueue={handleAddToQueue}
+                certificationQueue={certificationQueue}
+              />
             </div>
           )}
 
@@ -2307,49 +558,137 @@ export const ClearanceRequestFlow = () => {
                     uploadHint={formatOcrHint(ocrUploadState.agentMvc)}
                     fields={[
                       {
-                        key: "agent-mvc-engineNo",
-                        label: "Engine Number",
-                        value: agentMvcData.engineNo,
-                        onChange: (e) =>
-                          setAgentMvcData((prev) => ({
-                            ...prev,
-                            engineNo: e.target.value,
-                          })),
-                        placeholder: "Auto-extracted from MVCC",
-                      },
+                      key: "agent-mvc-mvccNo",
+                      label: "MVCC Number",
+                      value: agentMvcData.mvccNo,
+                      onChange: (e) =>
+                        setAgentMvcData((prev) => ({
+                          ...prev,
+                          mvccNo: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
                       {
-                        key: "agent-mvc-chassisNo",
-                        label: "Chassis Number",
-                        value: agentMvcData.chassisNo,
-                        onChange: (e) =>
-                          setAgentMvcData((prev) => ({
-                            ...prev,
-                            chassisNo: e.target.value,
-                          })),
-                        placeholder: "Auto-extracted from MVCC",
-                      },
+                      key: "agent-mvc-mvccIssueDate",
+                      label: "MVCC Issue Date",
+                      value: agentMvcData.mvccIssueDate,
+                      onChange: (e) =>
+                        setAgentMvcData((prev) => ({
+                          ...prev,
+                          mvccIssueDate: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
                       {
-                        key: "agent-mvc-plateNo",
-                        label: "Plate Number",
-                        value: agentMvcData.plateNo,
-                        onChange: (e) =>
-                          setAgentMvcData((prev) => ({
-                            ...prev,
-                            plateNo: e.target.value,
-                          })),
-                        placeholder: "Auto-extracted from MVCC",
-                      },
+                      key: "agent-mvc-mvccStatus",
+                      label: "MVCC Status",
+                      value: agentMvcData.mvccStatus,
+                      onChange: (e) =>
+                        setAgentMvcData((prev) => ({
+                          ...prev,
+                          mvccStatus: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
                       {
-                        key: "agent-mvc-color",
-                        label: "Color",
-                        value: agentMvcData.color,
-                        onChange: (e) =>
-                          setAgentMvcData((prev) => ({
-                            ...prev,
-                            color: e.target.value,
-                          })),
-                        placeholder: "Auto-extracted from MVCC",
-                      },
+                      key: "agent-mvc-remarks",
+                      label: "Remarks",
+                      value: agentMvcData.remarks,
+                      onChange: (e) =>
+                        setAgentMvcData((prev) => ({
+                          ...prev,
+                          remarks: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
+                      {
+                      key: "agent-mvc-mvFileNo",
+                      label: "MV File No",
+                      value: agentMvcData.mvFileNo,
+                      onChange: (e) =>
+                        setAgentMvcData((prev) => ({
+                          ...prev,
+                          mvFileNo: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
+                      {
+                      key: "agent-mvc-makeType",
+                      label: "Make / Type",
+                      value: agentMvcData.makeType,
+                      onChange: (e) =>
+                        setAgentMvcData((prev) => ({
+                          ...prev,
+                          makeType: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
+                      {
+                      key: "agent-mvc-ownerName",
+                      label: "Owner Name",
+                      value: agentMvcData.ownerName,
+                      onChange: (e) =>
+                        setAgentMvcData((prev) => ({
+                          ...prev,
+                          ownerName: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
+                      {
+                      key: "agent-mvc-ownerAddress",
+                      label: "Owner Address",
+                      value: agentMvcData.ownerAddress,
+                      onChange: (e) =>
+                        setAgentMvcData((prev) => ({
+                          ...prev,
+                          ownerAddress: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
+                      {
+                      key: "agent-mvc-ownerContact",
+                      label: "Owner Contact",
+                      value: agentMvcData.ownerContact,
+                      onChange: (e) =>
+                        setAgentMvcData((prev) => ({
+                          ...prev,
+                          ownerContact: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
+                      {
+                      key: "agent-mvc-engineNo",
+                      label: "Engine Number",
+                      value: agentMvcData.engineNo,
+                      onChange: (e) =>
+                        setAgentMvcData((prev) => ({
+                          ...prev,
+                          engineNo: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
+                      {
+                      key: "agent-mvc-chassisNo",
+                      label: "Chassis Number",
+                      value: agentMvcData.chassisNo,
+                      onChange: (e) =>
+                        setAgentMvcData((prev) => ({
+                          ...prev,
+                          chassisNo: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
+                      {
+                      key: "agent-mvc-plateNo",
+                      label: "Plate Number",
+                      value: agentMvcData.plateNo,
+                      onChange: (e) =>
+                        setAgentMvcData((prev) => ({
+                          ...prev,
+                          plateNo: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
                     ]}
                   />
 
@@ -2401,6 +740,17 @@ export const ClearanceRequestFlow = () => {
                           setAgentMecData((prev) => ({
                             ...prev,
                             color: e.target.value,
+                          })),
+                        placeholder: "Auto-extracted from MEC",
+                      },
+                      {
+                        key: "agent-mec-makeType",
+                        label: "Make / Type",
+                        value: agentMecData.makeType,
+                        onChange: (e) =>
+                          setAgentMecData((prev) => ({
+                            ...prev,
+                            makeType: e.target.value,
                           })),
                         placeholder: "Auto-extracted from MEC",
                       },
@@ -2799,6 +1149,17 @@ export const ClearanceRequestFlow = () => {
                   uploadHint={formatOcrHint(ocrUploadState.mvc)}
                   fields={[
                     {
+                      key: "citizen-mvc-mvccNo",
+                      label: "MVCC Number",
+                      value: mvcData.mvccNo,
+                      onChange: (e) =>
+                        setMvcData((prev) => ({
+                          ...prev,
+                          mvccNo: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
+                                        {
                       key: "citizen-mvc-engineNo",
                       label: "Engine Number",
                       value: mvcData.engineNo,
@@ -2832,6 +1193,61 @@ export const ClearanceRequestFlow = () => {
                       placeholder: "Auto-extracted from MVCC",
                     },
                     {
+                      key: "citizen-mvc-mvccIssueDate",
+                      label: "MVCC Issue Date",
+                      value: mvcData.mvccIssueDate,
+                      onChange: (e) =>
+                        setMvcData((prev) => ({
+                          ...prev,
+                          mvccIssueDate: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
+                    {
+                      key: "citizen-mvc-mvccStatus",
+                      label: "MVCC Status",
+                      value: mvcData.mvccStatus,
+                      onChange: (e) =>
+                        setMvcData((prev) => ({
+                          ...prev,
+                          mvccStatus: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
+                    {
+                      key: "citizen-mvc-remarks",
+                      label: "Remarks",
+                      value: mvcData.remarks,
+                      onChange: (e) =>
+                        setMvcData((prev) => ({
+                          ...prev,
+                          remarks: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
+                    {
+                      key: "citizen-mvc-mvFileNo",
+                      label: "MV File No",
+                      value: mvcData.mvFileNo,
+                      onChange: (e) =>
+                        setMvcData((prev) => ({
+                          ...prev,
+                          mvFileNo: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
+                    {
+                      key: "citizen-mvc-makeType",
+                      label: "Make / Type",
+                      value: mvcData.makeType,
+                      onChange: (e) =>
+                        setMvcData((prev) => ({
+                          ...prev,
+                          makeType: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
+                    {
                       key: "citizen-mvc-color",
                       label: "Color",
                       value: mvcData.color,
@@ -2839,6 +1255,39 @@ export const ClearanceRequestFlow = () => {
                         setMvcData((prev) => ({
                           ...prev,
                           color: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
+                    {
+                      key: "citizen-mvc-ownerName",
+                      label: "Owner Name",
+                      value: mvcData.ownerName,
+                      onChange: (e) =>
+                        setMvcData((prev) => ({
+                          ...prev,
+                          ownerName: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
+                    {
+                      key: "citizen-mvc-ownerAddress",
+                      label: "Owner Address",
+                      value: mvcData.ownerAddress,
+                      onChange: (e) =>
+                        setMvcData((prev) => ({
+                          ...prev,
+                          ownerAddress: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
+                    {
+                      key: "citizen-mvc-ownerContact",
+                      label: "Owner Contact",
+                      value: mvcData.ownerContact,
+                      onChange: (e) =>
+                        setMvcData((prev) => ({
+                          ...prev,
+                          ownerContact: e.target.value,
                         })),
                       placeholder: "Auto-extracted from MVCC",
                     },
@@ -2893,6 +1342,17 @@ export const ClearanceRequestFlow = () => {
                         setMecData((prev) => ({
                           ...prev,
                           color: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MEC",
+                    },
+                    {
+                      key: "citizen-mec-makeType",
+                      label: "Make / Type",
+                      value: mecData.makeType,
+                      onChange: (e) =>
+                        setMecData((prev) => ({
+                          ...prev,
+                          makeType: e.target.value,
                         })),
                       placeholder: "Auto-extracted from MEC",
                     },
@@ -2962,7 +1422,7 @@ export const ClearanceRequestFlow = () => {
             </div>
             {step < flowSteps.length ? (
               <div className="flex items-center gap-3">
-                {!canNext() && step === 1 && !isAgent && (
+                {!canNext() && step === 1 && !isAgent && (ocrUploadState?.or?.status !== OCR_STATUS.IDLE || ocrUploadState?.cr?.status !== OCR_STATUS.IDLE) && (
                   <div className="text-[11px] text-red-600 space-y-0.5 font-medium text-right mr-2">
                     {(!orNumber || orNumber === "Extracting...") && <p>• Missing OR Number</p>}
                     {getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS)}</p>}
@@ -2970,7 +1430,7 @@ export const ClearanceRequestFlow = () => {
                     {getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS)}</p>}
                   </div>
                 )}
-                {!canNext() && step === 5 && !isAgent && (
+                {!canNext() && step === 5 && !isAgent && (ocrUploadState?.mvc?.status !== OCR_STATUS.IDLE || ocrUploadState?.mec?.status !== OCR_STATUS.IDLE) && (
                   <div className="text-[11px] text-red-600 space-y-0.5 font-medium text-right mr-2">
                     {getMissingFieldsText(mvcData, "MVCC") && <p>• {getMissingFieldsText(mvcData, "MVCC")}</p>}
                     {getMissingFieldsText(mecData, "MEC") && <p>• {getMissingFieldsText(mecData, "MEC")}</p>}
