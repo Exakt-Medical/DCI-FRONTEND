@@ -546,7 +546,10 @@ export const ClearanceRequestFlow = () => {
       dateCreated,
       status: requestStatus,
       clearanceStatus: "CERTIFICATE_ISSUED",
+      orCr,
+      crCr,
       mvcData,
+      mecData,
     });
     doc.save(filename);
   };
