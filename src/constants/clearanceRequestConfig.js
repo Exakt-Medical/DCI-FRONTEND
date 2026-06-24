@@ -27,7 +27,7 @@ export const CLEARANCE_REQUEST_STATUS_STYLES = {
 };
 
 export const CITIZEN_STEPS = [
-  "Select Option",
+  "Select Vehicle",
   "Upload OR/CR",
   "Pay",
   "Go To HPG",

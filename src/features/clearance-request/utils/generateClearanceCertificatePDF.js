@@ -254,10 +254,15 @@ export const generateClearanceCertificatePDF = async (row = {}) => {
 
   const issuer = row.processedBy || "DCI PORTAL";
 
+  const mvccNo = row.mvcData?.mvcNo || row.mvcNo || "-";
+  const mvccIssueDate = row.mvcData?.issueDate || row.mvcIssueDate || row.issueDate || "-";
+
   const inspectionRows = [
     ["DCI Authentication Code", authNo],
     ["Date of Validation", dateStr],
     ["Issuer", issuer],
+    ["MVCC Number", mvccNo],
+    ["MVCC Issue Date", mvccIssueDate],
   ];
 
   for (const [label, value] of inspectionRows) {

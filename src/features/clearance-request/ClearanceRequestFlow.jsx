@@ -59,6 +59,8 @@ const emptyVehicle = {
 };
 
 const emptyMvc = {
+  mvcNo: "",
+  issueDate: "",
   engineNo: "",
   chassisNo: "",
   plateNo: "",
@@ -156,6 +158,8 @@ const evaluateMvcMecValidation = (mvcPayload, mecPayload, verifiedVehicle = {}) 
     return { valid: false, reason: `DCI validation failed: Verification status is "${originalStatus || "UNKNOWN"}". It must be VERIFIED to proceed.` };
   }
 
+  const mvcNo = norm(mvcPayload.mvcNo || mvcPayload.mvcNumber || mvcPayload.mvccNumber);
+  const mvcIssueDate = norm(mvcPayload.issueDate);
   const mvcEngine = norm(mvcPayload.engineNo || mvcPayload.engineNumber);
   const mvcChassis = norm(mvcPayload.chassisNo || mvcPayload.chassisNumber);
   const mvcPlate = norm(mvcPayload.plateNo || mvcPayload.plateNumber);
@@ -167,6 +171,8 @@ const evaluateMvcMecValidation = (mvcPayload, mecPayload, verifiedVehicle = {}) 
   const mecColor = norm(mecPayload.color);
 
   // 1. Basic presence checks
+  if (!mvcNo) return { valid: false, reason: "Missing MVCC Number in MVCC." };
+  if (!mvcIssueDate) return { valid: false, reason: "Missing Issue Date in MVCC." };
   if (!mvcEngine) return { valid: false, reason: "Missing Engine Number in MVCC." };
   if (!mvcChassis) return { valid: false, reason: "Missing Chassis Number in MVCC." };
   if (!mvcPlate) return { valid: false, reason: "Missing Plate Number in MVCC." };
@@ -249,13 +255,17 @@ export const ClearanceRequestFlow = () => {
   } = useRequest();
 
   const [availableVoucherRequests, setAvailableVoucherRequests] = useState([]);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(true);
 
   const loadAllRequests = async () => {
     try {
+      setIsLoadingRequests(true);
       const data = await fetchMyRequests();
       setAvailableVoucherRequests(data || []);
     } catch (error) {
       console.error("Failed to load requests:", error);
+    } finally {
+      setIsLoadingRequests(false);
     }
   };
 
@@ -289,6 +299,19 @@ export const ClearanceRequestFlow = () => {
   const [id, setId] = useState(
     () => selectedRequest?.id || idFromQuery || "",
   );
+  const [step, setStep] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    const queryStep = Number(params.get("step"));
+    if (queryStep && queryStep > 0) {
+      return Math.min(queryStep, maxStep);
+    }
+    const txnId = params.get("transaction_id") || params.get("transactionId");
+    if (txnId) {
+      return 3;
+    }
+    const storedStep = selectedRequest?.currentStep || 1;
+    return Math.min(storedStep, maxStep);
+  });
 
   useEffect(() => {
     hasSyncedStep.current = false;
@@ -297,16 +320,20 @@ export const ClearanceRequestFlow = () => {
   useEffect(() => {
     if (id) {
       const params = new URLSearchParams(location.search);
+      let changed = false;
       if (params.get("id") !== String(id)) {
         params.set("id", id);
+        changed = true;
+      }
+      if (params.get("step") !== String(step)) {
+        params.set("step", String(step));
+        changed = true;
+      }
+      if (changed) {
         navigate({ search: params.toString() }, { replace: true });
       }
     }
-  }, [id, location.search, navigate]);
-  const [step, setStep] = useState(() => {
-    const storedStep = selectedRequest?.currentStep || 1;
-    return Math.min(storedStep, maxStep);
-  });
+  }, [id, step, location.search, navigate]);
   const [requestStatus, setRequestStatus] = useState(
     () => selectedRequest?.status || "DRAFT",
   );
@@ -668,7 +695,21 @@ export const ClearanceRequestFlow = () => {
     });
 
     setOrNumber("Extracting...");
-    updateOrCr("plateNumber", "Extracting...");
+    setOrCr({
+      plateNumber: "Extracting...",
+      mvFileNumber: "Extracting...",
+      classification: "Extracting...",
+      vehicleType: "Extracting...",
+      fuelType: "Extracting...",
+      engineNumber: "Extracting...",
+      chassisNumber: "Extracting...",
+      make: "Extracting...",
+      series: "Extracting...",
+      yearModel: "Extracting...",
+      color: "Extracting...",
+      ownerName: "Extracting...",
+      ownerAddress: "Extracting...",
+    });
 
     try {
       const result = await extractClearanceDocumentData(
@@ -719,7 +760,21 @@ export const ClearanceRequestFlow = () => {
     });
 
     setCrNumber("Extracting...");
-    updateCrCr("plateNumber", "Extracting...");
+    setCrCr({
+      plateNumber: "Extracting...",
+      mvFileNumber: "Extracting...",
+      classification: "Extracting...",
+      vehicleType: "Extracting...",
+      fuelType: "Extracting...",
+      engineNumber: "Extracting...",
+      chassisNumber: "Extracting...",
+      make: "Extracting...",
+      series: "Extracting...",
+      yearModel: "Extracting...",
+      color: "Extracting...",
+      ownerName: "Extracting...",
+      ownerAddress: "Extracting...",
+    });
 
     try {
       const result = await extractClearanceDocumentData(
@@ -995,14 +1050,15 @@ export const ClearanceRequestFlow = () => {
       error: "",
     });
 
-    setAgentMvcData((prev) => ({
-      ...prev,
+    setAgentMvcData({
+      mvcNo: "Extracting...",
+      issueDate: "Extracting...",
       engineNo: "Extracting...",
       chassisNo: "Extracting...",
       plateNo: "Extracting...",
       mvFileNo: "Extracting...",
       color: "Extracting...",
-    }));
+    });
 
     try {
       const result = await extractClearanceDocumentData(
@@ -1013,6 +1069,8 @@ export const ClearanceRequestFlow = () => {
 
       const parsed = result.fields || {};
       setAgentMvcData({
+        mvcNo: String(parsed.mvcNo || previousState.mvcNo || "").toUpperCase(),
+        issueDate: String(parsed.mvcIssueDate || previousState.issueDate || "").toUpperCase(),
         engineNo: String(parsed.engineNo || parsed.engineNumber || previousState.engineNo || "").toUpperCase(),
         chassisNo: String(parsed.chassisNo || parsed.chassisNumber || previousState.chassisNo || "").toUpperCase(),
         plateNo: String(parsed.plateNo || parsed.plateNumber || previousState.plateNo || "").toUpperCase(),
@@ -1056,13 +1114,12 @@ export const ClearanceRequestFlow = () => {
       error: "",
     });
 
-    setAgentMecData((prev) => ({
-      ...prev,
+    setAgentMecData({
       engineNoStencilled: "Extracting...",
       chassisNoStencilled: "Extracting...",
       plateNo: "Extracting...",
       color: "Extracting...",
-    }));
+    });
 
     try {
       const result = await extractClearanceDocumentData(
@@ -1580,14 +1637,15 @@ export const ClearanceRequestFlow = () => {
       error: "",
     });
 
-    setMvcData((prev) => ({
-      ...prev,
+    setMvcData({
+      mvcNo: "Extracting...",
+      issueDate: "Extracting...",
       engineNo: "Extracting...",
       chassisNo: "Extracting...",
       plateNo: "Extracting...",
       mvFileNo: "Extracting...",
       color: "Extracting...",
-    }));
+    });
 
     try {
       const result = await extractClearanceDocumentData(
@@ -1598,6 +1656,8 @@ export const ClearanceRequestFlow = () => {
 
       const parsed = result.fields || {};
       const next = {
+        mvcNo: String(parsed.mvcNo || previousState.mvcNo || "").toUpperCase(),
+        issueDate: String(parsed.mvcIssueDate || previousState.issueDate || "").toUpperCase(),
         engineNo: String(parsed.engineNo || parsed.engineNumber || previousState.engineNo || "").toUpperCase(),
         chassisNo: String(parsed.chassisNo || parsed.chassisNumber || previousState.chassisNo || "").toUpperCase(),
         plateNo: String(parsed.plateNo || parsed.plateNumber || previousState.plateNo || "").toUpperCase(),
@@ -1649,13 +1709,12 @@ export const ClearanceRequestFlow = () => {
       error: "",
     });
 
-    setMecData((prev) => ({
-      ...prev,
+    setMecData({
       engineNoStencilled: "Extracting...",
       chassisNoStencilled: "Extracting...",
       plateNo: "Extracting...",
       color: "Extracting...",
-    }));
+    });
 
     try {
       const result = await extractClearanceDocumentData(
@@ -1714,6 +1773,7 @@ export const ClearanceRequestFlow = () => {
       dateCreated,
       status: requestStatus,
       clearanceStatus: "CERTIFICATE_ISSUED",
+      mvcData,
     });
     doc.save(filename);
   };
@@ -1939,9 +1999,41 @@ export const ClearanceRequestFlow = () => {
   };
 
   const handleVerifyStep2 = async () => {
-    const orOk = isDocumentComplete(orCr, OR_EXPECTED_FIELDS) && orNumber && orNumber !== "Extracting...";
-    const crOk = isDocumentComplete(crCr, CR_EXPECTED_FIELDS) && crNumber && crNumber !== "Extracting...";
-    if (!orOk || !crOk || hasMismatch) return;
+    const newErrors = {};
+    let hasEmpty = false;
+
+    OR_EXPECTED_FIELDS.forEach((field) => {
+      if (!orCr[field] || orCr[field].trim() === "" || orCr[field] === "Extracting...") {
+        newErrors[field] = true;
+        hasEmpty = true;
+      }
+    });
+    if (!orNumber || orNumber.trim() === "" || orNumber === "Extracting...") {
+      newErrors.orNumber = true;
+      hasEmpty = true;
+    }
+
+    CR_EXPECTED_FIELDS.forEach((field) => {
+      if (!crCr[field] || crCr[field].trim() === "" || crCr[field] === "Extracting...") {
+        newErrors[field] = true;
+        hasEmpty = true;
+      }
+    });
+    if (!crNumber || crNumber.trim() === "" || crNumber === "Extracting...") {
+      newErrors.crNumber = true;
+      hasEmpty = true;
+    }
+
+    if (hasEmpty) {
+      setValidationErrors(newErrors);
+      await showError("Validation Failed", "Please fill in all required fields.");
+      return;
+    }
+
+    if (hasMismatch) {
+      await showError("Validation Failed", "OR and CR details must match to proceed.");
+      return;
+    }
 
     setIsVerifyingDocuments(true);
     try {
@@ -2232,7 +2324,13 @@ export const ClearanceRequestFlow = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 flex items-start justify-center p-4">
-      <div className="w-full max-w-5xl">
+      {idFromQuery && isLoadingRequests ? (
+        <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl shadow-lg w-full max-w-md mt-10">
+          <Spinner size="lg" />
+          <p className="text-sm text-gray-500 mt-4 font-medium animate-pulse">Loading request details...</p>
+        </div>
+      ) : (
+        <div className="w-full max-w-5xl">
         <div className="bg-white rounded-t-xl shadow-lg overflow-hidden">
           <div className="p-4 flex items-center gap-3 border-b border-gray-200">
             <img src={DCI_LOGO} alt="DCI" className="h-10" />
@@ -2562,6 +2660,28 @@ export const ClearanceRequestFlow = () => {
                     preview={agentMvcPreview}
                     uploadHint={formatOcrHint(ocrUploadState.agentMvc)}
                     fields={[
+                      {
+                        key: "agent-mvc-mvcNo",
+                        label: "MVCC Number",
+                        value: agentMvcData.mvcNo || "",
+                        onChange: (e) =>
+                          setAgentMvcData((prev) => ({
+                            ...prev,
+                            mvcNo: e.target.value,
+                          })),
+                        placeholder: "Auto-extracted from MVCC",
+                      },
+                      {
+                        key: "agent-mvc-issueDate",
+                        label: "Issue Date",
+                        value: agentMvcData.issueDate || "",
+                        onChange: (e) =>
+                          setAgentMvcData((prev) => ({
+                            ...prev,
+                            issueDate: e.target.value,
+                          })),
+                        placeholder: "Auto-extracted from MVCC",
+                      },
                       {
                         key: "agent-mvc-engineNo",
                         label: "Engine Number",
@@ -3006,52 +3126,43 @@ export const ClearanceRequestFlow = () => {
                 </p>
               </div>
               {processingPayment ? (
-                <div className="text-center py-4">
-                  <Spinner size="md" />
-                  <p className="text-sm text-gray-500 mt-2">
-                    Processing payment...
+                <div className="text-center py-8">
+                  <Spinner size="lg" />
+                  <p className="text-sm font-medium text-gray-700 mt-4 animate-pulse">
+                    Verifying Payment Status...
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Please wait while we confirm your transaction with the payment gateway.
                   </p>
                 </div>
               ) : paymentDone ? (
-                <div className="space-y-4">
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                    <CheckCircle
-                      size={24}
-                      className="text-green-600 mx-auto mb-2"
-                    />
-                    <p className="font-semibold text-green-700">
-                      Payment/Transaction Successful
-                    </p>
-                  </div>
+                <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
+                  <CheckCircle
+                    size={44}
+                    className="text-green-600 mx-auto mb-3"
+                  />
+                  <h4 className="text-lg font-bold text-green-800">
+                    Payment Successful
+                  </h4>
                   {issuingVoucher ? (
-                    <div className="text-center py-5">
+                    <div className="mt-4 flex flex-col items-center justify-center gap-2">
                       <Spinner size="md" />
-                      <p className="text-sm text-gray-500 mt-2">
-                        Generating voucher...
+                      <p className="text-xs text-gray-500">
+                        Generating voucher reference...
                       </p>
                     </div>
                   ) : voucherAssigned ? (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
-                      <Ticket
-                        size={40}
-                        className="text-[#0059b5] mx-auto mb-3"
-                      />
-                      <p className="font-semibold text-[#0059b5] text-lg">
-                        Voucher Issued
-                      </p>
-                      <p className="text-sm font-mono font-bold text-gray-900 mt-2">
-                        {voucherCode}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Plate: {orCr.plateNumber}
+                    <div className="mt-3">
+           
+                      <p className="text-xs text-gray-600 mt-1.5 max-w-md mx-auto leading-relaxed">
+                        The voucher has been issued for your vehicle (Plate: <strong className="font-bold text-gray-900">{orCr.plateNumber || "N/A"}</strong>).
+                        Please click <strong className="font-semibold text-gray-900">Next</strong> to proceed to the HPG Verification step.
                       </p>
                     </div>
                   ) : (
-                    <div className="text-center py-6">
-                      <p className="text-sm text-gray-500">
-                        Voucher will be issued shortly.
-                      </p>
-                    </div>
+                    <p className="text-xs text-gray-500 mt-3">
+                      Voucher will be issued shortly.
+                    </p>
                   )}
                 </div>
               ) : (
@@ -3085,20 +3196,30 @@ export const ClearanceRequestFlow = () => {
                 </div>
               ) : (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
-                  <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-3">
-                    <Spinner size="md" className="text-amber-600" />
-                  </div>
                   <p className="font-bold text-amber-700 text-lg">
                     Verify your voucher code to HPG
                   </p>
                   <p className="text-sm text-gray-600 mt-2 max-w-md mx-auto">
                     Please present your voucher code to the HPG officer for physical inspection and verification.
                   </p>
-                  <div className="mt-4 inline-block bg-white border border-amber-300 rounded-lg px-4 py-2 shadow-sm">
-                    <span className="text-xs text-gray-500 block">VOUCHER CODE</span>
-                    <span className="text-base font-mono font-bold text-gray-900 tracking-wider">
-                      {voucherCode}
-                    </span>
+                  <div className="mt-4 inline-flex items-center gap-3 bg-white border border-amber-300 rounded-lg px-4 py-2 shadow-sm">
+                    <div className="text-left">
+                      <span className="text-xs text-gray-500 block">VOUCHER CODE</span>
+                      <span className="text-base font-mono font-bold text-gray-900 tracking-wider">
+                        {voucherCode}
+                      </span>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => {
+                        navigator.clipboard.writeText(voucherCode);
+                        showSuccessAlert("Copied", "Voucher code copied to clipboard!");
+                      }}
+                      className="ml-2 py-1 px-3 text-xs"
+                    >
+                      Copy
+                    </Button>
                   </div>
                   <p className="text-xs text-gray-400 mt-3 animate-pulse">
                     Waiting for HPG officer verification...
@@ -3118,6 +3239,28 @@ export const ClearanceRequestFlow = () => {
                   preview={mvcPreview}
                   uploadHint={formatOcrHint(ocrUploadState.mvc)}
                   fields={[
+                    {
+                      key: "citizen-mvc-mvcNo",
+                      label: "MVCC Number",
+                      value: mvcData.mvcNo || "",
+                      onChange: (e) =>
+                        setMvcData((prev) => ({
+                          ...prev,
+                          mvcNo: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
+                    {
+                      key: "citizen-mvc-issueDate",
+                      label: "Issue Date",
+                      value: mvcData.issueDate || "",
+                      onChange: (e) =>
+                        setMvcData((prev) => ({
+                          ...prev,
+                          issueDate: e.target.value,
+                        })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
                     {
                       key: "citizen-mvc-engineNo",
                       label: "Engine Number",
@@ -3306,7 +3449,7 @@ export const ClearanceRequestFlow = () => {
             </div>
             {step < flowSteps.length ? (
               <div className="flex items-center gap-3">
-                {!canNext() && step === 1 && !isAgent && (orPreview || crPreview) && (
+                {!canNext() && step === 2 && !isAgent && (orPreview || crPreview) && (
                   <div className="text-[11px] text-red-600 space-y-0.5 font-medium text-right mr-2">
                     {orPreview && (!orNumber || orNumber === "Extracting...") && <p>• Missing OR Number</p>}
                     {orPreview && getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS)}</p>}
@@ -3328,6 +3471,7 @@ export const ClearanceRequestFlow = () => {
           </div>
         </div>
       </div>
+      )}
       <CreateTicketModal
         isOpen={isTicketModalOpen}
         onClose={() => setIsTicketModalOpen(false)}
