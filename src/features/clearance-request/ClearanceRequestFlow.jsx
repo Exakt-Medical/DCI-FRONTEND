@@ -788,14 +788,16 @@ export const ClearanceRequestFlow = () => {
   };
 
   const canNext = () => {
+    if (step === 1) return Boolean(vehicleOption);
+
     if (isAgent) {
-      if (step === 1) {
+      if (step === 2) {
         return (
           certificationQueue.length > 0 &&
           certificationQueue.every((row) => Boolean(row.voucherId))
         );
       }
-      if (step === 2) {
+      if (step === 3) {
         return (
           certificationQueue.length > 0 &&
           certificationQueue.every(
@@ -803,7 +805,7 @@ export const ClearanceRequestFlow = () => {
           )
         );
       }
-      if (step === 3) {
+      if (step === 4) {
         return (
           certificationQueue.length > 0 &&
           certificationQueue.every(
@@ -813,8 +815,6 @@ export const ClearanceRequestFlow = () => {
       }
       return false;
     }
-
-    if (step === 1) return Boolean(vehicleOption);
     if (step === 2) {
       const orOk = isDocumentComplete(orCr, OR_EXPECTED_FIELDS) && orNumber && orNumber !== "Extracting...";
       const crOk = isDocumentComplete(crCr, CR_EXPECTED_FIELDS) && crNumber && crNumber !== "Extracting...";
@@ -829,8 +829,12 @@ export const ClearanceRequestFlow = () => {
   const nextStep = async () => {
     if (step >= maxStep || !canNext()) return;
 
-    if (!isAgent && step === 1) {
-      await handleProceedFromStep1();
+    if (step === 1) {
+      if (!isAgent) {
+        await handleProceedFromStep1();
+      } else {
+        setStep((prev) => prev + 1);
+      }
       return;
     }
 
@@ -951,7 +955,7 @@ export const ClearanceRequestFlow = () => {
         </div>
 
         <div className="bg-white rounded-b-xl shadow-lg p-6">
-          {isAgent && step === 1 && (
+          {isAgent && step === 2 && (
             <div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <VehicleDocumentUploadCard
@@ -1078,7 +1082,7 @@ export const ClearanceRequestFlow = () => {
             </div>
           )}
 
-          {isAgent && step === 2 && (
+          {isAgent && step === 3 && (
             <Card className="p-5">
               <div className="flex items-center justify-between gap-3 mb-4 pb-2 border-b border-gray-200">
                 <div className="flex items-center gap-2">
@@ -1178,7 +1182,7 @@ export const ClearanceRequestFlow = () => {
             </Card>
           )}
 
-          {isAgent && step === 3 && (
+          {isAgent && step === 4 && (
             <div className="space-y-5">
               <Card className="p-5">
                 <div className="flex items-center justify-between gap-3 mb-4 pb-2 border-b border-gray-200">
@@ -1484,7 +1488,7 @@ export const ClearanceRequestFlow = () => {
             </div>
           )}
 
-          {isAgent && step === 4 && (
+          {isAgent && step === 5 && (
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <FileText size={18} className="text-[#0059b5]" />
@@ -1565,7 +1569,7 @@ export const ClearanceRequestFlow = () => {
             </Card>
           )}
 
-          {!isAgent && step === 1 && (
+          {step === 1 && (
             <div className="space-y-6">
               <div className="text-center max-w-md mx-auto mb-8">
                 <h3 className="text-lg font-bold text-gray-900">

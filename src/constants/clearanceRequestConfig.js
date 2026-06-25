@@ -36,6 +36,7 @@ export const CITIZEN_STEPS = [
 ];
 
 export const AGENT_STEPS = [
+  "Select Vehicle",
   "Upload OR/CR",
   "HPG Portal",
   "Upload MVCC/MEC",
