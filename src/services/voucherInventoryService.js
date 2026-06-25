@@ -3,37 +3,31 @@ import {
   VOUCHER_INVENTORY_STATUS_LABELS,
 } from "../constants/voucherInventoryStatus";
 
-const makeVoucherCode = () => `VCH-${String(Date.now() + Math.floor(Math.random() * 1000)).slice(-8)}`;
-
-const makeVoucherId = () => `VOUCH-${Date.now()}-${String(Math.random()).slice(2, 6)}`;
-
-const makeBatchId = () => `BATCH-${Date.now()}`;
+import api from "./api";
 
 export const voucherInventoryService = {
-  createPurchasedVouchers(quantity, options = {}) {
-    const safeQuantity = Math.max(Number(quantity) || 0, 0);
-    const batchId = options.batchId || makeBatchId();
-    const createdAt = options.createdAt || new Date().toISOString();
-
-    return {
-      batchId,
-      rows: Array.from({ length: safeQuantity }, () => ({
-        voucherId: makeVoucherId(),
-        voucherCode: makeVoucherCode(),
-        inventoryStatus: VOUCHER_INVENTORY_STATUS.AVAILABLE,
+  async fetchAgentInventory(userId) {
+    if (!userId) return [];
+    try {
+      const response = await api.get(`/voucher-transfer/by-user/${userId}`);
+      return (response.data || []).map(v => ({
+        voucherId: String(v.id),
+        voucherCode: v.voucherCode,
+        inventoryStatus: v.status,
+        dateCreated: v.createdAt,
+        batchId: v.orderId ? `ORDER-${v.orderId}` : "N/A",
+        assignedToPlate: v.voucherReference || "",
         assignedToId: null,
-        assignedToPlate: "",
-        assignedBy: "",
-        role: options.role || "agent_fixer",
-        amount: options.amount || 500,
-        source: "AGENT_BULK",
-        dateCreated: createdAt,
-        dateAssigned: "",
-        dateUsed: "",
-        dateExpired: "",
-        batchId,
-      })),
-    };
+        assignedBy: "agent_fixer",
+        role: "agent_fixer",
+        dateAssigned: v.updatedAt || "",
+        dateUsed: v.redeemedAt || "",
+        dateExpired: v.expiresAt || "",
+      }));
+    } catch (error) {
+      console.error("Failed to fetch agent inventory", error);
+      return [];
+    }
   },
 
   getSummary(vouchers = []) {
