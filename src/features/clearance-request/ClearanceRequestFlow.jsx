@@ -424,18 +424,8 @@ export const ClearanceRequestFlow = () => {
     setIsVerifyingDocuments(true);
     setCitizenValidationState(VALIDATION_STATE.VALIDATING);
     setCitizenValidationMessage("DCI validation in progress...");
-    setRequestStatus("MVC_MEC_VALIDATING");
 
     try {
-      await saveCitizenRequest({
-        currentStep: 5,
-        status: "MVC_MEC_VALIDATING",
-        mvcData,
-        mecData,
-        mvcMecValidationState: VALIDATION_STATE.VALIDATING,
-        mvcMecValidationMessage: "DCI validation in progress...",
-      });
-
       // Simulate DCI validation latency
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
@@ -552,129 +542,6 @@ export const ClearanceRequestFlow = () => {
       mecData,
     });
     doc.save(filename);
-  };
-
-  const verifyCitizenDocuments = async () => {
-    const verificationPayload = {
-      mvFileNumber: (
-        crCr.mvFileNumber ||
-        orCr.mvFileNumber ||
-        selectedRequest?.mvFileNumber ||
-        ""
-      )
-        .trim()
-        .toUpperCase(),
-      plateNumber: (
-        crCr.plateNumber ||
-        orCr.plateNumber ||
-        selectedRequest?.plateNumber ||
-        ""
-      )
-        .trim()
-        .toUpperCase(),
-      engineNumber: (
-        crCr.engineNumber ||
-        orCr.engineNumber ||
-        selectedRequest?.engineNumber ||
-        ""
-      )
-        .trim()
-        .toUpperCase(),
-      chassisNumber: (
-        crCr.chassisNumber ||
-        orCr.chassisNumber ||
-        selectedRequest?.chassisNumber ||
-        ""
-      )
-        .trim()
-        .toUpperCase(),
-    };
-
-    setIsVerifyingDocuments(true);    try {
-      const response = await verificationService.verify(verificationPayload);
-      const payload = response?.data || {};
-
-      if (payload.verificationStatus !== "VERIFIED") {
-        throw new Error(
-          payload.failureReason ||
-            "Vehicle verification failed. Please review OR/CR fields.",
-        );
-      }
-
-      const verifiedOwnerName = [
-        payload.ownerFirstName,
-        payload.ownerMiddleName,
-        payload.ownerLastName,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .trim();
-
-      const verifiedVehicle = {
-        plateNumber: (
-          payload.plateNumber ||
-          verificationPayload.plateNumber ||
-          ""
-        )
-          .trim()
-          .toUpperCase(),
-        mvFileNumber: (
-          payload.mvFileNo ||
-          verificationPayload.mvFileNumber ||
-          ""
-        )
-          .trim()
-          .toUpperCase(),
-        engineNumber: (
-          payload.engineNumber ||
-          verificationPayload.engineNumber ||
-          ""
-        )
-          .trim()
-          .toUpperCase(),
-        chassisNumber: (
-          payload.chassisNumber ||
-          verificationPayload.chassisNumber ||
-          ""
-        )
-          .trim()
-          .toUpperCase(),
-        classification: (payload.classification || "").trim().toUpperCase(),
-        make: (payload.make || "").trim().toUpperCase(),
-        series: (payload.series || "").trim().toUpperCase(),
-        yearModel: (payload.yearModel || "").trim().toUpperCase(),
-        color: (payload.color || "").trim().toUpperCase(),
-        verificationStatus: (payload.verificationStatus || "VERIFIED").trim().toUpperCase(),
-        ownerName: (verifiedOwnerName || "").trim().toUpperCase(),
-        ownerAddress: (payload.ownerAddress || "").trim().toUpperCase(),
-      };
-
-      const nextOrCr = mergeVehicleFields(orCr, verifiedVehicle);
-      const nextCrCr = mergeVehicleFields(crCr, verifiedVehicle);
-
-      setOrCr(nextOrCr);
-      setCrCr(nextCrCr);
-      setRequestStatus("DOCUMENTS_VERIFIED");
-      setStep(2);
-
-      saveCitizenRequest({
-        currentStep: 2,
-        status: "DOCUMENTS_VERIFIED",
-        verificationId:
-          payload.verificationId || selectedRequest?.verificationId || "",
-        orCr: nextOrCr,
-        crCr: nextCrCr,
-      });
-    } catch (error) {
-      await showError(
-        "Vehicle Verification Failed",
-        error?.response?.data?.failureReason ||
-          error?.message ||
-          "Unable to verify vehicle with current OR/CR details.",
-      );
-    } finally {
-      setIsVerifyingDocuments(false);
-    }
   };
 
 
