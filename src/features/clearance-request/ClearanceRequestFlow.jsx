@@ -37,6 +37,7 @@ import { useRequest } from "../../context/RequestContext";
 import { fetchMyRequests } from "../../services/certificateRequestService";
 import { CreateTicketModal } from "../Tickets/CreateTicketModal";
 import { ticketService } from "../../services/ticketService";
+import { voucherInventoryService } from "../../services/voucherInventoryService";
 
 // ── Extracted utilities & hooks ──────────────────────────────────────────────
 import {
@@ -235,6 +236,7 @@ export const ClearanceRequestFlow = () => {
         hasSyncedStep.current = true;
       }
       if (selectedRequest.status) setRequestStatus(selectedRequest.status);
+      if (selectedRequest.vehicleOption) setVehicleOption(selectedRequest.vehicleOption);
       if (selectedRequest.orNumber) setOrNumber(selectedRequest.orNumber);
       if (selectedRequest.orCr) setOrCr(selectedRequest.orCr);
       if (selectedRequest.crNumber) setCrNumber(selectedRequest.crNumber);
@@ -430,7 +432,7 @@ export const ClearanceRequestFlow = () => {
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
       await saveCitizenRequest({
-        currentStep: 6,
+        currentStep: isAgent ? 5 : 6,
         status: "MVC_MEC_VALIDATED",
         mvcData,
         mecData,
@@ -441,7 +443,7 @@ export const ClearanceRequestFlow = () => {
       setCitizenValidationState(VALIDATION_STATE.PASSED);
       setCitizenValidationMessage("Validated by DCI portal.");
       setRequestStatus("MVC_MEC_VALIDATED");
-      setStep(6);
+      setStep(isAgent ? 5 : 6);
     } catch (error) {
       const errMsg = error?.response?.data?.error || error?.message || "An error occurred during DCI validation.";
       setCitizenValidationState(VALIDATION_STATE.FAILED);
@@ -449,7 +451,7 @@ export const ClearanceRequestFlow = () => {
       setRequestStatus("MVC_MEC_VALIDATION_PENDING");
 
       await saveCitizenRequest({
-        currentStep: 5,
+        currentStep: isAgent ? 4 : 5,
         status: "MVC_MEC_VALIDATION_PENDING",
         mvcData,
         mecData,
@@ -466,9 +468,8 @@ export const ClearanceRequestFlow = () => {
   // ── Auto-Issue Certificate for Citizen ────────────────────────────────────────
   useEffect(() => {
     if (
-      isAgent ||
-      (citizenValidationState !== VALIDATION_STATE.PASSED &&
-        requestStatus !== "MVC_MEC_VALIDATED")
+      citizenValidationState !== VALIDATION_STATE.PASSED &&
+      requestStatus !== "MVC_MEC_VALIDATED"
     )
       return;
     if (certificateNo || isIssuingCertificate) return;
@@ -478,9 +479,9 @@ export const ClearanceRequestFlow = () => {
     setTimeout(() => {
       setIsIssuingCertificate(false);
       setRequestStatus("CERTIFICATE_ISSUED");
-      setStep(6);
+      setStep(isAgent ? 5 : 6);
       saveCitizenRequest({
-        currentStep: 6,
+        currentStep: isAgent ? 5 : 6,
         status: "CERTIFICATE_ISSUED",
         certificateNo: "", // Let backend generate a unique certificate number
         clearanceReferenceNo: "",
@@ -628,16 +629,42 @@ export const ClearanceRequestFlow = () => {
         throw new Error(vvsData.failureReason || "No matching verified vehicle record found in VVS system.");
       }
 
+      let assignedVoucherCode = voucherCode;
+      let assignedVoucherId = null;
+
+      if (isAgent && !voucherAssigned) {
+        const profile = JSON.parse(localStorage.getItem("userProfile") || "{}");
+        const userId = localStorage.getItem("userId") || profile.id;
+        const currentInventory = await voucherInventoryService.fetchAgentInventory(userId);
+        const availableVoucher = currentInventory.find(v => v.inventoryStatus === "AVAILABLE" || v.status === "AVAILABLE");
+        
+        if (!availableVoucher) {
+           throw new Error("No available vouchers in your inventory. Please purchase vouchers first.");
+        }
+        assignedVoucherCode = availableVoucher.voucherCode;
+        assignedVoucherId = availableVoucher.voucherId || availableVoucher.id;
+      }
+
       // 3. Save with status "DOCUMENTS_VERIFIED" to compare/match details
       await saveCitizenRequest({
         currentStep: 3,
         status: "DOCUMENTS_VERIFIED",
         verificationId: vvsData.verificationId || "",
+        voucherCode: assignedVoucherCode,
+        voucherId: assignedVoucherId,
         orCr,
         crCr,
         orNumber,
         crNumber,
       });
+
+      if (isAgent && assignedVoucherCode && !voucherAssigned) {
+         setVoucherCode(assignedVoucherCode);
+         setVoucherAssigned(true);
+         showSuccessAlert("OR/CR Verified", `Vehicle verified and Voucher ${assignedVoucherCode} successfully assigned.`);
+      } else if (!isAgent) {
+         showSuccessAlert("OR/CR Verified", "Vehicle details verified successfully.");
+      }
 
       setStep(3);
       setRequestStatus("DOCUMENTS_VERIFIED");
@@ -790,38 +817,20 @@ export const ClearanceRequestFlow = () => {
   const canNext = () => {
     if (step === 1) return Boolean(vehicleOption);
 
-    if (isAgent) {
-      if (step === 2) {
-        return (
-          certificationQueue.length > 0 &&
-          certificationQueue.every((row) => Boolean(row.voucherId))
-        );
-      }
-      if (step === 3) {
-        return (
-          certificationQueue.length > 0 &&
-          certificationQueue.every(
-            (row) => row.hpgStatus === HPG_STATUS.APPROVED,
-          )
-        );
-      }
-      if (step === 4) {
-        return (
-          certificationQueue.length > 0 &&
-          certificationQueue.every(
-            (row) => row.mvcMecValidationState === VALIDATION_STATE.PASSED,
-          )
-        );
-      }
-      return false;
-    }
     if (step === 2) {
       const orOk = isDocumentComplete(orCr, OR_EXPECTED_FIELDS) && orNumber && orNumber !== "Extracting...";
       const crOk = isDocumentComplete(crCr, CR_EXPECTED_FIELDS) && crNumber && crNumber !== "Extracting...";
       return Boolean(orOk && crOk && !hasMismatch);
     }
+
+    if (isAgent) {
+      if (step === 3) return Boolean(hpgVerified);
+      if (step === 4) return isDocumentComplete(mvcData) && isDocumentComplete(mecData);
+      return false;
+    }
+
     if (step === 3) return Boolean(paymentDone && voucherAssigned);
-    if (step === 4) return hpgVerified;
+    if (step === 4) return Boolean(hpgVerified);
     if (step === 5) return isDocumentComplete(mvcData) && isDocumentComplete(mecData);
     return false;
   };
@@ -830,20 +839,16 @@ export const ClearanceRequestFlow = () => {
     if (step >= maxStep || !canNext()) return;
 
     if (step === 1) {
-      if (!isAgent) {
-        await handleProceedFromStep1();
-      } else {
-        setStep((prev) => prev + 1);
-      }
+      await handleProceedFromStep1();
       return;
     }
 
-    if (!isAgent && step === 2) {
+    if (step === 2) {
       await handleVerifyStep2();
       return;
     }
 
-    if (!isAgent && step === 5) {
+    if ((isAgent && step === 4) || (!isAgent && step === 5)) {
       await validateCitizenMvcMecStep();
       return;
     }
@@ -955,620 +960,6 @@ export const ClearanceRequestFlow = () => {
         </div>
 
         <div className="bg-white rounded-b-xl shadow-lg p-6">
-          {isAgent && step === 2 && (
-            <div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <VehicleDocumentUploadCard
-                  title="OR"
-                  uploadLabel="Upload Official Receipt"
-                  onFile={handleOrUpload}
-                  preview={orPreview}
-                  uploadHint={formatOcrHint(ocrUploadState.or)}
-                  numberLabel="OR Number"
-                  numberValue={orNumber}
-                  onNumberChange={(e) => setOrNumber(e.target.value)}
-                  numberPlaceholder="Auto-extracted from OR"
-                  extraInputs={[]}
-                  vehicleLabel="Vehicle Details (from OR)"
-                  vehicleValues={orCr}
-                  vehicleFieldSet="or"
-                  onVehicleChange={updateOrCr}
-                />
-
-                <VehicleDocumentUploadCard
-                  title="CR"
-                  uploadLabel="Upload Certificate of Registration"
-                  onFile={handleCrUpload}
-                  preview={crPreview}
-                  uploadHint={formatOcrHint(ocrUploadState.cr)}
-                  numberLabel="CR Number"
-                  numberValue={crNumber}
-                  onNumberChange={(e) => setCrNumber(e.target.value)}
-                  numberPlaceholder="Auto-extracted from CR"
-                  vehicleLabel="Vehicle Details (from CR)"
-                  vehicleValues={crCr}
-                  vehicleFieldSet="cr"
-                  onVehicleChange={updateCrCr}
-                />
-              </div>
-
-              {hasMismatch && (
-                <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
-                  <AlertTriangle size={18} className="text-red-500 shrink-0" />
-                  <p className="text-sm text-red-700">
-                    Mismatched fields: <strong>{mismatches.join(", ")}</strong>. OR and CR details must match to add queue entry.
-                  </p>
-                </div>
-              )}
-
-              <Card className="mt-4 p-4 border border-blue-100 bg-blue-50/40">
-                <div className="flex items-center justify-between gap-3 mb-3">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">
-                      Bulk Queue Staging
-                    </p>
-                    <p className="text-xs text-gray-600">
-                      Upload OR/CR then add each transaction to queue.
-                    </p>
-                    {(orPreview || crPreview) && (!isDocumentComplete(orCr, OR_EXPECTED_FIELDS) || !orNumber || !isDocumentComplete(crCr, CR_EXPECTED_FIELDS) || !crNumber || hasMismatch) && (
-                      <div className="mt-2 text-[11px] text-red-600 space-y-0.5 font-medium">
-                        {orPreview && (!orNumber || orNumber === "Extracting...") && <p>• Missing OR Number</p>}
-                        {orPreview && getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS)}</p>}
-                        {crPreview && (!crNumber || crNumber === "Extracting...") && <p>• Missing CR Number</p>}
-                        {crPreview && getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS)}</p>}
-                      </div>
-                    )}
-                  </div>
-                  <Button
-                    onClick={handleAddToQueue}
-                    disabled={
-                      !isDocumentComplete(orCr, OR_EXPECTED_FIELDS) || !orNumber || !isDocumentComplete(crCr, CR_EXPECTED_FIELDS) || !crNumber || hasMismatch
-                    }
-                  >
-                    Add To Queue
-                  </Button>
-                </div>
-
-                {certificationQueue.length === 0 ? (
-                  <p className="text-sm text-gray-500">
-                    No staged entries yet.
-                  </p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-blue-100 text-left">
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Request ID
-                          </th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Plate
-                          </th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Owner
-                          </th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Status
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {certificationQueue.map((row) => (
-                          <tr
-                            key={row.id}
-                            className="border-b border-blue-50"
-                          >
-                            <td className="py-2 font-mono text-xs text-gray-700">
-                              {row.id}
-                            </td>
-                            <td className="py-2 text-gray-700">
-                              {row.plateNumber || "-"}
-                            </td>
-                            <td className="py-2 text-gray-700">
-                              {row.orCr?.ownerName ||
-                                row.crCr?.ownerName ||
-                                "-"}
-                            </td>
-                            <td className="py-2 text-gray-600">
-                              {row.status || "OR_CR_UPLOADED"}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </Card>
-            </div>
-          )}
-
-          {isAgent && step === 3 && (
-            <Card className="p-5">
-              <div className="flex items-center justify-between gap-3 mb-4 pb-2 border-b border-gray-200">
-                <div className="flex items-center gap-2">
-                  <CheckCircle size={18} className="text-[#0059b5]" />
-                  <h3 className="text-base font-bold text-gray-900">
-                    HPG Portal (Bulk)
-                  </h3>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setHpgForAll(HPG_STATUS.INSPECTION)}
-                  >
-                    Mark All Under Inspection
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => setHpgForAll(HPG_STATUS.APPROVED)}
-                  >
-                    Mark All Approved
-                  </Button>
-                </div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-200 text-left">
-                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        Request
-                      </th>
-                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        Plate
-                      </th>
-                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        HPG Status
-                      </th>
-                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        Action
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {certificationQueue.map((row) => (
-                      <tr
-                        key={row.id}
-                        className="border-b border-gray-100"
-                      >
-                        <td className="py-2 font-mono text-xs text-gray-700">
-                          {row.id}
-                        </td>
-                        <td className="py-2 text-gray-700">
-                          {row.plateNumber || "-"}
-                        </td>
-                        <td className="py-2 text-gray-700">
-                          {row.hpgStatus || HPG_STATUS.PENDING}
-                        </td>
-                        <td className="py-2">
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() =>
-                                setHpgForRow(
-                                  row.id,
-                                  HPG_STATUS.INSPECTION,
-                                )
-                              }
-                            >
-                              Inspection
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() =>
-                                setHpgForRow(row.id, HPG_STATUS.APPROVED)
-                              }
-                            >
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="danger"
-                              onClick={() =>
-                                setHpgForRow(row.id, HPG_STATUS.REJECTED)
-                              }
-                            >
-                              Reject
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-          )}
-
-          {isAgent && step === 4 && (
-            <div className="space-y-5">
-              <Card className="p-5">
-                <div className="flex items-center justify-between gap-3 mb-4 pb-2 border-b border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <Upload size={18} className="text-[#0059b5]" />
-                    <h3 className="text-base font-bold text-gray-900">
-                      Upload MVCC/MEC (Bulk)
-                    </h3>
-                  </div>
-                  <Button onClick={uploadMvcMecForAll} variant="secondary">
-                    Auto Fill All
-                  </Button>
-                </div>
-
-                <div className="mb-4">
-                  <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider block mb-1.5">
-                    Select Request
-                  </label>
-                  <select
-                    value={agentMvcMecId}
-                    onChange={(e) => setAgentMvcMecId(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
-                  >
-                    <option value="">Select request for MVCC/MEC upload</option>
-                    {selectableMvcMecRows.map((row) => (
-                      <option key={row.id} value={row.id}>
-                        {row.id} - {row.plateNumber || "NO_PLATE"}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {!agentMvcMecId && (
-                  <p className="mb-4 text-xs text-amber-700">
-                    No selectable request found. Add a queue entry in step 1
-                    first.
-                  </p>
-                )}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <MvcMecUploadCard
-                    title="MVCC"
-                    uploadLabel="Upload Motor Vehicle Clearance Certificate"
-                    onFile={handleAgentMvcUpload}
-                    preview={agentMvcPreview}
-                    uploadHint={formatOcrHint(ocrUploadState.agentMvc)}
-                    fields={[
-                      {
-                        key: "agent-mvc-mvcNo",
-                        label: "MVCC Number",
-                        value: agentMvcData.mvcNo || "",
-                        onChange: (e) =>
-                          setAgentMvcData((prev) => ({
-                            ...prev,
-                            mvcNo: e.target.value,
-                          })),
-                        placeholder: "Auto-extracted from MVCC",
-                      },
-                      {
-                        key: "agent-mvc-issueDate",
-                        label: "Issue Date",
-                        value: agentMvcData.issueDate || "",
-                        onChange: (e) =>
-                          setAgentMvcData((prev) => ({
-                            ...prev,
-                            issueDate: e.target.value,
-                          })),
-                        placeholder: "Auto-extracted from MVCC",
-                      },
-                      {
-                        key: "agent-mvc-engineNo",
-                        label: "Engine Number",
-                        value: agentMvcData.engineNo,
-                        onChange: (e) =>
-                          setAgentMvcData((prev) => ({
-                            ...prev,
-                            engineNo: e.target.value,
-                          })),
-                        placeholder: "Auto-extracted from MVCC",
-                      },
-                      {
-                        key: "agent-mvc-chassisNo",
-                        label: "Chassis Number",
-                        value: agentMvcData.chassisNo,
-                        onChange: (e) =>
-                          setAgentMvcData((prev) => ({
-                            ...prev,
-                            chassisNo: e.target.value,
-                          })),
-                        placeholder: "Auto-extracted from MVCC",
-                      },
-                      {
-                        key: "agent-mvc-plateNo",
-                        label: "Plate Number",
-                        value: agentMvcData.plateNo,
-                        onChange: (e) =>
-                          setAgentMvcData((prev) => ({
-                            ...prev,
-                            plateNo: e.target.value,
-                          })),
-                        placeholder: "Auto-extracted from MVCC",
-                      },
-                      {
-                        key: "agent-mvc-mvFileNo",
-                        label: "MV File Number",
-                        value: agentMvcData.mvFileNo || agentMvcData.mvFileNumber || "",
-                        onChange: (e) =>
-                          setAgentMvcData((prev) => ({
-                            ...prev,
-                            mvFileNo: e.target.value,
-                          })),
-                        placeholder: "Auto-extracted from MVCC",
-                      },
-                      {
-                        key: "agent-mvc-color",
-                        label: "Color",
-                        value: agentMvcData.color,
-                        onChange: (e) =>
-                          setAgentMvcData((prev) => ({
-                            ...prev,
-                            color: e.target.value,
-                          })),
-                        placeholder: "Auto-extracted from MVCC",
-                      },
-                    ]}
-                  />
-
-                  <MvcMecUploadCard
-                    title="MEC"
-                    uploadLabel="Upload Motor Vehicle Emission Certificate"
-                    onFile={handleAgentMecUpload}
-                    preview={agentMecPreview}
-                    uploadHint={formatOcrHint(ocrUploadState.agentMec)}
-                    fields={[
-                      {
-                        key: "agent-mec-engineNoStencilled",
-                        label: "Engine Number",
-                        value: agentMecData.engineNoStencilled,
-                        onChange: (e) =>
-                          setAgentMecData((prev) => ({
-                            ...prev,
-                            engineNoStencilled: e.target.value,
-                          })),
-                        placeholder: "Auto-extracted from MEC",
-                      },
-                      {
-                        key: "agent-mec-chassisNoStencilled",
-                        label: "Chassis Number",
-                        value: agentMecData.chassisNoStencilled,
-                        onChange: (e) =>
-                          setAgentMecData((prev) => ({
-                            ...prev,
-                            chassisNoStencilled: e.target.value,
-                          })),
-                        placeholder: "Auto-extracted from MEC",
-                      },
-                      {
-                        key: "agent-mec-plateNo",
-                        label: "Plate Number",
-                        value: agentMecData.plateNo,
-                        onChange: (e) =>
-                          setAgentMecData((prev) => ({
-                            ...prev,
-                            plateNo: e.target.value,
-                          })),
-                        placeholder: "Auto-extracted from MEC",
-                      },
-                      {
-                        key: "agent-mec-color",
-                        label: "Color",
-                        value: agentMecData.color,
-                        onChange: (e) =>
-                          setAgentMecData((prev) => ({
-                            ...prev,
-                            color: e.target.value,
-                          })),
-                        placeholder: "Auto-extracted from MEC",
-                      },
-                    ]}
-                  />
-                </div>
-
-                <div className="mt-4">
-                  {(!agentMvcMecRequestId || (agentMvcPreview && !isDocumentComplete(agentMvcData)) || (agentMecPreview && !isDocumentComplete(agentMecData))) && (
-                    <div className="mb-3 flex justify-end">
-                      <div className="text-[11px] text-red-600 space-y-0.5 font-medium text-right">
-                        {!agentMvcMecRequestId && <p>• Please select a request from the dropdown</p>}
-                        {agentMvcPreview && getMissingFieldsText(agentMvcData, "MVCC")}
-                        {agentMecPreview && getMissingFieldsText(agentMecData, "MEC")}
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="secondary"
-                      onClick={validateSelectedMvcMecRows}
-                      disabled={!hasSelectedMvcMecRows}
-                    >
-                      Validate
-                    </Button>
-                    <Button
-                      onClick={handleAddAgentMvcMecToQueue}
-                      disabled={
-                        !agentMvcMecId ||
-                        !isDocumentComplete(agentMvcData) ||
-                        !isDocumentComplete(agentMecData)
-                      }
-                    >
-                      Add To MVC/MEC Queue
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-
-              <Card className="p-5">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
-                  <FileText size={18} className="text-[#0059b5]" />
-                  <h3 className="text-base font-bold text-gray-900">
-                    MVC/MEC Upload Queue
-                  </h3>
-                </div>
-                {certificationQueue.length === 0 ? (
-                  <p className="text-sm text-gray-500">
-                    No active requests available in queue.
-                  </p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-gray-200 text-left">
-                          <th className="pb-2 pr-3 w-10">
-                            <input
-                              type="checkbox"
-                              className="h-4 w-4 rounded border-gray-300 text-[#0059b5] focus:ring-[#0059b5]"
-                              checked={allMvcMecSelectableSelected}
-                              onChange={toggleSelectAllMvcMecRows}
-                              aria-label="Select all MVC and MEC rows"
-                            />
-                          </th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Request
-                          </th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Plate
-                          </th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            MVC
-                          </th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            MEC
-                          </th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            DCI Validation
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {certificationQueue.map((row) => (
-                          <tr
-                            key={row.id}
-                            className="border-b border-gray-100"
-                          >
-                            <td className="py-2 align-middle pr-3">
-                              <input
-                                type="checkbox"
-                                className="h-4 w-4 rounded border-gray-300 text-[#0059b5] focus:ring-[#0059b5]"
-                                checked={selectedMvcMecIds.includes(
-                                  row.id,
-                                )}
-                                onChange={() =>
-                                  toggleSelectedMvcMecRow(row.id)
-                                }
-                                disabled={!row.mvcMecUploaded}
-                                aria-label={`Select MVC and MEC row for ${row.id}`}
-                              />
-                            </td>
-                            <td className="py-2 font-mono text-xs text-gray-700">
-                              {row.id}
-                            </td>
-                            <td className="py-2 text-gray-700">
-                              {row.plateNumber || "-"}
-                            </td>
-                            <td className="py-2 text-gray-700 font-mono text-xs">
-                              {row.mvcData?.mvcNo || "-"}
-                            </td>
-                            <td className="py-2 text-gray-700 font-mono text-xs">
-                              {row.mecData?.engineNoStencilled || "-"}
-                            </td>
-                            <td className="py-2 text-gray-700">
-                              {row.mvcMecValidationState ||
-                                VALIDATION_STATE.PENDING}
-                              {row.mvcMecValidationMessage
-                                ? ` - ${row.mvcMecValidationMessage}`
-                                : ""}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </Card>
-            </div>
-          )}
-
-          {isAgent && step === 5 && (
-            <Card className="p-5">
-              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
-                <FileText size={18} className="text-[#0059b5]" />
-                <h3 className="text-base font-bold text-gray-900">
-                  Certificate Issuance (Bulk)
-                </h3>
-              </div>
-
-              {isIssuingBulk ? (
-                <div className="text-center py-8">
-                  <Spinner size="lg" />
-                  <p className="text-sm text-gray-500 mt-4">
-                    DCI portal is issuing certificates...
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <p className="text-sm text-gray-600">
-                    Certificates are automatically issued by DCI once all
-                    MVC/MEC uploads are validated.
-                  </p>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-gray-200 text-left">
-                          <th className="pb-2 w-28" />
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Request
-                          </th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Plate
-                          </th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Certificate
-                          </th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                            Status
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {certificationQueue.map((row) => (
-                          <tr
-                            key={row.id}
-                            className="border-b border-gray-100"
-                          >
-                            <td className="py-2 align-middle">
-                              <CertificateActionButtons row={row} />
-                            </td>
-                            <td className="py-2 font-mono text-xs text-gray-700">
-                              {row.id}
-                            </td>
-                            <td className="py-2 text-gray-700">
-                              {row.plateNumber || "-"}
-                            </td>
-                            <td className="py-2 font-mono text-xs font-semibold text-gray-900">
-                              {row.certificateNo || "-"}
-                            </td>
-                            <td className="py-2 text-gray-700">
-                              {row.certificateNo
-                                ? "CERTIFICATE_ISSUED"
-                                : "READY"}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {certificationQueue.every((row) => row.certificateNo) && (
-                    <Button onClick={finishBulk}>
-                      <CheckCircle size={16} /> Complete
-                    </Button>
-                  )}
-                </div>
-              )}
-            </Card>
-          )}
-
           {step === 1 && (
             <div className="space-y-6">
               <div className="text-center max-w-md mx-auto mb-8">
@@ -1625,7 +1016,7 @@ export const ClearanceRequestFlow = () => {
             </div>
           )}
 
-          {!isAgent && step === 2 && (
+          {step === 2 && (
             <div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <VehicleDocumentUploadCard
@@ -1743,7 +1134,7 @@ export const ClearanceRequestFlow = () => {
             </Card>
           )}
 
-          {!isAgent && step === 4 && (
+          {((!isAgent && step === 4) || (isAgent && step === 3)) && (
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <FileText size={18} className="text-[#0059b5]" />
@@ -1794,12 +1185,34 @@ export const ClearanceRequestFlow = () => {
                   <p className="text-xs text-gray-400 mt-3 animate-pulse">
                     Waiting for HPG officer verification...
                   </p>
+                  {isAgent && (
+                    <div className="mt-4 border-t border-amber-200 pt-4">
+                      <p className="text-[10px] text-amber-700 font-bold mb-2 uppercase tracking-wide">Development / Agent Action</p>
+                      <Button
+                        size="sm"
+                        onClick={async () => {
+                           try {
+                             const api = (await import("../../services/api")).default;
+                             await api.post(`/certificate-requests/by-voucher/${voucherCode}/verify`);
+                             setHpgVerified(true);
+                             setRequestStatus("HPG_VERIFIED");
+                             await saveCitizenRequest({ currentStep: step, status: "HPG_VERIFIED", hpgVerified: true });
+                             showSuccessAlert("Success", "Voucher verified by HPG successfully.");
+                           } catch (err) {
+                             showError("Failed", "Failed to mock HPG verification");
+                           }
+                        }}
+                      >
+                        Mock HPG Verification (Agent)
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </Card>
           )}
 
-          {!isAgent && step === 5 && (
+          {((!isAgent && step === 5) || (isAgent && step === 4)) && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <MvcMecUploadCard
@@ -1946,7 +1359,7 @@ export const ClearanceRequestFlow = () => {
             </div>
           )}
 
-          {!isAgent && step === 6 && (
+          {((!isAgent && step >= 6) || (isAgent && step >= 5)) && (
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <FileText size={18} className="text-[#0059b5]" />
