@@ -10,10 +10,7 @@ export function RequestProvider({ children }) {
   const [isInitializing, setIsInitializing] = useState(true);
 
 
-  const [voucherInventory, setVoucherInventory] = useState(() => {
-    const saved = localStorage.getItem("voucherInventory");
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [voucherInventory, setVoucherInventory] = useState([]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -31,10 +28,6 @@ export function RequestProvider({ children }) {
       setIsInitializing(false);
     }
   }, [isAuthenticated]);
-
-  useEffect(() => {
-    localStorage.setItem("voucherInventory", JSON.stringify(voucherInventory));
-  }, [voucherInventory]);
 
   const upsertRequestRecord = (record) => {
     if (!record.id) {
