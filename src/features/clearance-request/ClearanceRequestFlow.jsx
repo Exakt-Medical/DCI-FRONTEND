@@ -1114,7 +1114,6 @@ export const ClearanceRequestFlow = () => {
                     </div>
                   ) : voucherAssigned ? (
                     <div className="mt-3">
-           
                       <p className="text-xs text-gray-600 mt-1.5 max-w-md mx-auto leading-relaxed">
                         The voucher has been issued for your vehicle (Plate: <strong className="font-bold text-gray-900">{orCr.plateNumber || "N/A"}</strong>).
                         Please click <strong className="font-semibold text-gray-900">Next</strong> to proceed to the HPG Verification step.
@@ -1185,28 +1184,6 @@ export const ClearanceRequestFlow = () => {
                   <p className="text-xs text-gray-400 mt-3 animate-pulse">
                     Waiting for HPG officer verification...
                   </p>
-                  {isAgent && (
-                    <div className="mt-4 border-t border-amber-200 pt-4">
-                      <p className="text-[10px] text-amber-700 font-bold mb-2 uppercase tracking-wide">Development / Agent Action</p>
-                      <Button
-                        size="sm"
-                        onClick={async () => {
-                           try {
-                             const api = (await import("../../services/api")).default;
-                             await api.post(`/certificate-requests/by-voucher/${voucherCode}/verify`);
-                             setHpgVerified(true);
-                             setRequestStatus("HPG_VERIFIED");
-                             await saveCitizenRequest({ currentStep: step, status: "HPG_VERIFIED", hpgVerified: true });
-                             showSuccessAlert("Success", "Voucher verified by HPG successfully.");
-                           } catch (err) {
-                             showError("Failed", "Failed to mock HPG verification");
-                           }
-                        }}
-                      >
-                        Mock HPG Verification (Agent)
-                      </Button>
-                    </div>
-                  )}
                 </div>
               )}
             </Card>
