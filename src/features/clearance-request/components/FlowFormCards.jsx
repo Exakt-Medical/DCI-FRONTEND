@@ -6,73 +6,26 @@ import { FileUpload } from "../../../components/FileUpload";
 export const VehicleFields = ({ values, onChange }) => (
   <div className="space-y-3">
     <Input
-      label="Plate Number"
-      value={values.plateNumber}
-      onChange={(e) => onChange("plateNumber", e.target.value)}
-      placeholder="Auto-extracted"
-      required
-    />
-    <Input
-      label="MV File Number"
+      label="MV File No."
       value={values.mvFileNumber}
       onChange={(e) => onChange("mvFileNumber", e.target.value)}
       placeholder="Auto-extracted"
+      required
     />
     <Input
-      label="Engine Number"
+      label="Engine No."
       value={values.engineNumber}
       onChange={(e) => onChange("engineNumber", e.target.value)}
       placeholder="Auto-extracted"
+      required
     />
     <Input
-      label="Chassis Number"
+      label="Chassis No."
       value={values.chassisNumber}
       onChange={(e) => onChange("chassisNumber", e.target.value)}
       placeholder="Auto-extracted"
-    />
-    <Input
-      label="Make"
-      value={values.make}
-      onChange={(e) => onChange("make", e.target.value)}
-      placeholder="Auto-extracted"
-    />
-    <Input
-      label="Series"
-      value={values.series}
-      onChange={(e) => onChange("series", e.target.value)}
-      placeholder="Auto-extracted"
-    />
-    <Input
-      label="Year Model"
-      value={values.yearModel}
-      onChange={(e) => onChange("yearModel", e.target.value)}
-      placeholder="Auto-extracted"
-    />
-    <Input
-      label="Color"
-      value={values.color}
-      onChange={(e) => onChange("color", e.target.value)}
-      placeholder="Auto-extracted"
-    />
-    <Input
-      label="Owner Name"
-      value={values.ownerName}
-      onChange={(e) => onChange("ownerName", e.target.value)}
-      placeholder="Auto-extracted"
       required
     />
-    <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider">
-        Owner Address
-      </label>
-      <textarea
-        value={values.ownerAddress}
-        onChange={(e) => onChange("ownerAddress", e.target.value)}
-        placeholder="Auto-extracted"
-        rows={3}
-        className="w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
-      />
-    </div>
   </div>
 );
 
