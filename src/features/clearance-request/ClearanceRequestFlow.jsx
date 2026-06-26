@@ -15,6 +15,8 @@ import {
   Download,
   AlertTriangle,
   X,
+  Car,
+  CarFront,
 } from "lucide-react";
 import { VOUCHER_INVENTORY_STATUS } from "../../constants/voucherInventoryStatus";
 import {
@@ -101,6 +103,7 @@ export const ClearanceRequestFlow = ({
   const [dateCreated] = useState(
     () => selectedRequest?.dateCreated || new Date().toISOString().split("T")[0],
   );
+  const [vehicleOption, setVehicleOption] = useState(selectedRequest?.vehicleOption || "");
 
   const [orPreview, setOrPreview] = useState(selectedRequest?.orPreview || null);
   const [orNumber, setOrNumber] = useState(selectedRequest?.orNumber || "");
@@ -116,6 +119,13 @@ export const ClearanceRequestFlow = ({
   const [paymentDone, setPaymentDone] = useState(
     Boolean(isAgent || selectedRequest?.paymentDone),
   );
+  const [verifyOrCrDone, setVerifyOrCrDone] = useState(selectedRequest?.verifyOrCrDone || false);
+  const [inputChassisNumber, setInputChassisNumber] = useState(selectedRequest?.inputChassisNumber || "");
+  const [inputEngineNumber, setInputEngineNumber] = useState(selectedRequest?.inputEngineNumber || "");
+  const [inputPlateNumber, setInputPlateNumber] = useState(selectedRequest?.inputPlateNumber || "");
+  const [inputMvFileNumber, setInputMvFileNumber] = useState(selectedRequest?.inputMvFileNumber || "");
+  const [verifyingOrCr, setVerifyingOrCr] = useState(false);
+  const [verifyOrCrError, setVerifyOrCrError] = useState(selectedRequest?.verifyOrCrError || "");
 
   const [issuingVoucher, setIssuingVoucher] = useState(false);
   const [voucherCode, setVoucherCode] = useState(
@@ -265,6 +275,7 @@ export const ClearanceRequestFlow = ({
       currentStep: step,
       status: requestStatus,
       role,
+      vehicleOption,
       plateNumber:
         orCr.plateNumber || crCr.plateNumber || selectedRequest?.plateNumber || "",
       voucherCode,
@@ -275,6 +286,12 @@ export const ClearanceRequestFlow = ({
         : (selectedRequest?.voucherStatus || (selectedRequest?.voucherCode ? "VOUCHER_ISSUED" : "")),
 
       paymentDone,
+      verifyOrCrDone,
+      verifyOrCrError,
+      inputChassisNumber,
+      inputEngineNumber,
+      inputPlateNumber,
+      inputMvFileNumber,
       hpgVerified,
       certificateNo,
       clearanceReferenceNo: certificateNo,
@@ -684,7 +701,7 @@ export const ClearanceRequestFlow = ({
     setCitizenValidationMessage("DCI validation in progress...");
     setRequestStatus("MVC_MEC_VALIDATING");
     saveCitizenRequest({
-      currentStep: 5,
+      currentStep: 7,
       status: "MVC_MEC_VALIDATING",
       mvcMecValidationState: VALIDATION_STATE.VALIDATING,
       mvcMecValidationMessage: "DCI validation in progress...",
@@ -697,7 +714,7 @@ export const ClearanceRequestFlow = ({
         setCitizenValidationMessage(validation.reason);
         setRequestStatus("MVC_MEC_VALIDATION_PENDING");
         saveCitizenRequest({
-          currentStep: 5,
+          currentStep: 7,
           status: "MVC_MEC_VALIDATION_PENDING",
           mvcMecValidationState: VALIDATION_STATE.FAILED,
           mvcMecValidationMessage: validation.reason,
@@ -709,9 +726,9 @@ export const ClearanceRequestFlow = ({
       setCitizenValidationState(VALIDATION_STATE.PASSED);
       setCitizenValidationMessage(validation.reason);
       setRequestStatus("MVC_MEC_VALIDATED");
-      setStep(6);
+      setStep(8);
       saveCitizenRequest({
-        currentStep: 6,
+        currentStep: 8,
         status: "MVC_MEC_VALIDATED",
         mvcMecValidationState: VALIDATION_STATE.PASSED,
         mvcMecValidationMessage: validation.reason,
@@ -770,7 +787,7 @@ export const ClearanceRequestFlow = ({
   }, [agentMvcMecRequestId, isAgent, selectableMvcMecRows]);
 
   useEffect(() => {
-    if (isAgent || step !== 6 || citizenValidationState !== VALIDATION_STATE.PASSED) return;
+    if (isAgent || step !== 8 || citizenValidationState !== VALIDATION_STATE.PASSED) return;
     if (certificateNo || isIssuingCertificate) return;
     if (!voucherAssigned) return;
 
@@ -781,7 +798,7 @@ export const ClearanceRequestFlow = ({
       setIsIssuingCertificate(false);
       setRequestStatus("CERTIFICATE_ISSUED");
       saveCitizenRequest({
-        currentStep: 6,
+        currentStep: 8,
         status: "CERTIFICATE_ISSUED",
         certificateNo: certNo,
         clearanceReferenceNo: certNo,
@@ -823,15 +840,42 @@ export const ClearanceRequestFlow = ({
       setProcessingPayment(false);
       setPaymentDone(true);
       setRequestStatus("PENDING");
-      setStep(3);
-      saveCitizenRequest({ currentStep: 3, status: "PENDING", paymentDone: true });
+      setStep(4);
+      saveCitizenRequest({ currentStep: 4, status: "PENDING", paymentDone: true });
     }, 1600);
+  };
+
+  useEffect(() => {
+    if (isAgent || step !== 4) return;
+    if (!verifyOrCrDone && !verifyingOrCr && !verifyOrCrError) {
+      setVerifyingOrCr(true);
+      setVerifyOrCrError("");
+      setTimeout(() => {
+        setVerifyingOrCr(false);
+        
+        const checkVal = orCr.plateNumber || crCr.plateNumber || orCr.chassisNumber || "";
+          
+        if (checkVal.toUpperCase().includes("ERROR")) {
+          setVerifyOrCrDone(false);
+          const errorMsg = "No matching records found in the LTO Database. Please check your OR/CR documents.";
+          setVerifyOrCrError(errorMsg);
+          saveCitizenRequest({ verifyOrCrDone: false, verifyOrCrError: errorMsg });
+        } else {
+          setVerifyOrCrDone(true);
+          saveCitizenRequest({ verifyOrCrDone: true, verifyOrCrError: "" });
+        }
+      }, 1500);
+    }
+  }, [isAgent, step, verifyOrCrDone, verifyingOrCr, verifyOrCrError, orCr, crCr]);
+
+  const handleRetryVerify = () => {
+    setVerifyOrCrError("");
   };
 
   useEffect(() => {
     if (isAgent) return;
 
-    if (step === 3 && paymentDone && !voucherAssigned && !issuingVoucher) {
+    if (step === 5 && verifyOrCrDone && paymentDone && !voucherAssigned && !issuingVoucher) {
       setIssuingVoucher(true);
       setTimeout(() => {
         const code = voucherCode || `VCH-${String(Date.now()).slice(-8)}`;
@@ -840,20 +884,21 @@ export const ClearanceRequestFlow = ({
         setIssuingVoucher(false);
         setRequestStatus("VOUCHER_ISSUED");
         saveCitizenRequest({
-          currentStep: 4,
+          currentStep: 6,
           status: "VOUCHER_ISSUED",
           voucherCode: code,
           voucherReferenceNo: code,
           voucherAssigned: true,
           voucherStatus: "VOUCHER_ISSUED",
         });
-        setStep(4);
+        setStep(6);
       }, 900);
     }
   }, [
     isAgent,
     issuingVoucher,
     paymentDone,
+    verifyOrCrDone,
     step,
     voucherAssigned,
     voucherCode,
@@ -862,8 +907,8 @@ export const ClearanceRequestFlow = ({
   const handleCitizenHpgVerify = () => {
     setHpgVerified(true);
     setRequestStatus("HPG_VERIFIED");
-    setStep(5);
-    saveCitizenRequest({ currentStep: 5, status: "HPG_VERIFIED", hpgVerified: true });
+    setStep(7);
+    saveCitizenRequest({ currentStep: 7, status: "HPG_VERIFIED", hpgVerified: true });
   };
 
   const handleMvcUpload = (file, preview) => {
@@ -890,7 +935,7 @@ export const ClearanceRequestFlow = ({
       };
       setMvcData(next);
       saveCitizenRequest({
-        currentStep: 5,
+        currentStep: 7,
         status: "MVC_MEC_VALIDATION_PENDING",
         mvcData: next,
         mvcMecValidationState: VALIDATION_STATE.PENDING,
@@ -929,7 +974,7 @@ export const ClearanceRequestFlow = ({
       };
       setMecData(next);
       saveCitizenRequest({
-        currentStep: 5,
+        currentStep: 7,
         status: "MVC_MEC_VALIDATION_PENDING",
         mecData: next,
         mvcMecValidationState: VALIDATION_STATE.PENDING,
@@ -982,7 +1027,8 @@ export const ClearanceRequestFlow = ({
       return false;
     }
 
-    if (step === 1) {
+    if (step === 1) return Boolean(vehicleOption);
+    if (step === 2) {
       const orOk =
         orCr.plateNumber &&
         orCr.ownerName &&
@@ -993,15 +1039,16 @@ export const ClearanceRequestFlow = ({
         crCr.plateNumber !== "Extracting...";
       return Boolean(orOk && crOk && !plateMismatch);
     }
-    if (step === 2) return paymentDone;
-    if (step === 3) return voucherAssigned;
-    if (step === 4) return hpgVerified;
-    if (step === 5) return citizenValidationState === VALIDATION_STATE.PASSED && voucherAssigned;
+    if (step === 3) return paymentDone;
+    if (step === 4) return verifyOrCrDone;
+    if (step === 5) return voucherAssigned;
+    if (step === 6) return hpgVerified;
+    if (step === 7) return citizenValidationState === VALIDATION_STATE.PASSED && voucherAssigned;
     return false;
   };
 
   const nextStep = () => {
-    const maxStep = isAgent ? 5 : 6;
+    const maxStep = isAgent ? 5 : 8;
     if (step < maxStep && canNext()) setStep((prev) => prev + 1);
   };
 
@@ -1012,7 +1059,7 @@ export const ClearanceRequestFlow = ({
     if (processingPayment) return false;
     if (paymentDone) {
       const target = step - 1;
-      if (target < 3) return false;
+      if (target < 4) return false;
     }
     return step > 1;
   };
@@ -1029,6 +1076,7 @@ export const ClearanceRequestFlow = ({
   const finishCitizen = () => {
     onComplete?.({
       requestId,
+      vehicleOption,
       voucherCode,
       certificateNo,
       vehicle: orCr,
@@ -1040,7 +1088,7 @@ export const ClearanceRequestFlow = ({
       orAmount,
       crNumber,
       dateCreated,
-      currentStep: 6,
+      currentStep: 8,
       status: "CERTIFICATE_ISSUED",
       voucherStatus: "VOUCHER_ISSUED",
       clearanceStatus: "CERTIFICATE_ISSUED",
@@ -1599,6 +1647,54 @@ export const ClearanceRequestFlow = ({
           )}
 
           {!isAgent && step === 1 && (
+            <Card className="p-8">
+              <div className="text-center mb-8">
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Vehicle Option</h3>
+                <p className="text-gray-600">Please select if you are requesting a clearance certificate for a new or an existing vehicle.</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+                <div
+                  onClick={() => setVehicleOption("new")}
+                  className={`border-2 rounded-xl p-6 cursor-pointer transition-all ${
+                    vehicleOption === "new"
+                      ? "border-[#0059b5] bg-blue-50 ring-4 ring-blue-500/20"
+                      : "border-gray-200 hover:border-[#0059b5] hover:bg-gray-50"
+                  }`}
+                >
+                  <div className="flex flex-col items-center text-center gap-4">
+                    <div className={`p-4 rounded-full ${vehicleOption === "new" ? "bg-[#0059b5] text-white" : "bg-gray-100 text-gray-500"}`}>
+                      <CarFront size={32} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-gray-900 mb-1">New Vehicle</h4>
+                      <p className="text-sm text-gray-500">For newly purchased or unregistered vehicles.</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div
+                  onClick={() => setVehicleOption("existing")}
+                  className={`border-2 rounded-xl p-6 cursor-pointer transition-all ${
+                    vehicleOption === "existing"
+                      ? "border-[#0059b5] bg-blue-50 ring-4 ring-blue-500/20"
+                      : "border-gray-200 hover:border-[#0059b5] hover:bg-gray-50"
+                  }`}
+                >
+                  <div className="flex flex-col items-center text-center gap-4">
+                    <div className={`p-4 rounded-full ${vehicleOption === "existing" ? "bg-[#0059b5] text-white" : "bg-gray-100 text-gray-500"}`}>
+                      <Car size={32} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-gray-900 mb-1">Existing Vehicle</h4>
+                      <p className="text-sm text-gray-500">For vehicles that are already registered.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {!isAgent && step === 2 && (
             <div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <VehicleDocumentUploadCard
@@ -1656,7 +1752,7 @@ export const ClearanceRequestFlow = ({
             </div>
           )}
 
-          {!isAgent && step === 2 && (
+          {!isAgent && step === 3 && (
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <CreditCard size={18} className="text-[#0059b5]" />
@@ -1685,7 +1781,82 @@ export const ClearanceRequestFlow = ({
             </Card>
           )}
 
-          {!isAgent && step === 3 && (
+          {!isAgent && step === 4 && (
+            <Card className="p-5">
+              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
+                <FileText size={18} className="text-[#0059b5]" />
+                <h3 className="text-base font-bold text-gray-900">Verify OR/CR</h3>
+              </div>
+              
+              {verifyingOrCr ? (
+                <div className="text-center py-6">
+                  <Spinner size="md" />
+                  <p className="text-sm text-gray-500 mt-2">Connecting to LTO Database...</p>
+                </div>
+              ) : verifyOrCrDone ? (
+                <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-5 mt-2">
+                  <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
+                    <CheckCircle size={20} className="text-green-500" />
+                    <h4 className="font-bold text-gray-900">LTO Verification Successful</h4>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-6 text-sm">
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Make</p>
+                      <p className="font-medium text-gray-900">{orCr.make || "TOYOTA"}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Series</p>
+                      <p className="font-medium text-gray-900">{orCr.series || "VIOS"}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Year Model</p>
+                      <p className="font-medium text-gray-900">{orCr.yearModel || "2020"}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Color</p>
+                      <p className="font-medium text-gray-900">{orCr.color || "WHITE"}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Owner</p>
+                      <p className="font-medium text-gray-900">{orCr.ownerName || "JUAN DELA CRUZ"}</p>
+                    </div>
+                    {vehicleOption === "existing" ? (
+                      <div>
+                        <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Plate Number</p>
+                        <p className="font-medium text-gray-900">{orCr.plateNumber || "ABC1234"}</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Chassis No.</p>
+                        <p className="font-medium text-gray-900">{orCr.chassisNumber || "CHA-123456"}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {verifyOrCrError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 text-center">
+                      <AlertTriangle size={24} className="text-red-500 mx-auto mb-2" />
+                      <p className="font-semibold text-red-700">Verification Failed</p>
+                      <p className="text-sm text-red-600 mt-1">{verifyOrCrError}</p>
+                    </div>
+                  )}
+                  {verifyOrCrError && (
+                    <Button
+                      onClick={handleRetryVerify}
+                      className="w-full"
+                    >
+                      Retry Verification
+                    </Button>
+                  )}
+                </>
+              )}
+
+            </Card>
+          )}
+
+          {!isAgent && step === 5 && (
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <Ticket size={18} className="text-[#0059b5]" />
@@ -1711,7 +1882,7 @@ export const ClearanceRequestFlow = ({
             </Card>
           )}
 
-          {!isAgent && step === 4 && (
+          {!isAgent && step === 6 && (
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <FileText size={18} className="text-[#0059b5]" />
@@ -1733,7 +1904,7 @@ export const ClearanceRequestFlow = ({
             </Card>
           )}
 
-          {!isAgent && step === 5 && (
+          {!isAgent && step === 7 && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <MvcMecUploadCard
@@ -1869,7 +2040,7 @@ export const ClearanceRequestFlow = ({
             </div>
           )}
 
-          {!isAgent && step === 6 && (
+          {!isAgent && step === 8 && (
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <FileText size={18} className="text-[#0059b5]" />
