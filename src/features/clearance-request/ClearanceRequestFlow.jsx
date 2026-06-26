@@ -185,10 +185,10 @@ export const ClearanceRequestFlow = ({
     return [];
   });
 
-  const plateMismatch =
-    orCr.plateNumber &&
-    crCr.plateNumber &&
-    orCr.plateNumber !== crCr.plateNumber;
+  const vehicleMismatch =
+    (orCr.mvFileNumber && crCr.mvFileNumber && orCr.mvFileNumber !== crCr.mvFileNumber) ||
+    (orCr.engineNumber && crCr.engineNumber && orCr.engineNumber !== crCr.engineNumber) ||
+    (orCr.chassisNumber && crCr.chassisNumber && orCr.chassisNumber !== crCr.chassisNumber);
 
   const updateOrCr = (field, value) =>
     setOrCr((prev) => ({ ...prev, [field]: value }));
@@ -381,14 +381,18 @@ export const ClearanceRequestFlow = ({
     if (!isAgent) return;
 
     const orOk =
-      orCr.plateNumber &&
-      orCr.ownerName &&
-      orCr.plateNumber !== "Extracting...";
+      orNumber &&
+      orCr.mvFileNumber &&
+      orCr.engineNumber &&
+      orCr.chassisNumber &&
+      orCr.mvFileNumber !== "Extracting...";
     const crOk =
-      crCr.plateNumber &&
-      crCr.ownerName &&
-      crCr.plateNumber !== "Extracting...";
-    const match = orCr.plateNumber === crCr.plateNumber;
+      crNumber &&
+      crCr.mvFileNumber &&
+      crCr.engineNumber &&
+      crCr.chassisNumber &&
+      crCr.mvFileNumber !== "Extracting...";
+    const match = !vehicleMismatch;
     if (!(orOk && crOk && match)) return;
 
     const row = {
@@ -1030,14 +1034,18 @@ export const ClearanceRequestFlow = ({
     if (step === 1) return Boolean(vehicleOption);
     if (step === 2) {
       const orOk =
-        orCr.plateNumber &&
-        orCr.ownerName &&
-        orCr.plateNumber !== "Extracting...";
+        orNumber &&
+        orCr.mvFileNumber &&
+        orCr.engineNumber &&
+        orCr.chassisNumber &&
+        orCr.mvFileNumber !== "Extracting...";
       const crOk =
-        crCr.plateNumber &&
-        crCr.ownerName &&
-        crCr.plateNumber !== "Extracting...";
-      return Boolean(orOk && crOk && !plateMismatch);
+        crNumber &&
+        crCr.mvFileNumber &&
+        crCr.engineNumber &&
+        crCr.chassisNumber &&
+        crCr.mvFileNumber !== "Extracting...";
+      return Boolean(orOk && crOk && !vehicleMismatch);
     }
     if (step === 3) return paymentDone;
     if (step === 4) return verifyOrCrDone;
@@ -1156,26 +1164,10 @@ export const ClearanceRequestFlow = ({
                   uploadLabel="Upload Official Receipt"
                   onFile={handleOrUpload}
                   preview={orPreview}
-                  numberLabel="OR Number"
+                  numberLabel="or no."
                   numberValue={orNumber}
                   onNumberChange={(e) => setOrNumber(e.target.value)}
                   numberPlaceholder="Auto-extracted from OR"
-                  extraInputs={[
-                    <Input
-                      key="or-date"
-                      label="OR Date"
-                      value={orDate}
-                      onChange={(e) => setOrDate(e.target.value)}
-                      placeholder="Auto-extracted from OR"
-                    />,
-                    <Input
-                      key="or-amount"
-                      label="Amount"
-                      value={orAmount}
-                      onChange={(e) => setOrAmount(e.target.value)}
-                      placeholder="Auto-extracted from OR"
-                    />,
-                  ]}
                   vehicleLabel="Vehicle Details (from OR)"
                   vehicleValues={orCr}
                   onVehicleChange={updateOrCr}
@@ -1186,7 +1178,7 @@ export const ClearanceRequestFlow = ({
                   uploadLabel="Upload Certificate of Registration"
                   onFile={handleCrUpload}
                   preview={crPreview}
-                  numberLabel="CR Number"
+                  numberLabel="Cr no."
                   numberValue={crNumber}
                   onNumberChange={(e) => setCrNumber(e.target.value)}
                   numberPlaceholder="Auto-extracted from CR"
@@ -1196,11 +1188,11 @@ export const ClearanceRequestFlow = ({
                 />
               </div>
 
-              {plateMismatch && (
+              {vehicleMismatch && (
                 <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
                   <AlertTriangle size={18} className="text-red-500 shrink-0" />
                   <p className="text-sm text-red-700">
-                    Plate number mismatch: OR says <strong>{orCr.plateNumber}</strong>, CR says <strong>{crCr.plateNumber}</strong>. Both must match to add queue entry.
+                    Vehicle details mismatch: Please ensure MV File Number, Engine Number, and Chassis Number match between OR and CR.
                   </p>
                 </div>
               )}
@@ -1213,7 +1205,13 @@ export const ClearanceRequestFlow = ({
                   </div>
                   <Button
                     onClick={handleAddToQueue}
-                    disabled={!orCr.plateNumber || !crCr.plateNumber || plateMismatch}
+                    disabled={
+                      !orNumber ||
+                      !crNumber ||
+                      !orCr.mvFileNumber ||
+                      !crCr.mvFileNumber ||
+                      vehicleMismatch
+                    }
                   >
                     Add To Queue
                   </Button>
@@ -1702,26 +1700,10 @@ export const ClearanceRequestFlow = ({
                   uploadLabel="Upload Official Receipt"
                   onFile={handleOrUpload}
                   preview={orPreview}
-                  numberLabel="OR Number"
+                  numberLabel="or no."
                   numberValue={orNumber}
                   onNumberChange={(e) => setOrNumber(e.target.value)}
                   numberPlaceholder="Auto-extracted from OR"
-                  extraInputs={[
-                    <Input
-                      key="citizen-or-date"
-                      label="OR Date"
-                      value={orDate}
-                      onChange={(e) => setOrDate(e.target.value)}
-                      placeholder="Auto-extracted from OR"
-                    />,
-                    <Input
-                      key="citizen-or-amount"
-                      label="Amount"
-                      value={orAmount}
-                      onChange={(e) => setOrAmount(e.target.value)}
-                      placeholder="Auto-extracted from OR"
-                    />,
-                  ]}
                   vehicleLabel="Vehicle Details (from OR)"
                   vehicleValues={orCr}
                   onVehicleChange={updateOrCr}
@@ -1732,7 +1714,7 @@ export const ClearanceRequestFlow = ({
                   uploadLabel="Upload Certificate of Registration"
                   onFile={handleCrUpload}
                   preview={crPreview}
-                  numberLabel="CR Number"
+                  numberLabel="Cr no."
                   numberValue={crNumber}
                   onNumberChange={(e) => setCrNumber(e.target.value)}
                   numberPlaceholder="Auto-extracted from CR"
@@ -1741,11 +1723,11 @@ export const ClearanceRequestFlow = ({
                   onVehicleChange={updateCrCr}
                 />
               </div>
-              {plateMismatch && (
+              {vehicleMismatch && (
                 <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
                   <AlertTriangle size={18} className="text-red-500 shrink-0" />
                   <p className="text-sm text-red-700">
-                    Plate number mismatch: OR says <strong>{orCr.plateNumber}</strong>, CR says <strong>{crCr.plateNumber}</strong>. Both must match to proceed.
+                    Vehicle details mismatch: Please ensure MV File Number, Engine Number, and Chassis Number match between OR and CR.
                   </p>
                 </div>
               )}
