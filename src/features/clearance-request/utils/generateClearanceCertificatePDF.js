@@ -74,6 +74,16 @@ function drawTableRow(
 }
 
 export const generateClearanceCertificatePDF = async (row = {}) => {
+  let mergedRow = { ...row };
+  if (row.id) {
+    const mockRequests = JSON.parse(localStorage.getItem("mock_agent_requests") || "[]");
+    const found = mockRequests.find((r) => String(r.id) === String(row.id));
+    if (found) {
+      mergedRow = { ...mergedRow, ...found };
+    }
+  }
+  row = mergedRow;
+
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",

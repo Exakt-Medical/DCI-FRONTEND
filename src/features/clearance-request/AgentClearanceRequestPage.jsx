@@ -16,6 +16,19 @@ export const AgentClearanceRequestPage = () => {
   const [requests, setRequests] = useState([]);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    const data = JSON.parse(localStorage.getItem("mock_agent_requests") || "[]");
+    setRequests(data);
+  }, []);
+
+  const filteredRequests = requests.filter((req) => {
+    const term = search.toLowerCase();
+    const reference = String(req.id || "").toLowerCase();
+    const plate = String(req.plateNumber || "").toLowerCase();
+    const client = String(req.orCr?.ownerName || req.crCr?.ownerName || req.clientName || "").toLowerCase();
+    return reference.includes(term) || plate.includes(term) || client.includes(term);
+  });
+
   return (
     <div className="max-w-6xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -34,7 +47,7 @@ export const AgentClearanceRequestPage = () => {
           <Users size={18} className="text-[#0059b5]" />
           <h3 className="text-base font-bold text-gray-900">All Clearance Requests</h3>
           <span className="text-xs text-gray-400 ml-auto">
-            {requests.length} record{requests.length !== 1 && "s"}
+            {filteredRequests.length} record{filteredRequests.length !== 1 && "s"}
           </span>
         </div>
 
@@ -63,29 +76,29 @@ export const AgentClearanceRequestPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {requests.map((req) => {
-                    const style = getClearanceStatusStyle(req.status);
+                  {filteredRequests.map((req) => {
+                    const style = getClearanceStatusStyle(req.status || "DRAFT");
                     const quickAction = QUICK_ACTIONS[req.status];
                     return (
                       <tr key={req.id} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-3 font-mono text-xs font-medium text-gray-900">{req.referenceNo}</td>
+                        <td className="py-3 font-mono text-xs font-medium text-gray-900">{req.id || req.referenceNo}</td>
                         <td className="py-3 text-gray-700">{req.plateNumber || "—"}</td>
-                        <td className="py-3 text-gray-700">{req.clientName || "—"}</td>
+                        <td className="py-3 text-gray-700">{req.orCr?.ownerName || req.crCr?.ownerName || req.clientName || "—"}</td>
                         <td className="py-3">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${style.bg} ${style.text}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${style.dot}`} />
-                            {req.status.replace(/_/g, " ")}
+                            {(req.status || "DRAFT").replace(/_/g, " ")}
                           </span>
                         </td>
                         <td className="py-3 text-gray-500">{req.dateCreated}</td>
                         <td className="py-3">
                           <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => navigate("/dci-access/new-clearance-request", { state: { request: req } })}>
+                            <Button variant="ghost" size="sm" onClick={() => navigate(`/dci-access/new-clearance-request?id=${encodeURIComponent(req.id)}`, { state: { request: req } })}>
                               <Eye size={14} />
                             </Button>
                             {quickAction && (
                               <Button variant="ghost" size="sm"
-                                onClick={() => navigate("/dci-access/new-clearance-request", { state: { request: req } })} title={quickAction.label}>
+                                onClick={() => navigate(`/dci-access/new-clearance-request?id=${encodeURIComponent(req.id)}`, { state: { request: req } })} title={quickAction.label}>
                                 <quickAction.icon size={14} />
                               </Button>
                             )}

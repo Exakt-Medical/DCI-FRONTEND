@@ -18,6 +18,7 @@ import { authService } from "../services/authService";
 import { useAuth } from "../context/AuthContext";
 import DciLogo from "../assets/DCI-LOGO.png";
 import { CreateTicketModal } from "../features/Tickets/CreateTicketModal";
+import { ticketService } from "../services/ticketService";
 
 export const LoginPage = () => {
   const [form, setForm] = useState({ username: "", password: "" });
@@ -82,9 +83,35 @@ export const LoginPage = () => {
     }
   };
 
-  const handleTicketSubmit = async (ticketData) => {
-    console.log("Ticket submitted:", ticketData);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+  const handleTicketSubmit = async (formData) => {
+    const typeLabel =
+      formData.concernType === "login"
+        ? "Login Issue"
+        : formData.concernType === "account"
+          ? "Account Issue"
+          : "General";
+
+    const pad = (n) => String(n).padStart(4, "0");
+    const now = new Date();
+    const datePart = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+    const randPart = pad(Math.floor(Math.random() * 9000) + 1000);
+    const referenceNumber = `REF-${datePart}-${randPart}`;
+
+    const payload = {
+      referenceNumber,
+      requestedBy: formData.requestedBy?.name ?? "",
+      type: typeLabel,
+      status: "PENDING",
+      address: formData.description ?? "",
+      name: formData.requestedBy?.name ?? "",
+      processedBy: null,
+      dateRequested: new Date().toISOString(),
+      dateUpdated: new Date().toISOString(),
+      escalated: "NO",
+      roleBased: "CITIZEN",
+    };
+
+    return await ticketService.create(payload);
   };
 
   return (

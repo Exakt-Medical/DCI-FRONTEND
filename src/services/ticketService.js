@@ -136,31 +136,51 @@ const handleResponse = async (res) => {
 
 export const ticketService = {
   async getAll() {
-    const res = await api.get("/support-ticket");
-    return res.data
+    const list = JSON.parse(localStorage.getItem("mock_support_tickets") || "[]");
+    return list
       .map(mapTicket)
       .sort((a, b) => new Date(b.dateRequested) - new Date(a.dateRequested));
   },
 
   async getById(id) {
-    const res = await api.get(`/support-ticket/${id}`);
-    return mapTicket(res.data);
+    const list = JSON.parse(localStorage.getItem("mock_support_tickets") || "[]");
+    const item = list.find((t) => String(t.id) === String(id));
+    if (!item) throw new Error("Ticket not found");
+    return mapTicket(item);
   },
 
   async create(formData) {
-    const res = await api.post("/support-ticket", mapToRequest(formData));
-    return mapTicket(res.data);
+    const list = JSON.parse(localStorage.getItem("mock_support_tickets") || "[]");
+    const requestPayload = mapToRequest(formData);
+    const newId = Date.now() + Math.floor(Math.random() * 1000);
+    const createdTicket = {
+      ...requestPayload,
+      id: newId,
+    };
+    list.unshift(createdTicket);
+    localStorage.setItem("mock_support_tickets", JSON.stringify(list));
+    return mapTicket(createdTicket);
   },
 
   async update(id, formData) {
-    const res = await api.put(
-      `/api/support-ticket/${id}`,
-      mapToRequest(formData),
-    );
-    return mapTicket(res.data);
+    const list = JSON.parse(localStorage.getItem("mock_support_tickets") || "[]");
+    const idx = list.findIndex((t) => String(t.id) === String(id));
+    if (idx === -1) throw new Error("Ticket not found");
+    
+    const requestPayload = mapToRequest(formData);
+    const updatedTicket = {
+      ...list[idx],
+      ...requestPayload,
+      id,
+    };
+    list[idx] = updatedTicket;
+    localStorage.setItem("mock_support_tickets", JSON.stringify(list));
+    return mapTicket(updatedTicket);
   },
 
   async delete(id) {
-    await api.delete(`/support-ticket/${id}`);
+    const list = JSON.parse(localStorage.getItem("mock_support_tickets") || "[]");
+    const filtered = list.filter((t) => String(t.id) !== String(id));
+    localStorage.setItem("mock_support_tickets", JSON.stringify(filtered));
   },
 };

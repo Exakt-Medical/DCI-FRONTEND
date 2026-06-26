@@ -101,12 +101,18 @@ export const MyRequestsPage = () => {
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const { role } = useAuth();
+  const isAgent = role === "agent_fixer";
   const [requests, setRequests] = useState([]);
 
   const loadAllRequests = async () => {
     try {
-      const data = await fetchMyRequests();
-      setRequests(data || []);
+      if (isAgent) {
+        const data = JSON.parse(localStorage.getItem("mock_agent_requests") || "[]");
+        setRequests(data);
+      } else {
+        const data = await fetchMyRequests();
+        setRequests(data || []);
+      }
     } catch (error) {
       console.error("Failed to load requests:", error);
     }
@@ -114,10 +120,9 @@ export const MyRequestsPage = () => {
 
   useEffect(() => {
     loadAllRequests();
-  }, []);
+  }, [isAgent]);
 
   const navigate = useNavigate();
-  const isAgent = role === "agent_fixer";
 
   const filtered = useMemo(() => {
     return requests

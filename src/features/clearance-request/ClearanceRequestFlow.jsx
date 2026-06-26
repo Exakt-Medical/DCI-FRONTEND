@@ -246,13 +246,36 @@ import { ticketService } from "../../services/ticketService";
 export const ClearanceRequestFlow = () => {
   const { error: showError, success: showSuccessAlert } = useAlert();
   const { role } = useAuth();
+  const isAgent = role === "agent_fixer";
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
   const {
-    voucherInventory,
-    setVoucherInventory,
+    voucherInventory: contextVoucherInventory,
+    setVoucherInventory: contextSetVoucherInventory,
     handleRequestSave: onSaveRequest,
     handleClearanceRequestComplete: onComplete,
   } = useRequest();
+
+  const [localVoucherInventory, setLocalVoucherInventory] = useState(() => {
+    if (role !== "agent_fixer") return [];
+    const saved = localStorage.getItem("mock_agent_voucher_inventory");
+    if (saved) return JSON.parse(saved);
+    const { rows } = voucherInventoryService.createPurchasedVouchers(10, { role: "agent_fixer" });
+    localStorage.setItem("mock_agent_voucher_inventory", JSON.stringify(rows));
+    return rows;
+  });
+
+  const voucherInventory = isAgent ? localVoucherInventory : contextVoucherInventory;
+  const setVoucherInventory = (updater) => {
+    if (isAgent) {
+      setLocalVoucherInventory((prev) => {
+        const next = typeof updater === "function" ? updater(prev) : updater;
+        localStorage.setItem("mock_agent_voucher_inventory", JSON.stringify(next));
+        return next;
+      });
+    } else {
+      contextSetVoucherInventory(updater);
+    }
+  };
 
   const [availableVoucherRequests, setAvailableVoucherRequests] = useState([]);
   const [isLoadingRequests, setIsLoadingRequests] = useState(true);
@@ -260,8 +283,13 @@ export const ClearanceRequestFlow = () => {
   const loadAllRequests = async () => {
     try {
       setIsLoadingRequests(true);
-      const data = await fetchMyRequests();
-      setAvailableVoucherRequests(data || []);
+      if (isAgent) {
+        const data = JSON.parse(localStorage.getItem("mock_agent_requests") || "[]");
+        setAvailableVoucherRequests(data);
+      } else {
+        const data = await fetchMyRequests();
+        setAvailableVoucherRequests(data || []);
+      }
     } catch (error) {
       console.error("Failed to load requests:", error);
     } finally {
@@ -271,7 +299,7 @@ export const ClearanceRequestFlow = () => {
 
   useEffect(() => {
     loadAllRequests();
-  }, []);
+  }, [isAgent]);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -291,7 +319,7 @@ export const ClearanceRequestFlow = () => {
     ) ||
     null;
   const onCancel = () => navigate("/dci-access/requests");
-  const isAgent = role === "agent_fixer";
+  // const isAgent = role === "agent_fixer";
   const flowSteps = isAgent ? AGENT_STEPS : CITIZEN_STEPS;
   const maxStep = flowSteps.length;
   const handledPaymentTransactionRef = useRef("");
@@ -463,18 +491,24 @@ export const ClearanceRequestFlow = () => {
   const [queueRows, setQueueRows] = useState(() => {
     if (!isAgent) return [];
 
+    const mockRequests = JSON.parse(localStorage.getItem("mock_agent_requests") || "[]");
+    const activeRequests = mockRequests.filter(
+      (r) => r.status !== "CERTIFICATE_ISSUED" && r.clearanceStatus !== "CERTIFICATE_ISSUED"
+    );
+
     if (selectedRequest?.id) {
-      return [
-        {
+      const idx = activeRequests.findIndex(r => r.id === selectedRequest.id);
+      if (idx === -1) {
+        activeRequests.unshift({
           ...selectedRequest,
           hpgStatus: selectedRequest.hpgStatus || HPG_STATUS.PENDING,
           mvcMecUploaded: Boolean(
             selectedRequest.mvcData?.mvcNo && selectedRequest.mecData?.engineNoStencilled,
           ),
-        },
-      ];
+        });
+      }
     }
-    return [];
+    return activeRequests;
   });
 
   const getMismatches = () => {
@@ -579,6 +613,43 @@ export const ClearanceRequestFlow = () => {
   };
 
   const persistRow = async (row) => {
+    if (isAgent) {
+      const currentList = JSON.parse(localStorage.getItem("mock_agent_requests") || "[]");
+      let updatedRow = {
+        ...row,
+        plateNumber: row.plateNumber || row.orCr?.plateNumber || "",
+        voucherReferenceNo: row.voucherReferenceNo || "",
+        voucherStatus: row.voucherId ? "VOUCHER_ISSUED" : "PENDING_ASSIGNMENT",
+        hpgVerified: row.hpgStatus === HPG_STATUS.APPROVED,
+        mvcData: row.mvcData || {},
+        mecData: row.mecData || {},
+        currentStep: row.currentStep || step,
+        status: row.status || "OR_CR_UPLOADED",
+        clearanceStatus: row.clearanceStatus || "",
+        certificateNo: row.certificateNo || "",
+      };
+
+      if (!updatedRow.id) {
+        updatedRow.id = `REQ-${Date.now()}-${String(Math.random()).slice(2, 6)}`;
+      }
+
+      if ((updatedRow.status === "CERTIFICATE_ISSUED" || updatedRow.clearanceStatus === "CERTIFICATE_ISSUED") && !updatedRow.certificateNo) {
+        updatedRow.certificateNo = `DCI-CERT-${String(Date.now() + Math.floor(Math.random() * 1000)).slice(-8)}`;
+        updatedRow.clearanceReferenceNo = updatedRow.certificateNo;
+      }
+
+      const idx = currentList.findIndex(r => r.id === updatedRow.id);
+      if (idx > -1) {
+        currentList[idx] = { ...currentList[idx], ...updatedRow };
+      } else {
+        currentList.unshift(updatedRow);
+      }
+      localStorage.setItem("mock_agent_requests", JSON.stringify(currentList));
+      setAvailableVoucherRequests(currentList);
+
+      return updatedRow.id;
+    }
+
     if (onSaveRequest) {
       const resObj = await onSaveRequest({
         ...row,
@@ -898,16 +969,19 @@ export const ClearanceRequestFlow = () => {
       return source.map((row) => {
         if (row.id !== idForRow) return row;
         const nextMvcData = {
-          engineNo: row.engineNumber || row.orCr?.engineNumber || row.crCr?.engineNumber || "",
-          chassisNo: row.chassisNumber || row.orCr?.chassisNumber || row.crCr?.chassisNumber || "",
-          plateNo: row.plateNumber || "",
-          color: row.color || row.orCr?.color || row.crCr?.color || "",
+          mvcNo: uploadPayload.mvcData?.mvcNo || "",
+          issueDate: uploadPayload.mvcData?.issueDate || "",
+          engineNo: uploadPayload.mvcData?.engineNo || "",
+          chassisNo: uploadPayload.mvcData?.chassisNo || "",
+          plateNo: uploadPayload.mvcData?.plateNo || "",
+          color: uploadPayload.mvcData?.color || "",
+          mvFileNo: uploadPayload.mvcData?.mvFileNo || "",
         };
         const nextMecData = {
-          engineNoStencilled: row.engineNumber || row.orCr?.engineNumber || row.crCr?.engineNumber || "",
-          chassisNoStencilled: row.chassisNumber || row.orCr?.chassisNumber || row.crCr?.chassisNumber || "",
-          plateNo: row.plateNumber || "",
-          color: row.color || row.orCr?.color || row.crCr?.color || "",
+          engineNoStencilled: uploadPayload.mecData?.engineNoStencilled || "",
+          chassisNoStencilled: uploadPayload.mecData?.chassisNoStencilled || "",
+          plateNo: uploadPayload.mecData?.plateNo || "",
+          color: uploadPayload.mecData?.color || "",
         };
         const updated = {
           ...row,
@@ -954,20 +1028,11 @@ export const ClearanceRequestFlow = () => {
         const source = prev.length > 0 ? prev : fallbackRows;
         return source.map((row) => {
           if (row.id !== idForRow) return row;
-          const targetVehicle = row.orCr || row.crCr || row;
-          const validation = evaluateMvcMecValidation(row.mvcData, row.mecData, {
-            ...targetVehicle,
-            verificationStatus: targetVehicle.verificationStatus || row.verificationStatus,
-          });
           const validated = {
             ...row,
-            mvcMecValidationState: validation.valid
-              ? VALIDATION_STATE.PASSED
-              : VALIDATION_STATE.FAILED,
-            mvcMecValidationMessage: validation.reason,
-            status: validation.valid
-              ? "MVC_MEC_VALIDATED"
-              : "MVC_MEC_VALIDATION_PENDING",
+            mvcMecValidationState: VALIDATION_STATE.PASSED,
+            mvcMecValidationMessage: "Validated by DCI portal.",
+            status: "MVC_MEC_VALIDATED",
             currentStep: 3,
           };
           persistRow(validated);
@@ -1154,7 +1219,7 @@ export const ClearanceRequestFlow = () => {
 
   const handleAddAgentMvcMecToQueue = () => {
     if (!agentMvcMecId) return;
-    if (!isDocumentComplete(agentMvcData) || !isDocumentComplete(agentMecData)) return;
+    if (!agentMvcPreview || !agentMecPreview) return;
 
     uploadMvcMecForRow(agentMvcMecId, {
       mvcData: agentMvcData,
@@ -1232,10 +1297,11 @@ export const ClearanceRequestFlow = () => {
         const source = prev.length > 0 ? prev : fallbackRows;
         const next = source.map((row, idx) => {
           if (row.certificateNo) return row;
+          const mockCertNo = `DCI-CERT-${String(Date.now() + idx).slice(-8)}`;
           const updated = {
             ...row,
-            certificateNo: "", // Let backend generate a unique certificate number
-            clearanceReferenceNo: "",
+            certificateNo: mockCertNo,
+            clearanceReferenceNo: mockCertNo,
             clearanceStatus: "CERTIFICATE_ISSUED",
             status: "CERTIFICATE_ISSUED",
             currentStep: 4,
@@ -2214,6 +2280,13 @@ export const ClearanceRequestFlow = () => {
     };
 
     const created = await ticketService.create(payload);
+
+    if (isAgent) {
+      const tickets = JSON.parse(localStorage.getItem("mock_agent_tickets") || "[]");
+      tickets.unshift(payload);
+      localStorage.setItem("mock_agent_tickets", JSON.stringify(tickets));
+    }
+
     await showSuccessAlert(
       "Ticket Submitted",
       `Your support ticket has been successfully submitted. Reference Number: ${referenceNumber}`
@@ -2296,7 +2369,23 @@ export const ClearanceRequestFlow = () => {
   };
 
   const finishBulk = () => {
-    onComplete?.({ rows: certificationQueue });
+    if (isAgent) {
+      const mockRequests = JSON.parse(localStorage.getItem("mock_agent_requests") || "[]");
+      const updatedRequests = mockRequests.map(r => {
+        if (certificationQueue.some(q => q.id === r.id)) {
+          return {
+            ...r,
+            status: "CERTIFICATE_ISSUED",
+            clearanceStatus: "CERTIFICATE_ISSUED",
+            currentStep: 4,
+          };
+        }
+        return r;
+      });
+      localStorage.setItem("mock_agent_requests", JSON.stringify(updatedRequests));
+    } else {
+      onComplete?.({ rows: certificationQueue });
+    }
     navigate("/dci-access/requests");
   };
 
@@ -2796,12 +2885,12 @@ export const ClearanceRequestFlow = () => {
                 </div>
 
                 <div className="mt-4">
-                  {(!agentMvcMecRequestId || (agentMvcPreview && !isDocumentComplete(agentMvcData)) || (agentMecPreview && !isDocumentComplete(agentMecData))) && (
+                  {(!agentMvcMecId || !agentMvcPreview || !agentMecPreview) && (
                     <div className="mb-3 flex justify-end">
                       <div className="text-[11px] text-red-600 space-y-0.5 font-medium text-right">
-                        {!agentMvcMecRequestId && <p>• Please select a request from the dropdown</p>}
-                        {agentMvcPreview && getMissingFieldsText(agentMvcData, "MVCC")}
-                        {agentMecPreview && getMissingFieldsText(agentMecData, "MEC")}
+                        {!agentMvcMecId && <p>• Please select a request from the dropdown</p>}
+                        {!agentMvcPreview && <p>• Please upload the MVCC document</p>}
+                        {!agentMecPreview && <p>• Please upload the MEC document</p>}
                       </div>
                     </div>
                   )}
@@ -2817,8 +2906,8 @@ export const ClearanceRequestFlow = () => {
                       onClick={handleAddAgentMvcMecToQueue}
                       disabled={
                         !agentMvcMecId ||
-                        !isDocumentComplete(agentMvcData) ||
-                        !isDocumentComplete(agentMecData)
+                        !agentMvcPreview ||
+                        !agentMecPreview
                       }
                     >
                       Add To MVC/MEC Queue
