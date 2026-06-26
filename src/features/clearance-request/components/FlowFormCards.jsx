@@ -3,7 +3,7 @@ import { Card } from "../../../components/Card";
 import { Input } from "../../../components/Input";
 import { FileUpload } from "../../../components/FileUpload";
 
-export const VehicleFields = ({ values, onChange }) => (
+export const VehicleFields = ({ values, onChange, hideEngineAndChassis }) => (
   <div className="space-y-3">
     <Input
       label="MV File No."
@@ -13,19 +13,30 @@ export const VehicleFields = ({ values, onChange }) => (
       required
     />
     <Input
-      label="Engine No."
-      value={values.engineNumber}
-      onChange={(e) => onChange("engineNumber", e.target.value)}
+      label="Plate No."
+      value={values.plateNumber}
+      onChange={(e) => onChange("plateNumber", e.target.value)}
       placeholder="Auto-extracted"
       required
     />
-    <Input
-      label="Chassis No."
-      value={values.chassisNumber}
-      onChange={(e) => onChange("chassisNumber", e.target.value)}
-      placeholder="Auto-extracted"
-      required
-    />
+    {!hideEngineAndChassis && (
+      <>
+        <Input
+          label="Engine No."
+          value={values.engineNumber}
+          onChange={(e) => onChange("engineNumber", e.target.value)}
+          placeholder="Auto-extracted"
+          required
+        />
+        <Input
+          label="Chassis No."
+          value={values.chassisNumber}
+          onChange={(e) => onChange("chassisNumber", e.target.value)}
+          placeholder="Auto-extracted"
+          required
+        />
+      </>
+    )}
   </div>
 );
 
@@ -42,6 +53,7 @@ export const VehicleDocumentUploadCard = ({
   vehicleLabel,
   vehicleValues,
   onVehicleChange,
+  hideEngineAndChassis,
 }) => (
   <Card className="p-5">
     <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
@@ -66,7 +78,7 @@ export const VehicleDocumentUploadCard = ({
         <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
           {vehicleLabel}
         </p>
-        <VehicleFields values={vehicleValues} onChange={onVehicleChange} />
+        <VehicleFields values={vehicleValues} onChange={onVehicleChange} hideEngineAndChassis={hideEngineAndChassis} />
       </div>
     </div>
   </Card>

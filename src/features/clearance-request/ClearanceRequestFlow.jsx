@@ -187,8 +187,7 @@ export const ClearanceRequestFlow = ({
 
   const vehicleMismatch =
     (orCr.mvFileNumber && crCr.mvFileNumber && orCr.mvFileNumber !== crCr.mvFileNumber) ||
-    (orCr.engineNumber && crCr.engineNumber && orCr.engineNumber !== crCr.engineNumber) ||
-    (orCr.chassisNumber && crCr.chassisNumber && orCr.chassisNumber !== crCr.chassisNumber);
+    (orCr.plateNumber && crCr.plateNumber && orCr.plateNumber !== crCr.plateNumber);
 
   const updateOrCr = (field, value) =>
     setOrCr((prev) => ({ ...prev, [field]: value }));
@@ -339,8 +338,8 @@ export const ClearanceRequestFlow = ({
           : "ABC1234",
       );
       updateOrCr("mvFileNumber", "13242500000003A");
-      updateOrCr("engineNumber", `ENG-${String(Math.random()).slice(2, 8)}`);
-      updateOrCr("chassisNumber", `CHA-${String(Math.random()).slice(2, 8)}`);
+      updateOrCr("engineNumber", "");
+      updateOrCr("chassisNumber", "");
       updateOrCr("make", "TOYOTA");
       updateOrCr("series", "VIOS");
       updateOrCr("yearModel", "2020");
@@ -1033,18 +1032,17 @@ export const ClearanceRequestFlow = ({
 
     if (step === 1) return Boolean(vehicleOption);
     if (step === 2) {
+      if (vehicleOption === "new") {
+        return Boolean(orCr.engineNumber && orCr.chassisNumber);
+      }
       const orOk =
-        orNumber &&
-        orCr.mvFileNumber &&
-        orCr.engineNumber &&
-        orCr.chassisNumber &&
-        orCr.mvFileNumber !== "Extracting...";
+        orCr.plateNumber &&
+        orCr.ownerName &&
+        orCr.plateNumber !== "Extracting...";
       const crOk =
-        crNumber &&
-        crCr.mvFileNumber &&
-        crCr.engineNumber &&
-        crCr.chassisNumber &&
-        crCr.mvFileNumber !== "Extracting...";
+        crCr.plateNumber &&
+        crCr.ownerName &&
+        crCr.plateNumber !== "Extracting...";
       return Boolean(orOk && crOk && !vehicleMismatch);
     }
     if (step === 3) return paymentDone;
@@ -1694,42 +1692,70 @@ export const ClearanceRequestFlow = ({
 
           {!isAgent && step === 2 && (
             <div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <VehicleDocumentUploadCard
-                  title="OR"
-                  uploadLabel="Upload Official Receipt"
-                  onFile={handleOrUpload}
-                  preview={orPreview}
-                  numberLabel="or no."
-                  numberValue={orNumber}
-                  onNumberChange={(e) => setOrNumber(e.target.value)}
-                  numberPlaceholder="Auto-extracted from OR"
-                  vehicleLabel="Vehicle Details (from OR)"
-                  vehicleValues={orCr}
-                  onVehicleChange={updateOrCr}
-                />
+              {vehicleOption === "existing" ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <VehicleDocumentUploadCard
+                      title="OR"
+                      uploadLabel="Upload Official Receipt"
+                      onFile={handleOrUpload}
+                      preview={orPreview}
+                      numberLabel="OR Number"
+                      numberValue={orNumber}
+                      onNumberChange={(e) => setOrNumber(e.target.value)}
+                      numberPlaceholder="Auto-extracted from OR"
+                      vehicleLabel="Vehicle Details (from OR)"
+                      vehicleValues={orCr}
+                      onVehicleChange={updateOrCr}
+                      hideEngineAndChassis={true}
+                    />
 
-                <VehicleDocumentUploadCard
-                  title="CR"
-                  uploadLabel="Upload Certificate of Registration"
-                  onFile={handleCrUpload}
-                  preview={crPreview}
-                  numberLabel="Cr no."
-                  numberValue={crNumber}
-                  onNumberChange={(e) => setCrNumber(e.target.value)}
-                  numberPlaceholder="Auto-extracted from CR"
-                  vehicleLabel="Vehicle Details (from CR)"
-                  vehicleValues={crCr}
-                  onVehicleChange={updateCrCr}
-                />
-              </div>
-              {vehicleMismatch && (
-                <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
-                  <AlertTriangle size={18} className="text-red-500 shrink-0" />
-                  <p className="text-sm text-red-700">
-                    Vehicle details mismatch: Please ensure MV File Number, Engine Number, and Chassis Number match between OR and CR.
-                  </p>
-                </div>
+                    <VehicleDocumentUploadCard
+                      title="CR"
+                      uploadLabel="Upload Certificate of Registration"
+                      onFile={handleCrUpload}
+                      preview={crPreview}
+                      numberLabel="CR Number"
+                      numberValue={crNumber}
+                      onNumberChange={(e) => setCrNumber(e.target.value)}
+                      numberPlaceholder="Auto-extracted from CR"
+                      vehicleLabel="Vehicle Details (from CR)"
+                      vehicleValues={crCr}
+                      onVehicleChange={updateCrCr}
+                    />
+                  </div>
+                  {vehicleMismatch && (
+                    <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
+                      <AlertTriangle size={18} className="text-red-500 shrink-0" />
+                      <p className="text-sm text-red-700">
+                        Vehicle details mismatch: Please ensure MV File Number and Plate Number match between OR and CR.
+                      </p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <Card className="p-6 max-w-lg mx-auto">
+                  <div className="text-center mb-6">
+                    <h3 className="text-lg font-bold text-gray-900 mb-1">New Vehicle Details</h3>
+                    <p className="text-sm text-gray-600">Please enter the engine and chassis numbers for your new vehicle.</p>
+                  </div>
+                  <div className="space-y-4">
+                    <Input
+                      label="Engine Number"
+                      value={orCr.engineNumber || ""}
+                      onChange={(e) => updateOrCr("engineNumber", e.target.value)}
+                      placeholder="Enter Engine Number"
+                      required
+                    />
+                    <Input
+                      label="Chassis Number"
+                      value={orCr.chassisNumber || ""}
+                      onChange={(e) => updateOrCr("chassisNumber", e.target.value)}
+                      placeholder="Enter Chassis Number"
+                      required
+                    />
+                  </div>
+                </Card>
               )}
             </div>
           )}
@@ -1746,7 +1772,7 @@ export const ClearanceRequestFlow = ({
                 <p className="text-xs text-gray-500 mt-1">Single payment covers the whole request.</p>
               </div>
               {processingPayment ? (
-                <div className="text-center py-4">
+                <div className="flex flex-col items-center justify-center py-4">
                   <Spinner size="md" />
                   <p className="text-sm text-gray-500 mt-2">Processing payment...</p>
                 </div>
@@ -1771,7 +1797,7 @@ export const ClearanceRequestFlow = ({
               </div>
               
               {verifyingOrCr ? (
-                <div className="text-center py-6">
+                <div className="flex flex-col items-center justify-center py-6">
                   <Spinner size="md" />
                   <p className="text-sm text-gray-500 mt-2">Connecting to LTO Database...</p>
                 </div>
@@ -1802,15 +1828,26 @@ export const ClearanceRequestFlow = ({
                       <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Owner</p>
                       <p className="font-medium text-gray-900">{orCr.ownerName || "JUAN DELA CRUZ"}</p>
                     </div>
-                    {vehicleOption === "existing" ? (
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Classification</p>
+                      <p className="font-medium text-gray-900">{orCr.classification || "PRIVATE"}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Vehicle Type</p>
+                      <p className="font-medium text-gray-900">{orCr.vehicleType || "CAR"}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Engine Number</p>
+                      <p className="font-medium text-gray-900">{orCr.engineNumber || "ENG-098765"}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Chassis No.</p>
+                      <p className="font-medium text-gray-900">{orCr.chassisNumber || "CHA-123456"}</p>
+                    </div>
+                    {vehicleOption === "existing" && (
                       <div>
                         <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Plate Number</p>
                         <p className="font-medium text-gray-900">{orCr.plateNumber || "ABC1234"}</p>
-                      </div>
-                    ) : (
-                      <div>
-                        <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Chassis No.</p>
-                        <p className="font-medium text-gray-900">{orCr.chassisNumber || "CHA-123456"}</p>
                       </div>
                     )}
                   </div>
@@ -1845,7 +1882,7 @@ export const ClearanceRequestFlow = ({
                 <h3 className="text-base font-bold text-gray-900">Issue Voucher</h3>
               </div>
               {issuingVoucher ? (
-                <div className="text-center py-5">
+                <div className="flex flex-col items-center justify-center py-5">
                   <Spinner size="md" />
                   <p className="text-sm text-gray-500 mt-2">Generating voucher...</p>
                 </div>
