@@ -866,9 +866,9 @@ export const ClearanceRequestFlow = ({
       setTimeout(() => {
         setVerifyingOrCr(false);
         
-        const checkVal = orCr.plateNumber || crCr.plateNumber || orCr.chassisNumber || "";
+        const checkVal = `${orCr.plateNumber || ""} ${crCr.plateNumber || ""} ${orCr.chassisNumber || ""} ${orCr.engineNumber || ""} ${crCr.chassisNumber || ""} ${crCr.engineNumber || ""}`;
           
-        if (checkVal.toUpperCase().includes("ERROR")) {
+        if (checkVal.includes("0000")) {
           setVerifyOrCrDone(false);
           const errorMsg = "No matching records found in the LTO Database. Please check your OR/CR documents.";
           setVerifyOrCrError(errorMsg);
