@@ -16,6 +16,7 @@ const MOCK_VEHICLE_DATA = {
   mvFileNumber: "13242500000003A",
   engineNumber: "ENG-123456",
   chassisNumber: "CHA-789012",
+  encumberedTo: "BDO Unibank, Inc.",
 };
 
 export const HpgVerifyPage = () => {
@@ -197,6 +198,14 @@ export const HpgVerifyPage = () => {
                 </label>
                 <p className="text-sm font-medium text-gray-900">
                   {vehicleData.color}
+                </p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3">
+                <label className="text-xs text-gray-500 block mb-1">
+                  Encumbered To
+                </label>
+                <p className="text-sm font-medium text-gray-900">
+                  {vehicleData.encumberedTo || "N/A"}
                 </p>
               </div>
             </div>
