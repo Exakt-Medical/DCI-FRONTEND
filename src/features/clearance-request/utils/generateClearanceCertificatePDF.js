@@ -1,19 +1,31 @@
 import { jsPDF } from "jspdf";
+import QRCode from "qrcode";
+import DOTRLogo from "../../../assets/DOTR-LOGO.png";
+import LTOLogo from "../../../assets/LTO-LOGO.png";
 
-const formatValue = (value) => {
-  if (value === 0) return "0";
-  if (value === null || value === undefined || value === "") return "-";
-  return String(value);
-};
-
-const formatDate = (value) => {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  return date.toLocaleDateString("en-PH", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
+/**
+ * Converts image URL to base64 for embedding in PDF
+ */
+const getImageBase64 = (imageUrl) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL("image/png"));
+      } catch (e) {
+        resolve(null);
+      }
+    };
+    img.onerror = () => {
+      resolve(null);
+    };
+    img.src = imageUrl;
   });
 };
 
@@ -22,27 +34,53 @@ const safeFileSegment = (value) =>
     .replace(/[^a-z0-9-_]+/gi, "_")
     .replace(/^_+|_+$/g, "") || "certificate";
 
-const drawField = (doc, { label, value, x, y, labelWidth, valueWidth }) => {
-  const rowHeight = 8;
+function drawTableRow(
+  doc,
+  y,
+  label,
+  value,
+  pageWidth,
+  marginLeft,
+  labelColWidth,
+  valueColWidth,
+) {
+  const rowHeight = 7;
+  const paddingLeft = 3;
+  const paddingTop = 2.5;
 
-  doc.setDrawColor(214, 219, 229);
-  doc.setLineWidth(0.3);
-  doc.rect(x, y, labelWidth, rowHeight);
-  doc.rect(x + labelWidth, y, valueWidth, rowHeight);
+  // Draw cell borders with semi-bold thickness (0.5pt)
+  doc.setDrawColor(20, 20, 20);
+  doc.setLineWidth(0.5);
+  doc.rect(marginLeft, y, labelColWidth, rowHeight);
+  doc.rect(marginLeft + labelColWidth, y, valueColWidth, rowHeight);
 
+  // Label text - BOLD
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(55, 65, 81);
-  doc.text(label, x + 3, y + 5.2);
+  doc.setFontSize(10);
+  doc.setTextColor(40, 40, 40);
+  doc.text(label, marginLeft + paddingLeft, y + paddingTop + 3);
 
+  // Value text - Normal but slightly bold for data
+  let displayValue = String(value || "-");
+  if (
+    !displayValue.match(/\d{1,2}\/\d{1,2}\/\d{4}/) &&
+    !displayValue.includes("@") &&
+    !displayValue.includes(":")
+  ) {
+    displayValue = displayValue.toUpperCase();
+  }
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(17, 24, 39);
-  doc.text(formatValue(value).toUpperCase(), x + labelWidth + 3, y + 5.2);
+  doc.setTextColor(20, 20, 20);
+  doc.text(
+    displayValue,
+    marginLeft + labelColWidth + paddingLeft,
+    y + paddingTop + 3,
+  );
 
   return y + rowHeight;
-};
+}
 
-export const generateClearanceCertificatePDF = (row = {}) => {
+export const generateClearanceCertificatePDF = async (row = {}) => {
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -50,97 +88,249 @@ export const generateClearanceCertificatePDF = (row = {}) => {
   });
 
   const pageWidth = doc.internal.pageSize.getWidth();
-  const marginX = 18;
-  const contentWidth = pageWidth - marginX * 2;
-  const labelWidth = 52;
-  const valueWidth = contentWidth - labelWidth;
+  const marginLeft = 20;
+  const marginRight = 20;
+  const tableWidth = pageWidth - marginLeft - marginRight;
+  const labelColWidth = tableWidth * 0.3;
+  const valueColWidth = tableWidth * 0.7;
 
-  const certificateNo =
-    row.certificateNo || row.clearanceReferenceNo || row.requestId || "UNKNOWN";
-  const plateNumber = row.plateNumber || row.orCr?.plateNumber || "-";
-  const voucherCode =
-    row.voucherCode || row.voucherReferenceNo || row.voucherId || "-";
-  const requestId = row.requestId || "-";
-  const issuedDate = formatDate(row.certificateIssuedAt || row.dateCreated || new Date());
-  const status = row.clearanceStatus || row.status || "CERTIFICATE_ISSUED";
+  let y = 20;
 
-  let y = 22;
+  // Load logos
+  const dotrLogoBase64 = await getImageBase64(DOTRLogo);
+  const ltoLogoBase64 = await getImageBase64(LTOLogo);
 
-  doc.setFillColor(0, 89, 181);
-  doc.rect(0, 0, pageWidth, 34, "F");
+  // ─── HEADER WITH LOGOS ──────────────────────────────────────────────────────
 
+  if (dotrLogoBase64) {
+    try {
+      doc.addImage(dotrLogoBase64, "PNG", marginLeft, y - 5, 22, 22);
+    } catch (e) {
+      doc.setDrawColor(0, 89, 181);
+      doc.setLineWidth(0.5);
+      doc.circle(marginLeft + 11, y, 11);
+      doc.setFontSize(5);
+      doc.setTextColor(0, 89, 181);
+      doc.text("DOTR", marginLeft + 8, y + 1.5);
+    }
+  } else {
+    doc.setDrawColor(0, 89, 181);
+    doc.setLineWidth(0.5);
+    doc.circle(marginLeft + 11, y, 11);
+    doc.setFontSize(5);
+    doc.setTextColor(0, 89, 181);
+    doc.text("DOTR", marginLeft + 8, y + 1.5);
+  }
+
+  if (ltoLogoBase64) {
+    try {
+      doc.addImage(
+        ltoLogoBase64,
+        "PNG",
+        pageWidth - marginRight - 22,
+        y - 5,
+        22,
+        22,
+      );
+    } catch (e) {
+      doc.setDrawColor(180, 30, 30);
+      doc.setLineWidth(0.5);
+      doc.circle(pageWidth - marginRight - 11, y, 11);
+      doc.setFontSize(5);
+      doc.setTextColor(180, 30, 30);
+      doc.text("LTO", pageWidth - marginRight - 14, y + 1.5);
+    }
+  } else {
+    doc.setDrawColor(180, 30, 30);
+    doc.setLineWidth(0.5);
+    doc.circle(pageWidth - marginRight - 11, y, 11);
+    doc.setFontSize(5);
+    doc.setTextColor(180, 30, 30);
+    doc.text("LTO", pageWidth - marginRight - 14, y + 1.5);
+  }
+
+  // Document Title
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.setTextColor(255, 255, 255);
-  doc.text("CERTIFICATE OF CLEARANCE", pageWidth / 2, 16, { align: "center" });
+  doc.setFontSize(15);
+  doc.setTextColor(20, 20, 20);
+  const title = "CERTIFICATE OF VALIDATION";
+  const titleWidth = doc.getTextWidth(title);
+  const titleX = (pageWidth - titleWidth) / 2;
+  doc.text(title, titleX, y + 8);
 
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.text("Issued through the DCI portal", pageWidth / 2, 24, {
-    align: "center",
-  });
+  doc.setDrawColor(20, 20, 20);
+  doc.setLineWidth(0.8);
+  doc.line(titleX, y + 9.5, titleX + titleWidth, y + 9.5);
 
-  y = 48;
+  y += 28;
+
+  // Introductory Text - Semi-bold with black color
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(0, 0, 0); // Black color for semi-bold effect
+  const introText =
+    "This is to certify that the motor vehicle described below has been validated for compliance with the relevant standards and regulations.";
+  const splitIntro = doc.splitTextToSize(introText, tableWidth);
+  doc.text(splitIntro, marginLeft, y);
+  y += splitIntro.length * 4.5 + 8;
+
+  // ─── VEHICLE INFORMATION SECTION ────────────────────────────────────────────
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
-  doc.setTextColor(17, 24, 39);
-  doc.text("Certificate Details", marginX, y);
-  y += 5;
+  doc.setTextColor(20, 20, 20);
+  doc.text("Vehicle Information", marginLeft, y);
+  y += 8;
 
-  doc.setDrawColor(203, 213, 225);
-  doc.setLineWidth(0.4);
-  doc.line(marginX, y, pageWidth - marginX, y);
-  y += 6;
+  // Retrieve from localStorage if fields are missing in row
+  const savedVehicles = JSON.parse(localStorage.getItem("dci_vehicle_details") || "{}");
+  const lookupKey = row.plateNumber || row.plate_number || row.id || row.certificateNo || row.clearanceReferenceNo || "";
+  const localVehicle = savedVehicles[lookupKey] || {};
 
-  const fields = [
-    { label: "Certificate No.", value: certificateNo },
-    { label: "Request ID", value: requestId },
-    { label: "Plate Number", value: plateNumber },
-    { label: "Transaction Code", value: voucherCode },
-    { label: "Issued Date", value: issuedDate },
-    { label: "Status", value: status },
+  const vehicle = {
+    make: row.make || row.orCr?.make || row.crCr?.make || localVehicle.make || "-",
+    series: row.series || row.orCr?.series || row.crCr?.series || localVehicle.series || "",
+    mv_file_number: row.mvFileNumber || row.orCr?.mvFileNumber || row.orCr?.mvFileNo || row.crCr?.mvFileNumber || row.crCr?.mvFileNo || localVehicle.mvFileNumber || "-",
+    engine_number: row.engineNumber || row.orCr?.engineNumber || row.orCr?.engineNo || row.crCr?.engineNumber || row.crCr?.engineNo || localVehicle.engineNumber || "-",
+    chassis_number: row.chassisNumber || row.orCr?.chassisNumber || row.orCr?.chassisNo || row.crCr?.chassisNumber || row.crCr?.chassisNo || localVehicle.chassisNumber || "-",
+    plate_number: row.plateNumber || row.orCr?.plateNumber || row.crCr?.plateNumber || localVehicle.plateNumber || "-",
+    color: row.color || row.orCr?.color || row.crCr?.color || localVehicle.color || "-",
+    vehicle_type: row.vehicleType || row.orCr?.vehicleType || row.crCr?.vehicleType || localVehicle.vehicleType || "-",
+    year_model: row.yearModel || row.orCr?.yearModel || row.crCr?.yearModel || localVehicle.yearModel || "-",
+    classification: row.classification || row.orCr?.classification || row.crCr?.classification || localVehicle.classification || "-",
+  };
+
+  const vehicleRows = [
+    ["Make and Model", `${vehicle.make} ${vehicle.series}`.trim()],
+    ["MV File No.", vehicle.mv_file_number],
+    ["Engine No.", vehicle.engine_number],
+    ["Chassis No.", vehicle.chassis_number],
+    ["Plate No.", vehicle.plate_number],
+    ["Color", vehicle.color],
+    ["Vehicle Type/Denomination", vehicle.vehicle_type],
+    ["Year Model", vehicle.year_model],
+    ["Classification", vehicle.classification],
   ];
 
-  fields.forEach((field) => {
-    y = drawField(doc, {
-      ...field,
-      x: marginX,
+  for (const [label, value] of vehicleRows) {
+    y = drawTableRow(
+      doc,
       y,
-      labelWidth,
-      valueWidth,
-    });
-  });
+      label,
+      value,
+      pageWidth,
+      marginLeft,
+      labelColWidth,
+      valueColWidth,
+    );
+  }
 
-  y += 10;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(55, 65, 81);
-  doc.text(
-    "This document confirms that the clearance certificate was generated and is available in the DCI portal.",
-    marginX,
-    y,
-    { maxWidth: contentWidth },
-  );
+  y += 8;
 
-  y += 18;
+  // ─── PREMIUM TYPE SECTION ───────────────────────────────────────────────────
+
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(17, 24, 39);
-  doc.text("Verification Reference", marginX, y);
-  y += 6;
+  doc.setFontSize(12);
+  doc.setTextColor(20, 20, 20);
+  doc.text("Premium Type", marginLeft, y);
+  y += 8;
 
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(75, 85, 99);
-  doc.text(
-    `Use certificate number ${certificateNo} when checking the request status or sharing with the recipient.`,
-    marginX,
-    y,
-    { maxWidth: contentWidth },
-  );
+  const premiumTypeRows = [
+    [
+      "Premium Type",
+      vehicle.classification && vehicle.classification !== "-"
+        ? `${vehicle.classification.toUpperCase()} CARS (INCLUDING JEEPS AND AUVS)`
+        : "PRIVATE CARS (INCLUDING JEEPS AND AUVS)",
+    ],
+  ];
 
-  const filename = `Clearance_Certificate_${safeFileSegment(certificateNo)}.pdf`;
+  for (const [label, value] of premiumTypeRows) {
+    y = drawTableRow(
+      doc,
+      y,
+      label,
+      value,
+      pageWidth,
+      marginLeft,
+      labelColWidth,
+      valueColWidth,
+    );
+  }
+
+  y += 8;
+
+  // ─── INSPECTION DETAILS SECTION ─────────────────────────────────────────────
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.setTextColor(20, 20, 20);
+  doc.text("Inspection Details", marginLeft, y);
+  y += 8;
+
+  const authNo = row.certificateNo || row.clearanceReferenceNo || row.id || "UNKNOWN";
+  
+  const rawDate = row.certificateIssuedAt || row.dateCreated || new Date();
+  const dateObj = new Date(rawDate);
+  const dateStr = !Number.isNaN(dateObj.getTime())
+    ? dateObj.toLocaleDateString("en-US", {
+        month: "long",
+        day: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      })
+    : String(rawDate);
+
+  const issuer = row.processedBy || "DCI PORTAL";
+
+  const mvccNo = row.mvcData?.mvcNo || row.mvcNo || localVehicle.mvcNo || "-";
+  const mvccIssueDate = row.mvcData?.issueDate || row.mvcData?.mvcIssueDate || row.mvcIssueDate || row.issueDate || localVehicle.mvcIssueDate || "-";
+
+  const inspectionRows = [
+    ["DCI Authentication Code", authNo],
+    ["Date of Validation", dateStr],
+    ["Issuer", issuer],
+    ["MVCC Number", mvccNo],
+    ["MVCC Issue Date", mvccIssueDate],
+  ];
+
+  for (const [label, value] of inspectionRows) {
+    y = drawTableRow(
+      doc,
+      y,
+      label,
+      value,
+      pageWidth,
+      marginLeft,
+      labelColWidth,
+      valueColWidth,
+    );
+  }
+
+  y += 12;
+
+  // ─── QR CODE ─────────────────────────────────────────────────────────────────
+  const qrSize = 28;
+  const qrX = pageWidth - marginRight - qrSize;
+
+  try {
+    const verificationUrl = `${window.location.origin}/verify/${authNo}`;
+    const qrDataUrl = await QRCode.toDataURL(verificationUrl, {
+      width: 200,
+      margin: 1,
+    });
+    doc.addImage(qrDataUrl, "PNG", qrX, y, qrSize, qrSize);
+  } catch (e) {
+    doc.setDrawColor(40, 40, 40);
+    doc.setLineWidth(0.5);
+    doc.rect(qrX, y, qrSize, qrSize);
+    doc.setFontSize(6);
+    doc.setTextColor(80, 80, 80);
+    doc.text("[QR CODE]", qrX + 5, y + qrSize / 2 + 1);
+  }
+
+  const filename = `Clearance_Certificate_${safeFileSegment(authNo)}.pdf`;
 
   return { doc, filename };
 };
