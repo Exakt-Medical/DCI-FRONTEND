@@ -140,8 +140,8 @@ export const ClearanceRequestFlow = ({
   const [voucherAssigned, setVoucherAssigned] = useState(
     Boolean(
       selectedRequest?.voucherAssigned ||
-        selectedRequest?.voucherCode ||
-        selectedRequest?.voucherReferenceNo,
+      selectedRequest?.voucherCode ||
+      selectedRequest?.voucherReferenceNo,
     ),
   );
 
@@ -545,22 +545,22 @@ export const ClearanceRequestFlow = ({
         const nextMvcData = uploadPayload.mvcData?.mvcNo
           ? uploadPayload.mvcData
           : {
-              mvcNo: `MVC-${String(Date.now()).slice(-8)}`,
-              mvcIssueDate: now,
-              engineNo: "ENG-987654",
-              chassisNo: "CHA-123456",
-              plateNo: "ABC1234",
-              mvFileNo: "12345678901",
-              color: "WHITE",
-            };
+            mvcNo: `MVC-${String(Date.now()).slice(-8)}`,
+            mvcIssueDate: now,
+            engineNo: "ENG-987654",
+            chassisNo: "CHA-123456",
+            plateNo: "ABC1234",
+            mvFileNo: "12345678901",
+            color: "WHITE",
+          };
         const nextMecData = uploadPayload.mecData?.plateNo
           ? uploadPayload.mecData
           : {
-              engineNoStencilled: "ENG-987654",
-              chassisNoStencilled: "CHA-123456",
-              plateNo: "ABC1234",
-              color: "WHITE",
-            };
+            engineNoStencilled: "ENG-987654",
+            chassisNoStencilled: "CHA-123456",
+            plateNo: "ABC1234",
+            color: "WHITE",
+          };
         const updated = {
           ...row,
           mvcMecUploaded: true,
@@ -907,9 +907,9 @@ export const ClearanceRequestFlow = ({
       setVerifyOrCrError("");
       setTimeout(() => {
         setVerifyingOrCr(false);
-        
+
         const checkVal = `${orCr.plateNumber || ""} ${crCr.plateNumber || ""} ${orCr.chassisNumber || ""} ${orCr.engineNumber || ""} ${crCr.chassisNumber || ""} ${crCr.engineNumber || ""}`;
-          
+
         if (checkVal.includes("0000")) {
           setVerifyOrCrDone(false);
           const errorMsg = "No matching records found in the LTO Database. Please check your OR/CR documents.";
@@ -927,7 +927,7 @@ export const ClearanceRequestFlow = ({
     setIsSubmittingTicket(true);
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      
+
       const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
       const randPart = Math.floor(1000 + Math.random() * 9000);
       const referenceNumber = `REF-${datePart}-${randPart}`;
@@ -1281,17 +1281,15 @@ export const ClearanceRequestFlow = ({
                       {isCompleted ? <CheckCircle className="w-4 h-4" /> : idx}
                     </div>
                     <p
-                      className={`text-[10px] sm:text-xs mt-2 truncate ${
-                        isActive ? "text-white font-medium" : "text-white/60"
-                      }`}
+                      className={`text-[10px] sm:text-xs mt-2 truncate ${isActive ? "text-white font-medium" : "text-white/60"
+                        }`}
                     >
                       {label}
                     </p>
                     {index < flowSteps.length - 1 && (
                       <div
-                        className={`absolute top-4 left-1/2 w-full h-0.5 -translate-y-1/2 ${
-                          isCompleted ? "bg-white" : "bg-white/30"
-                        }`}
+                        className={`absolute top-4 left-1/2 w-full h-0.5 -translate-y-1/2 ${isCompleted ? "bg-white" : "bg-white/30"
+                          }`}
                         style={{ width: "calc(100% - 2rem)", left: "calc(50% + 1rem)" }}
                       />
                     )}
@@ -1398,7 +1396,7 @@ export const ClearanceRequestFlow = ({
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <FileText size={18} className="text-[#0059b5]" />
-                <h3 className="text-base font-bold text-gray-900">Assign Voucher (Bulk)</h3>
+                <h3 className="text-base font-bold text-gray-900">Assign Code (Bulk)</h3>
               </div>
 
               {certificationQueue.length === 0 ? (
@@ -1410,7 +1408,7 @@ export const ClearanceRequestFlow = ({
                       <tr className="border-b border-gray-200 text-left">
                         <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
                         <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Plate</th>
-                        <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Assigned Voucher</th>
+                        <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Assigned Code</th>
                         <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
                       </tr>
                     </thead>
@@ -1813,11 +1811,10 @@ export const ClearanceRequestFlow = ({
                       setTransactionType("");
                     }
                   }}
-                  className={`border-2 rounded-xl p-6 cursor-pointer transition-all ${
-                    vehicleOption === "new"
+                  className={`border-2 rounded-xl p-6 cursor-pointer transition-all ${vehicleOption === "new"
                       ? "border-[#0059b5] bg-blue-50 ring-4 ring-blue-500/20"
                       : "border-gray-200 hover:border-[#0059b5] hover:bg-gray-50"
-                  }`}
+                    }`}
                 >
                   <div className="flex flex-col items-center text-center gap-4">
                     <div className={`p-4 rounded-full ${vehicleOption === "new" ? "bg-[#0059b5] text-white" : "bg-gray-100 text-gray-500"}`}>
@@ -1829,7 +1826,7 @@ export const ClearanceRequestFlow = ({
                     </div>
                   </div>
                 </div>
-                
+
                 <div
                   onClick={() => {
                     if (vehicleOption !== "existing") {
@@ -1837,11 +1834,10 @@ export const ClearanceRequestFlow = ({
                       setTransactionType("");
                     }
                   }}
-                  className={`border-2 rounded-xl p-6 cursor-pointer transition-all ${
-                    vehicleOption === "existing"
+                  className={`border-2 rounded-xl p-6 cursor-pointer transition-all ${vehicleOption === "existing"
                       ? "border-[#0059b5] bg-blue-50 ring-4 ring-blue-500/20"
                       : "border-gray-200 hover:border-[#0059b5] hover:bg-gray-50"
-                  }`}
+                    }`}
                 >
                   <div className="flex flex-col items-center text-center gap-4">
                     <div className={`p-4 rounded-full ${vehicleOption === "existing" ? "bg-[#0059b5] text-white" : "bg-gray-100 text-gray-500"}`}>
@@ -1867,19 +1863,17 @@ export const ClearanceRequestFlow = ({
                       "Permit to Assemble",
                       "Record Check"
                     ].map(type => (
-                      <div 
+                      <div
                         key={type}
                         onClick={() => setTransactionType(type)}
-                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                          transactionType === type 
-                            ? "border-[#0059b5] bg-blue-50 text-[#0059b5]" 
+                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${transactionType === type
+                            ? "border-[#0059b5] bg-blue-50 text-[#0059b5]"
                             : "border-gray-200 hover:border-[#0059b5] hover:bg-gray-50 text-gray-700"
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center gap-2">
-                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
-                            transactionType === type ? "border-[#0059b5]" : "border-gray-300"
-                          }`}>
+                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${transactionType === type ? "border-[#0059b5]" : "border-gray-300"
+                            }`}>
                             {transactionType === type && <div className="w-2 h-2 rounded-full bg-[#0059b5]" />}
                           </div>
                           <span className="text-sm font-medium">{type}</span>
@@ -1899,19 +1893,17 @@ export const ClearanceRequestFlow = ({
                       "Registration of Brand New Imported Vehicle",
                       "Registration of CKD (Completely Knocked Down) Imported Vehicle"
                     ].map(type => (
-                      <div 
+                      <div
                         key={type}
                         onClick={() => setTransactionType(type)}
-                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                          transactionType === type 
-                            ? "border-[#0059b5] bg-blue-50 text-[#0059b5]" 
+                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${transactionType === type
+                            ? "border-[#0059b5] bg-blue-50 text-[#0059b5]"
                             : "border-gray-200 hover:border-[#0059b5] hover:bg-gray-50 text-gray-700"
-                        }`}
+                          }`}
                       >
                         <div className="flex items-center gap-2">
-                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
-                            transactionType === type ? "border-[#0059b5]" : "border-gray-300"
-                          }`}>
+                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${transactionType === type ? "border-[#0059b5]" : "border-gray-300"
+                            }`}>
                             {transactionType === type && <div className="w-2 h-2 rounded-full bg-[#0059b5]" />}
                           </div>
                           <span className="text-sm font-medium">{type}</span>
@@ -2029,7 +2021,7 @@ export const ClearanceRequestFlow = ({
                 <FileText size={18} className="text-[#0059b5]" />
                 <h3 className="text-base font-bold text-gray-900">Verify OR/CR</h3>
               </div>
-              
+
               {verifyingOrCr ? (
                 <div className="flex flex-col items-center justify-center py-6">
                   <Spinner size="md" />
@@ -2127,23 +2119,23 @@ export const ClearanceRequestFlow = ({
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <Ticket size={18} className="text-[#0059b5]" />
-                <h3 className="text-base font-bold text-gray-900">Issue Voucher</h3>
+                <h3 className="text-base font-bold text-gray-900">Issue Code</h3>
               </div>
               {issuingVoucher ? (
                 <div className="flex flex-col items-center justify-center py-5">
                   <Spinner size="md" />
-                  <p className="text-sm text-gray-500 mt-2">Generating voucher...</p>
+                  <p className="text-sm text-gray-500 mt-2">Generating code...</p>
                 </div>
               ) : voucherAssigned ? (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
                   <CheckCircle size={40} className="text-green-600 mx-auto mb-3" />
-                  <p className="font-semibold text-green-700 text-lg">Voucher Issued</p>
+                  <p className="font-semibold text-green-700 text-lg">Code Issued</p>
                   <p className="text-sm font-mono font-bold text-gray-900 mt-2">{voucherCode}</p>
                   <p className="text-xs text-gray-500 mt-1">Plate: {orCr.plateNumber}</p>
                 </div>
               ) : (
                 <div className="text-center py-6">
-                  <p className="text-sm text-gray-500">Voucher issues automatically after payment.</p>
+                  <p className="text-sm text-gray-500">Code issues automatically after payment.</p>
                 </div>
               )}
             </Card>

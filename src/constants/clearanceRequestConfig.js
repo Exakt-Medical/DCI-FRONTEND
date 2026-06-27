@@ -31,7 +31,7 @@ export const CITIZEN_STEPS = [
   "Upload OR/CR",
   "Pay",
   "Verify OR/CR",
-  "Issue Voucher",
+  "Issue Code",
   "Go To HPG",
   "Upload MVCC/MEC",
   "Issue Certificate",
