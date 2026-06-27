@@ -162,7 +162,7 @@ const AgentsTab = ({ agents, transferHistory = [] }) => {
                             className="bg-primary-50 border border-primary-100 rounded-2xl p-5"
                           >
                             <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide">
-                              Voucher Code
+                              Transaction Code
                             </p>
 
                             <p className="text-lg text-primary-700 font-bold break-all">

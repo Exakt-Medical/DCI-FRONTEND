@@ -2028,10 +2028,10 @@ export const ClearanceRequestFlow = ({
               </div>
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                 <p className="text-sm text-amber-800">
-                  Please present your voucher to HPG/LTO. In this frontend demo, click the button below to simulate verification.
+                  Please present your transaction to HPG/LTO. You can verify status below.
                 </p>
                 <p className="text-xs text-gray-600 mt-2">
-                  Voucher Code: <span className="font-mono font-semibold">{voucherCode}</span>
+                  Transaction Code: <span className="font-mono font-semibold">{voucherCode}</span>
                 </p>
               </div>
               <div className="mt-4">

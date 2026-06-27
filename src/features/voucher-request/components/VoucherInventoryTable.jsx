@@ -20,7 +20,7 @@ export const VoucherInventoryTable = ({ rows }) => {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 text-left">
-                <th className="py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Voucher Code</th>
+                <th className="py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Transaction Code</th>
                 <th className="py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Assigned To</th>
                 <th className="py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Batch</th>

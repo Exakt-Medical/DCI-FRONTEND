@@ -368,12 +368,12 @@ export const ClearanceRequestFlow = ({ role, onComplete, onCancel }) => {
 
               <div className="space-y-4">
                 <Input
-                  label="Voucher Code"
+                  label="Transaction Code"
                   value={voucherCode}
                   onChange={(e) =>
                     setVoucherCode(e.target.value.toUpperCase())
                   }
-                  placeholder="Enter voucher code"
+                  placeholder="Enter transaction code"
                 />
 
                 {role === "agent_fixer" && (
@@ -384,7 +384,7 @@ export const ClearanceRequestFlow = ({ role, onComplete, onCancel }) => {
                     className="w-full"
                   >
                     <Ticket size={16} />
-                    Assign Voucher
+                    Assign Transaction
                   </Button>
                 )}
 
@@ -392,7 +392,7 @@ export const ClearanceRequestFlow = ({ role, onComplete, onCancel }) => {
                   <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
                     <CheckCircle size={24} className="text-green-600 mx-auto mb-2" />
                     <p className="font-semibold text-green-700">
-                      Voucher Assigned
+                      Transaction Code Assigned
                     </p>
                     <p className="text-xs text-green-600 mt-1 font-mono">
                       {voucherCode}
@@ -402,7 +402,7 @@ export const ClearanceRequestFlow = ({ role, onComplete, onCancel }) => {
 
                 {!voucherAssigned && role === "citizen" && (
                   <p className="text-xs text-gray-400 text-center">
-                    Enter your voucher code above to proceed
+                    Enter your transaction code above to proceed
                   </p>
                 )}
               </div>

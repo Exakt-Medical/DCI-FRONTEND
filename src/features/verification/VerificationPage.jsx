@@ -505,7 +505,7 @@ export const VerificationPage = ({ onCertificate }) => {
 
   const validateVoucher = async (voucherCode) => {
     if (!voucherCode.trim()) {
-      setVoucherError("Please enter a voucher code");
+      setVoucherError("Please enter a transaction code");
       return;
     }
     setIsValidatingVoucher(true);
@@ -525,7 +525,7 @@ export const VerificationPage = ({ onCertificate }) => {
       const data = await res.json();
 
       if (!res.ok) {
-        setVoucherError(data.error || "Invalid or expired voucher code.");
+        setVoucherError(data.error || "Invalid or expired transaction code.");
         setValidatedVoucher(null);
         return;
       }

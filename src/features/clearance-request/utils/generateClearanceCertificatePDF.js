@@ -97,7 +97,7 @@ export const generateClearanceCertificatePDF = (row = {}) => {
     { label: "Certificate No.", value: certificateNo },
     { label: "Request ID", value: requestId },
     { label: "Plate Number", value: plateNumber },
-    { label: "Voucher Code", value: voucherCode },
+    { label: "Transaction Code", value: voucherCode },
     { label: "Issued Date", value: issuedDate },
     { label: "Status", value: status },
   ];

@@ -53,7 +53,7 @@ export const ClearanceRequestPage = ({ onNavigate }) => {
                   <tr className="border-b border-gray-200 text-left">
                     <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Reference No.</th>
                     <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Plate Number</th>
-                    <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Voucher Code</th>
+                    <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Transaction Code</th>
                     <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Status</th>
                     <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Date Created</th>
                     <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Actions</th>

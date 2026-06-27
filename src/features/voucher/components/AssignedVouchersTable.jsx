@@ -64,7 +64,7 @@ export const AssignedVouchersTable = ({
         />
         <input
           type="text"
-          placeholder="Search by voucher code or product..."
+          placeholder="Search by transaction code or product..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full bg-white border border-gray-200 rounded-xl px-4 py-2.5 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -180,7 +180,7 @@ export const AssignedVouchersTable = ({
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  Voucher Code
+                  Transaction Code
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                   Product

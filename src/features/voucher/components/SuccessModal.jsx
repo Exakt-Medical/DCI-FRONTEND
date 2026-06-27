@@ -18,7 +18,7 @@ export const SuccessModal = ({ purchasedPolicy, copied, copyToClipboard, onViewP
             <p className="text-xs text-gray-500 mb-1">Policy Number</p>
             <code className="text-sm font-mono font-bold text-gray-900 block mb-3">{purchasedPolicy.policyNumber}</code>
             
-            <p className="text-xs text-gray-500 mb-1">Voucher Code</p>
+            <p className="text-xs text-gray-500 mb-1">Transaction Code</p>
             <div className="flex items-center justify-between">
               <code className="text-sm font-mono text-gray-700">{purchasedPolicy.voucherCode}</code>
               <button 
@@ -32,7 +32,7 @@ export const SuccessModal = ({ purchasedPolicy, copied, copyToClipboard, onViewP
           
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
             <p className="text-xs text-blue-700">
-              <strong>How to redeem:</strong> Go to the Verification page and enter your voucher code.
+              <strong>How to redeem:</strong> Go to the Verification page and enter your transaction code.
             </p>
           </div>
           

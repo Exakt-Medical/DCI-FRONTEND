@@ -32,7 +32,7 @@ export const VoucherInventoryFilters = ({
       </div>
 
       <Input
-        placeholder="Search by voucher code, batch, or plate..."
+        placeholder="Search by transaction code, batch, or plate..."
         value={searchTerm}
         onChange={(e) => onSearchChange(e.target.value)}
         icon={<Search size={15} />}
