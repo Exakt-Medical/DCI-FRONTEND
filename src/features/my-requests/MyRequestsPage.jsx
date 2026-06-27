@@ -233,6 +233,9 @@ export const MyRequestsPage = ({ role, requests = [], onNavigate }) => {
                 <tr className="border-b border-gray-200 text-left">
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider"></th>
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Reference</th>
+                  <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Vehicle Option</th>
+                  <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Engine No.</th>
+                  <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Chassis No.</th>
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Plate No.</th>
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Voucher</th>
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Clearance</th>
@@ -267,7 +270,14 @@ export const MyRequestsPage = ({ role, requests = [], onNavigate }) => {
                         <div className="text-[10px] text-gray-400 font-mono mt-0.5">{req.clearanceReferenceNo}</div>
                       )}
                     </td>
-                    <td className="py-3 text-gray-700">{req.plateNumber || "-"}</td>
+                    <td className="py-3 text-gray-700 capitalize">
+                      {req.vehicleOption ? req.vehicleOption.replace("_", " ") : "-"}
+                    </td>
+                    <td className="py-3 text-gray-700">{req.orCr?.engineNumber || req.crCr?.engineNumber || req.engineNumber || "-"}</td>
+                    <td className="py-3 text-gray-700">{req.orCr?.chassisNumber || req.crCr?.chassisNumber || req.chassisNumber || "-"}</td>
+                    <td className="py-3 text-gray-700">
+                      {req.vehicleOption === "new" ? "NA" : req.plateNumber || "-"}
+                    </td>
                     <td className="py-3">
                       <StatusBadge done={voucherDone(req)} />
                     </td>

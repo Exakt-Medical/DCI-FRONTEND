@@ -93,7 +93,19 @@ export const ClearanceRequestFlow = ({
   const flowSteps = isAgent ? AGENT_STEPS : CITIZEN_STEPS;
 
   const [requestId] = useState(() => selectedRequest?.requestId || makeRequestId());
-  const [step, setStep] = useState(() => selectedRequest?.currentStep || 1);
+  const [step, setStep] = useState(() => {
+    if (selectedRequest) {
+      if (isAgent) {
+        if (selectedRequest.certificateNo) return 6;
+        if (selectedRequest.mvcMecValidationState === VALIDATION_STATE.PASSED) return 6;
+        if (selectedRequest.hpgStatus === HPG_STATUS.APPROVED) return 5;
+        if (selectedRequest.voucherAssigned) return 4;
+        if (selectedRequest.orCr || selectedRequest.crCr) return 3;
+      }
+      return selectedRequest.currentStep || 1;
+    }
+    return 1;
+  });
   const [requestStatus, setRequestStatus] = useState(
     () => selectedRequest?.status || "DRAFT",
   );
@@ -503,6 +515,8 @@ export const ClearanceRequestFlow = ({
     const row = {
       requestId: makeRequestId(),
       role,
+      vehicleOption,
+      transactionType,
       dateCreated: new Date().toISOString().split("T")[0],
       currentStep: 1,
       status: "OR_CR_UPLOADED",
