@@ -108,6 +108,7 @@ export const ClearanceRequestFlow = ({
     () => selectedRequest?.dateCreated || new Date().toISOString().split("T")[0],
   );
   const [vehicleOption, setVehicleOption] = useState(selectedRequest?.vehicleOption || "");
+  const [transactionType, setTransactionType] = useState(selectedRequest?.transactionType || "");
 
   const [orPreview, setOrPreview] = useState(selectedRequest?.orPreview || null);
   const [orNumber, setOrNumber] = useState(selectedRequest?.orNumber || "");
@@ -288,6 +289,7 @@ export const ClearanceRequestFlow = ({
       status: requestStatus,
       role,
       vehicleOption,
+      transactionType,
       plateNumber:
         orCr.plateNumber || crCr.plateNumber || selectedRequest?.plateNumber || "",
       voucherCode,
@@ -1135,7 +1137,10 @@ export const ClearanceRequestFlow = ({
       return false;
     }
 
-    if (step === 1) return Boolean(vehicleOption);
+    if (step === 1) {
+      if (vehicleOption) return Boolean(transactionType);
+      return Boolean(vehicleOption);
+    }
     if (step === 2) {
       if (vehicleOption === "new") {
         return Boolean(orCr.engineNumber && orCr.chassisNumber);
@@ -1755,7 +1760,12 @@ export const ClearanceRequestFlow = ({
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
                 <div
-                  onClick={() => setVehicleOption("new")}
+                  onClick={() => {
+                    if (vehicleOption !== "new") {
+                      setVehicleOption("new");
+                      setTransactionType("");
+                    }
+                  }}
                   className={`border-2 rounded-xl p-6 cursor-pointer transition-all ${
                     vehicleOption === "new"
                       ? "border-[#0059b5] bg-blue-50 ring-4 ring-blue-500/20"
@@ -1774,7 +1784,12 @@ export const ClearanceRequestFlow = ({
                 </div>
                 
                 <div
-                  onClick={() => setVehicleOption("existing")}
+                  onClick={() => {
+                    if (vehicleOption !== "existing") {
+                      setVehicleOption("existing");
+                      setTransactionType("");
+                    }
+                  }}
                   className={`border-2 rounded-xl p-6 cursor-pointer transition-all ${
                     vehicleOption === "existing"
                       ? "border-[#0059b5] bg-blue-50 ring-4 ring-blue-500/20"
@@ -1792,6 +1807,73 @@ export const ClearanceRequestFlow = ({
                   </div>
                 </div>
               </div>
+
+              {vehicleOption === "existing" && (
+                <div className="mt-8 max-w-2xl mx-auto text-left">
+                  <h4 className="text-lg font-bold text-gray-900 mb-4 text-center">Select Transaction Type</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {[
+                      "Transfer of Ownership",
+                      "Change Color / Body Design",
+                      "Change Engine/Motor",
+                      "Change Chassis/VIN/Frame",
+                      "Permit to Assemble",
+                      "Record Check"
+                    ].map(type => (
+                      <div 
+                        key={type}
+                        onClick={() => setTransactionType(type)}
+                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                          transactionType === type 
+                            ? "border-[#0059b5] bg-blue-50 text-[#0059b5]" 
+                            : "border-gray-200 hover:border-[#0059b5] hover:bg-gray-50 text-gray-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                            transactionType === type ? "border-[#0059b5]" : "border-gray-300"
+                          }`}>
+                            {transactionType === type && <div className="w-2 h-2 rounded-full bg-[#0059b5]" />}
+                          </div>
+                          <span className="text-sm font-medium">{type}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {vehicleOption === "new" && (
+                <div className="mt-8 max-w-2xl mx-auto text-left">
+                  <h4 className="text-lg font-bold text-gray-900 mb-4 text-center">Select Transaction Type</h4>
+                  <div className="grid grid-cols-1 gap-3">
+                    {[
+                      "Registration of Brand New Vehicle (locally purchased)",
+                      "Registration of Brand New Imported Vehicle",
+                      "Registration of CKD (Completely Knocked Down) Imported Vehicle"
+                    ].map(type => (
+                      <div 
+                        key={type}
+                        onClick={() => setTransactionType(type)}
+                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                          transactionType === type 
+                            ? "border-[#0059b5] bg-blue-50 text-[#0059b5]" 
+                            : "border-gray-200 hover:border-[#0059b5] hover:bg-gray-50 text-gray-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                            transactionType === type ? "border-[#0059b5]" : "border-gray-300"
+                          }`}>
+                            {transactionType === type && <div className="w-2 h-2 rounded-full bg-[#0059b5]" />}
+                          </div>
+                          <span className="text-sm font-medium">{type}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </Card>
           )}
 
