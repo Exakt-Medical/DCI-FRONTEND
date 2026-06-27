@@ -105,9 +105,9 @@ export const FinalReviewModal = ({
 
           {/* Insurance / Voucher */}
           <div>
-            <SectionHeader icon={Shield} title="Insurance & Voucher" />
+            <SectionHeader icon={Shield} title="Insurance & Transaction" />
             <ReviewRow
-              label="Voucher Code"
+              label="Transaction Code"
               value={validatedVoucher?.voucherCode}
             />
             <ReviewRow label="Premium Type" value={insuranceData.premiumType} />

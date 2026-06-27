@@ -15,7 +15,7 @@ export const VoucherRedemption = ({
 
   const handleValidate = () => {
     if (!voucherCode.trim()) {
-      setLocalError("Please enter a voucher code");
+      setLocalError("Please enter a transaction code");
       return;
     }
     setLocalError("");
@@ -34,7 +34,7 @@ export const VoucherRedemption = ({
     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
       <div className="flex items-center gap-2 mb-3">
         <Ticket size={16} className="text-blue-600" />
-        <h4 className="text-sm font-bold text-blue-900">Redeem Voucher</h4>
+        <h4 className="text-sm font-bold text-blue-900">Redeem Transaction</h4>
       </div>
 
       {!validatedVoucher ? (
@@ -44,7 +44,7 @@ export const VoucherRedemption = ({
               value={voucherCode}
               onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
               onKeyDown={(e) => e.key === "Enter" && handleValidate()}
-              placeholder="Enter your voucher code (e.g., BLR-000-XXXX-XXXXX)"
+              placeholder="Enter your transaction code (e.g., BLR-000-XXXX-XXXXX)"
               className="flex-1 bg-white border border-blue-300 rounded-lg px-4 py-2 text-sm font-mono text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500 uppercase"
             />
             <Button

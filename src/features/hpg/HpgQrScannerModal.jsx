@@ -45,7 +45,7 @@ export const HpgQrScannerModal = ({ isOpen, onClose, onScan }) => {
 
             if (!normalizedCode.startsWith("VCH")) {
               setScanError(
-                "Invalid QR content. Expected voucher code format like VCH-XXXXXX.",
+                "Invalid QR content. Expected transaction code format like VCH-XXXXXX.",
               );
               return;
             }

@@ -79,7 +79,7 @@ export const PurchaseHistoryTable = ({
                   Status
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-600">
-                  Voucher Code
+                  Transaction Code
                 </th>
               </tr>
             </thead>
@@ -118,7 +118,7 @@ export const PurchaseHistoryTable = ({
                       <button
                         onClick={() => copyToClipboard(policy.voucherCode)}
                         className="text-gray-400 hover:text-primary-600 transition-colors"
-                        title="Copy voucher code"
+                        title="Copy transaction code"
                       >
                         <Copy size={12} />
                       </button>
