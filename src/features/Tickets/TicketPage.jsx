@@ -24,7 +24,6 @@ export const TicketPage = () => {
   // ── Role detection ────────────────────────────────────────────────────────
   const userRole = (localStorage.getItem("role") ?? "").toUpperCase();
   const isLTO = userRole === "LTO";
-  const isHPG = userRole === "HPG";
   const isViewer = userRole === "VIEWER";
   const [showFilters, setShowFilters] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -43,13 +42,9 @@ export const TicketPage = () => {
     setError(null);
     try {
       const data = await ticketService.getAll();
-      // filter users only see tickets escalated to them
-      const filterLto = data.filter((t) => t.roleBased === "LTO");
-      const filterHpg = data.filter((t) => t.roleBased === "HPG");
-
-      if (isHPG) setTickets(filterHpg);
-      if (isLTO) setTickets(data);
-      
+      // LTO users only see tickets escalated to them
+      const filtered = isLTO ? data.filter((t) => t.roleBased === "LTO") : data;
+      setTickets(filtered);
     } catch (err) {
       setError(err.message ?? "Failed to load tickets.");
     } finally {
@@ -248,34 +243,11 @@ export const TicketPage = () => {
       }
 
       try {
-        const token = localStorage.getItem("token");
-        const API_BASE_URL = "http://localhost:8080";
-
-        const attachmentResponse = await fetch(
-          `${API_BASE_URL}/api/attachment/upload`,
-          {
-            method: "POST",
-            body: attachmentFormData,
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        );
-
-        if (!attachmentResponse.ok) {
-          const errorText = await attachmentResponse.text();
-          console.error("Failed to upload attachments:", errorText);
-          // Don't throw error - ticket was created successfully
-        } else {
-          const attachmentResult = await attachmentResponse.json();
-          console.log(
-            "Attachments saved to attachment table:",
-            attachmentResult,
-          );
-        }
+        console.log("Mock uploading ticket attachments:", attachmentFormData);
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        console.log("Attachments uploaded successfully (mocked).");
       } catch (error) {
         console.error("Error uploading attachments:", error);
-        // Don't throw - ticket already created
       }
     }
 
@@ -410,7 +382,7 @@ export const TicketPage = () => {
         onTicketUpdated={handleTicketUpdated}
       />
 
-      {/* Create Modal — hidden for Viewer */}
+      {/* Create Modal — hidden for LTO and Viewer */}
       {!isLTO && !isViewer && (
         <CreateTicketModal
           isOpen={isCreateModalOpen}

@@ -29,37 +29,9 @@ const getAuthToken = () => {
 // API service with proper authentication
 const attachmentApi = {
   upload: async (formData) => {
-    const token = getAuthToken();
-
-    if (!token) {
-      throw new Error("No authentication token found. Please log in.");
-    }
-
-    console.log("Uploading attachment with token:", !!token); // Debug: check if token exists
-
-    const response = await fetch(`${API_BASE_URL}/api/attachment/upload`, {
-      method: "POST",
-      body: formData,
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    if (response.status === 401 || response.status === 403) {
-      // Clear invalid token
-      localStorage.removeItem("token");
-      localStorage.removeItem("accessToken");
-      sessionStorage.removeItem("token");
-      throw new Error("Authentication failed. Please log in again.");
-    }
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Upload failed:", response.status, errorText);
-      throw new Error(`Failed to upload attachment: ${response.status}`);
-    }
-
-    return response.json();
+    console.log("Mock uploading attachment:", formData);
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    return { success: true };
   },
 };
 

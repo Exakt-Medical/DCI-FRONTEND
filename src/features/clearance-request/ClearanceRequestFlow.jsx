@@ -32,6 +32,10 @@ import {
 } from "./components/FlowFormCards";
 import { CertificateActionButtons } from "./components/CertificateActionButtons";
 import { generateClearanceCertificatePDF } from "./utils/generateClearanceCertificatePDF";
+import { CreateTicketModal } from "../Tickets/CreateTicketModal";
+import { DataMismatchModal } from "../verification/components/Datamismatchmodal";
+import { ticketService } from "../../services/ticketService";
+import { Paperclip } from "lucide-react";
 
 const emptyVehicle = {
   plateNumber: "",
@@ -126,6 +130,15 @@ export const ClearanceRequestFlow = ({
   const [inputMvFileNumber, setInputMvFileNumber] = useState(selectedRequest?.inputMvFileNumber || "");
   const [verifyingOrCr, setVerifyingOrCr] = useState(false);
   const [verifyOrCrError, setVerifyOrCrError] = useState(selectedRequest?.verifyOrCrError || "");
+  const [isTicketOpen, setIsTicketOpen] = useState(false);
+  const [showMismatchModal, setShowMismatchModal] = useState(false);
+  const [showTicketAttachmentModal, setShowTicketAttachmentModal] = useState(false);
+  const [ticketAttachmentFile, setTicketAttachmentFile] = useState({
+    crAttachment: null,
+    plateCertificationAttachment: null,
+    actualPlateAttachment: null,
+  });
+  const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
 
   const [issuingVoucher, setIssuingVoucher] = useState(false);
   const [voucherCode, setVoucherCode] = useState(
@@ -870,6 +883,98 @@ export const ClearanceRequestFlow = ({
       }, 1500);
     }
   }, [isAgent, step, verifyOrCrDone, verifyingOrCr, verifyOrCrError, orCr, crCr]);
+
+  const handleSubmitTicket = async (selectedMismatches = null) => {
+    setIsSubmittingTicket(true);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      
+      const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const randPart = Math.floor(1000 + Math.random() * 9000);
+      const referenceNumber = `REF-${datePart}-${randPart}`;
+
+      const isVehicleNotFound = !!verifyOrCrError;
+
+      let mismatchesArray = [];
+      if (selectedMismatches) {
+        if (Array.isArray(selectedMismatches)) {
+          mismatchesArray = selectedMismatches;
+        } else if (selectedMismatches.crAttachment) {
+          try {
+            mismatchesArray = JSON.parse(selectedMismatches.crAttachment);
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
+
+      let description = "";
+      if (!isVehicleNotFound && mismatchesArray.length > 0) {
+        description =
+          "Mismatched fields: " +
+          mismatchesArray
+            .map(
+              (m) =>
+                `${m.field} (entered: ${m.expected || m.entered}, LTO record: ${m.actual})`,
+            )
+            .join("; ");
+      } else {
+        description = "Vehicle not found in LTO database.";
+      }
+
+      const ticketPayload = {
+        referenceNumber,
+        type: isVehicleNotFound ? "Vehicle Not Found" : "Data Mismatch",
+        status: "PENDING",
+        requestedBy:
+          localStorage.getItem("username") ||
+          JSON.parse(localStorage.getItem("user") || "{}")?.username ||
+          "Citizen User",
+        escalated: "YES",
+        roleBased: "LTO",
+        dateRequested: new Date().toISOString(),
+        dateUpdated: new Date().toISOString(),
+        mvFileNo: orCr.mvFileNumber || crCr.mvFileNumber || null,
+        plateNo: orCr.plateNumber || crCr.plateNumber || null,
+        engineNo: orCr.engineNumber || crCr.engineNumber || null,
+        chassisNo: orCr.chassisNumber || crCr.chassisNumber || null,
+        make: orCr.make || null,
+        series: orCr.series || null,
+        vehicleColor: orCr.color || null,
+        vehicleTypeDenomination: orCr.denomination || null,
+        yearModel: orCr.yearModel || null,
+        classification: orCr.classification || null,
+        name: orCr.ownerName || null,
+        address: description || orCr.ownerAddress || null,
+        crAttachment: selectedMismatches?.crAttachment || null,
+      };
+
+      // Save mismatch fields to localStorage so TicketDetailModal can display them
+      if (!isVehicleNotFound && mismatchesArray.length > 0) {
+        const stored = JSON.parse(
+          localStorage.getItem("ctpl_mismatch_fields") || "{}",
+        );
+        stored[referenceNumber] = mismatchesArray;
+        localStorage.setItem("ctpl_mismatch_fields", JSON.stringify(stored));
+      }
+
+      await ticketService.create(ticketPayload);
+      console.log("Mock submitted clearance flow ticket:", ticketPayload);
+
+      setTicketAttachmentFile({
+        crAttachment: null,
+        plateCertificationAttachment: null,
+        actualPlateAttachment: null,
+      });
+      alert(`Success! Support ticket ${referenceNumber} has been submitted.`);
+    } catch (err) {
+      console.error("Error creating ticket:", err);
+    } finally {
+      setIsSubmittingTicket(false);
+      setShowMismatchModal(false);
+      setShowTicketAttachmentModal(false);
+    }
+  };
 
   const handleRetryVerify = () => {
     setVerifyOrCrError("");
@@ -1851,6 +1956,11 @@ export const ClearanceRequestFlow = ({
                       </div>
                     )}
                   </div>
+                  <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end">
+                    <Button onClick={() => setShowMismatchModal(true)} variant="secondary">
+                      Report Data Mismatch
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <>
@@ -1862,12 +1972,21 @@ export const ClearanceRequestFlow = ({
                     </div>
                   )}
                   {verifyOrCrError && (
-                    <Button
-                      onClick={handleRetryVerify}
-                      className="w-full"
-                    >
-                      Retry Verification
-                    </Button>
+                    <div className="flex flex-col gap-3">
+                      <Button
+                        onClick={handleRetryVerify}
+                        className="w-full"
+                      >
+                        Retry Verification
+                      </Button>
+                      <Button
+                        onClick={() => setShowTicketAttachmentModal(true)}
+                        variant="secondary"
+                        className="w-full"
+                      >
+                        Submit Support Ticket
+                      </Button>
+                    </div>
                   )}
                 </>
               )}
@@ -2119,6 +2238,196 @@ export const ClearanceRequestFlow = ({
           </div>
         </div>
       </div>
+      <CreateTicketModal
+        isOpen={isTicketOpen}
+        onClose={() => setIsTicketOpen(false)}
+        onSubmit={async (ticketData) => {
+          console.log("Mock submitted ticket:", ticketData);
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          return { id: `TKT-${Date.now()}` };
+        }}
+      />
+
+      {/* Data Mismatch Modal */}
+      {showMismatchModal && (
+        <DataMismatchModal
+          vehicleData={{
+            plate_number: orCr.plateNumber || "",
+            mv_file_number: orCr.mvFileNumber || "",
+            engine_number: orCr.engineNumber || "",
+            chassis_number: orCr.chassisNumber || "",
+            make: orCr.make || "",
+            series: orCr.series || "",
+            color: orCr.color || "",
+            denomination: orCr.vehicleType || orCr.denomination || "",
+            year_model: orCr.yearModel || "",
+            classification: orCr.classification || "",
+          }}
+          ownerData={{
+            firstName: orCr.ownerName?.split(" ")?.[0] || "",
+            lastName: orCr.ownerName?.split(" ")?.slice(1)?.join(" ") || "",
+            middleName: "",
+            address: orCr.ownerAddress || "",
+            contactNo: "",
+            email: "",
+            tin: "",
+          }}
+          onSubmit={(selectedMismatches) =>
+            handleSubmitTicket(selectedMismatches)
+          }
+          onClose={() => setShowMismatchModal(false)}
+          isSubmitting={isSubmittingTicket}
+        />
+      )}
+
+      {/* Attachments Only Ticket Modal */}
+      {showTicketAttachmentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <Paperclip size={20} className="text-primary-600" />
+                Vehicle Attachments
+              </h3>
+
+              <button
+                onClick={() => setShowTicketAttachmentModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6">
+              <div className="space-y-6">
+                {/* CR Attachment */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-2">
+                    CR Attachment (Optional)
+                  </label>
+
+                  <div className="flex items-center gap-4">
+                    <label className="cursor-pointer bg-blue-50 hover:bg-blue-100 text-primary-700 font-semibold px-5 py-3 rounded-lg">
+                      Choose File
+                      <input
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
+                        className="hidden"
+                        onChange={(e) =>
+                          setTicketAttachmentFile((prev) => ({
+                            ...prev,
+                            crAttachment: e.target.files?.[0] || null,
+                          }))
+                        }
+                      />
+                    </label>
+
+                    <span className="text-sm text-gray-500">
+                      {ticketAttachmentFile?.crAttachment
+                        ? ticketAttachmentFile.crAttachment.name
+                        : "No file chosen"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Plate Certification */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-2">
+                    Plate Certification Attachment (Optional)
+                  </label>
+
+                  <div className="flex items-center gap-4">
+                    <label className="cursor-pointer bg-blue-50 hover:bg-blue-100 text-primary-700 font-semibold px-5 py-3 rounded-lg">
+                      Choose File
+                      <input
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
+                        className="hidden"
+                        onChange={(e) =>
+                          setTicketAttachmentFile((prev) => ({
+                            ...prev,
+                            plateCertificationAttachment:
+                              e.target.files?.[0] || null,
+                          }))
+                        }
+                      />
+                    </label>
+
+                    <span className="text-sm text-gray-500">
+                      {ticketAttachmentFile?.plateCertificationAttachment
+                        ? ticketAttachmentFile.plateCertificationAttachment.name
+                        : "No file chosen"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Actual Plate */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-600 mb-2">
+                    Actual Plate Attachment (Optional)
+                  </label>
+
+                  <div className="flex items-center gap-4">
+                    <label className="cursor-pointer bg-blue-50 hover:bg-blue-100 text-primary-700 font-semibold px-5 py-3 rounded-lg">
+                      Choose File
+                      <input
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
+                        className="hidden"
+                        onChange={(e) =>
+                          setTicketAttachmentFile((prev) => ({
+                            ...prev,
+                            actualPlateAttachment: e.target.files?.[0] || null,
+                          }))
+                        }
+                      />
+                    </label>
+
+                    <span className="text-sm text-gray-500">
+                      {ticketAttachmentFile?.actualPlateAttachment
+                        ? ticketAttachmentFile.actualPlateAttachment.name
+                        : "No file chosen"}
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-gray-400">
+                  Supported formats: JPG, PNG, PDF, DOC (Max 5MB)
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setTicketAttachmentFile({
+                    crAttachment: null,
+                    plateCertificationAttachment: null,
+                    actualPlateAttachment: null,
+                  });
+                  setShowTicketAttachmentModal(false);
+                }}
+                disabled={isSubmittingTicket}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                className="flex items-center gap-2"
+                onClick={() => handleSubmitTicket()}
+                disabled={isSubmittingTicket}
+              >
+                <Spinner size="xs" className={isSubmittingTicket ? "block" : "hidden"} />
+                Create Ticket
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
