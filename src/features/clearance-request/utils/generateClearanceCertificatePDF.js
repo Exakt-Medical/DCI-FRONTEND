@@ -317,10 +317,10 @@ export const generateClearanceCertificatePDF = async (row = {}) => {
   }
 
   // Footer text - System generated notice
-  doc.setFont("helvetica", "normal");
+  doc.setFont("helvetica", "italic");
   doc.setFontSize(8);
   doc.setTextColor(100, 100, 100);
-  const footerText = "This is a system-generated document. No signature is required.";
+  const footerText = "This is a system-generated document.";
   doc.text(footerText, pageWidth / 2, 280, { align: "center" });
 
   const filename = `Clearance_Certificate_${safeFileSegment(authNo)}.pdf`;
