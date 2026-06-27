@@ -137,6 +137,8 @@ export const ClearanceRequestFlow = ({
   const [verifyingOrCr, setVerifyingOrCr] = useState(false);
   const [verifyOrCrError, setVerifyOrCrError] = useState(selectedRequest?.verifyOrCrError || "");
   const [verifyingAgentRowId, setVerifyingAgentRowId] = useState("");
+  const [isVerifyingAll, setIsVerifyingAll] = useState(false);
+  const [showAllVerifiedCards, setShowAllVerifiedCards] = useState(false);
   const [isTicketOpen, setIsTicketOpen] = useState(false);
   const [showMismatchModal, setShowMismatchModal] = useState(false);
   const [showTicketAttachmentModal, setShowTicketAttachmentModal] = useState(false);
@@ -309,6 +311,37 @@ export const ClearanceRequestFlow = ({
     });
 
     setStep((prev) => prev + 1);
+  };
+
+  const handleVerifyAll = () => {
+    setIsVerifyingAll(true);
+    setShowAllVerifiedCards(false);
+
+    setTimeout(() => {
+      setQueueRows((prev) =>
+        prev.map((row) => {
+          if (row.verifyOrCrDone || row.verifyOrCrError) return row;
+
+          const checkVal = `${row.plateNumber || ""} ${row.orCr?.plateNumber || ""} ${row.crCr?.plateNumber || ""} ${row.orCr?.chassisNumber || ""} ${row.orCr?.engineNumber || ""} ${row.crCr?.chassisNumber || ""} ${row.crCr?.engineNumber || ""}`;
+          
+          if (checkVal.includes("0000")) {
+            return {
+              ...row,
+              verifyOrCrDone: false,
+              verifyOrCrError: "No matching records found in the LTO Database. Please check your OR/CR documents.",
+            };
+          } else {
+            return {
+              ...row,
+              verifyOrCrDone: true,
+              verifyOrCrError: "",
+            };
+          }
+        })
+      );
+      setIsVerifyingAll(false);
+      setShowAllVerifiedCards(true);
+    }, 2000);
   };
 
   const clearOrCrForm = () => {
@@ -1544,88 +1577,22 @@ export const ClearanceRequestFlow = ({
 
           {isAgent && step === 3 && (
             <Card className="p-5">
-              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
-                <FileText size={18} className="text-[#0059b5]" />
-                <h3 className="text-base font-bold text-gray-900">Verify OR/CR (Bulk)</h3>
+              <div className="flex items-center justify-between gap-3 mb-4 pb-2 border-b border-gray-200">
+                <div className="flex items-center gap-2">
+                  <FileText size={18} className="text-[#0059b5]" />
+                  <h3 className="text-base font-bold text-gray-900">Verify OR/CR (Bulk)</h3>
+                </div>
+                <Button
+                  onClick={handleVerifyAll}
+                  disabled={isVerifyingAll}
+                  className="flex items-center gap-2"
+                >
+                  {isVerifyingAll ? <Spinner size="xs" /> : null}
+                  Verify All
+                </Button>
               </div>
 
-              {verifyingAgentRowId && verifyingOrCr ? (
-                <div className="flex flex-col items-center justify-center py-6 mb-4">
-                  <Spinner size="md" />
-                  <p className="text-sm text-gray-500 mt-2">Connecting to LTO Database...</p>
-                </div>
-              ) : verifyingAgentRowId && verifyOrCrDone ? (
-                <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-5 mb-4">
-                  <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
-                    <CheckCircle size={20} className="text-green-500" />
-                    <h4 className="font-bold text-gray-900">LTO Verification Successful</h4>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-6 text-sm">
-                    <div>
-                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Make</p>
-                      <p className="font-medium text-gray-900">{orCr.make || "TOYOTA"}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Series</p>
-                      <p className="font-medium text-gray-900">{orCr.series || "VIOS"}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Year Model</p>
-                      <p className="font-medium text-gray-900">{orCr.yearModel || "2020"}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Color</p>
-                      <p className="font-medium text-gray-900">{orCr.color || "WHITE"}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Owner</p>
-                      <p className="font-medium text-gray-900">{orCr.ownerName || "JUAN DELA CRUZ"}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Classification</p>
-                      <p className="font-medium text-gray-900">{orCr.classification || "PRIVATE"}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Vehicle Type</p>
-                      <p className="font-medium text-gray-900">{orCr.vehicleType || "CAR"}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Engine Number</p>
-                      <p className="font-medium text-gray-900">{orCr.engineNumber || "ENG-098765"}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Chassis No.</p>
-                      <p className="font-medium text-gray-900">{orCr.chassisNumber || "CHA-123456"}</p>
-                    </div>
-                    {vehicleOption === "existing" && (
-                      <div>
-                        <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Plate Number</p>
-                        <p className="font-medium text-gray-900">{orCr.plateNumber || "ABC1234"}</p>
-                      </div>
-                    )}
-                  </div>
-                  <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end">
-                    <Button onClick={() => setShowMismatchModal(true)} variant="secondary">
-                      Report Data Mismatch
-                    </Button>
-                  </div>
-                </div>
-              ) : verifyingAgentRowId && verifyOrCrError ? (
-                <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle size={20} className="text-red-500 shrink-0 mt-0.5" />
-                    <div>
-                      <h4 className="text-sm font-bold text-red-900 mb-1">Verification Failed</h4>
-                      <p className="text-sm text-red-700 mb-3">{verifyOrCrError}</p>
-                      <Button variant="danger" size="sm" onClick={() => setShowTicketAttachmentModal(true)}>
-                        <FileText size={16} /> Open Ticket
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto mb-6">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 text-left">
@@ -1634,7 +1601,6 @@ export const ClearanceRequestFlow = ({
                         {vehicleOption === "new" ? "Engine No." : "Plate"}
                       </th>
                       <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
-                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1645,31 +1611,133 @@ export const ClearanceRequestFlow = ({
                           {vehicleOption === "new" ? row.orCr?.engineNumber || "-" : row.plateNumber || "-"}
                         </td>
                         <td className="py-2">
-                          {row.verifyOrCrDone ? (
-                            <span className="text-green-600 font-semibold text-xs">VERIFIED</span>
+                          {isVerifyingAll && !row.verifyOrCrDone && !row.verifyOrCrError ? (
+                            <div className="flex items-center gap-1">
+                              <Spinner size="xs" />
+                              <span className="text-blue-600 font-semibold text-xs animate-pulse">VERIFYING...</span>
+                            </div>
+                          ) : row.verifyOrCrDone ? (
+                            <span className="text-green-600 font-semibold text-xs">✓ VERIFIED</span>
                           ) : row.verifyOrCrError ? (
-                            <span className="text-red-600 font-semibold text-xs">FAILED</span>
+                            <span className="text-red-600 font-semibold text-xs">✗ FAILED</span>
                           ) : (
                             <span className="text-amber-600 font-semibold text-xs">PENDING</span>
                           )}
-                        </td>
-                        <td className="py-2">
-                           <Button size="sm" onClick={() => {
-                             setOrCr(row.orCr || emptyVehicle);
-                             setCrCr(row.crCr || emptyVehicle);
-                             setVerifyOrCrDone(row.verifyOrCrDone || false);
-                             setVerifyOrCrError(row.verifyOrCrError || "");
-                             setVerifyingAgentRowId(row.requestId);
-                             if (row.verifyOrCrError) setShowTicketAttachmentModal(true);
-                           }}>
-                             {verifyingAgentRowId === row.requestId && verifyingOrCr ? "Verifying..." : "Verify"}
-                           </Button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+
+              {showAllVerifiedCards && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div className="flex items-center justify-between bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-[#0059b5]">LTO Verification Results Review Panel</span>
+                      <span className="text-xs text-gray-500">Scroll down to review all cards</span>
+                    </div>
+                    <div className="flex items-center gap-1 animate-bounce text-[#0059b5] font-bold text-sm">
+                      <span>↓</span>
+                    </div>
+                  </div>
+
+                  <div className="max-h-[480px] overflow-y-auto border border-gray-200 rounded-xl p-4 bg-gray-50/50 space-y-4 shadow-inner relative">
+                    {certificationQueue.map((row) => {
+                      const vSpec = row.orCr || emptyVehicle;
+                      return (
+                        <div key={row.requestId} className="bg-white border border-gray-200 rounded-lg shadow-sm p-5 relative">
+                          {row.verifyOrCrDone ? (
+                            <>
+                              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
+                                <CheckCircle size={20} className="text-green-500" />
+                                <h4 className="font-bold text-gray-900">Request {row.requestId}: LTO Verification Successful</h4>
+                                <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded ml-auto">PLATE: {row.plateNumber || "-"}</span>
+                              </div>
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-y-3 gap-x-6 text-sm">
+                                <div>
+                                  <p className="text-gray-500 text-xs uppercase mb-0.5">Make</p>
+                                  <p className="font-medium text-gray-900">{vSpec.make || "TOYOTA"}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500 text-xs uppercase mb-0.5">Series</p>
+                                  <p className="font-medium text-gray-900">{vSpec.series || "VIOS"}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500 text-xs uppercase mb-0.5">Year Model</p>
+                                  <p className="font-medium text-gray-900">{vSpec.yearModel || "2020"}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500 text-xs uppercase mb-0.5">Color</p>
+                                  <p className="font-medium text-gray-900">{vSpec.color || "WHITE"}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500 text-xs uppercase mb-0.5">Owner</p>
+                                  <p className="font-medium text-gray-900">{vSpec.ownerName || "JUAN DELA CRUZ"}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500 text-xs uppercase mb-0.5">Classification</p>
+                                  <p className="font-medium text-gray-900">{vSpec.classification || "PRIVATE"}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500 text-xs uppercase mb-0.5">Vehicle Type</p>
+                                  <p className="font-medium text-gray-900">{vSpec.vehicleType || "CAR"}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500 text-xs uppercase mb-0.5">Engine Number</p>
+                                  <p className="font-medium text-gray-900">{vSpec.engineNumber || "-"}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500 text-xs uppercase mb-0.5">Chassis No.</p>
+                                  <p className="font-medium text-gray-900">{vSpec.chassisNumber || "-"}</p>
+                                </div>
+                              </div>
+                              <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end">
+                                <Button 
+                                  onClick={() => {
+                                    setVerifyingAgentRowId(row.requestId);
+                                    setOrCr(vSpec);
+                                    setCrCr(row.crCr || emptyVehicle);
+                                    setShowMismatchModal(true);
+                                  }} 
+                                  variant="secondary"
+                                >
+                                  Report Data Mismatch
+                                </Button>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="flex items-start gap-3">
+                              <AlertTriangle size={20} className="text-red-500 shrink-0 mt-0.5" />
+                              <div className="w-full">
+                                <div className="flex items-center justify-between pb-2 border-b border-gray-100 mb-3">
+                                  <h4 className="text-sm font-bold text-red-900">Request {row.requestId}: Verification Failed</h4>
+                                  <span className="text-xs bg-red-50 text-red-700 px-2 py-0.5 rounded">PLATE: {row.plateNumber || "-"}</span>
+                                </div>
+                                <p className="text-sm text-red-700 mb-3">{row.verifyOrCrError}</p>
+                                <div className="flex justify-end">
+                                  <Button 
+                                    variant="danger" 
+                                    size="sm" 
+                                    onClick={() => {
+                                      setVerifyingAgentRowId(row.requestId);
+                                      setOrCr(vSpec);
+                                      setCrCr(row.crCr || emptyVehicle);
+                                      setShowTicketAttachmentModal(true);
+                                    }}
+                                  >
+                                    <FileText size={16} /> Open Ticket
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </Card>
           )}
 
