@@ -322,27 +322,58 @@ export const ClearanceRequestFlow = ({
     setShowAllVerifiedCards(false);
 
     setTimeout(() => {
-      setQueueRows((prev) =>
-        prev.map((row) => {
+      setQueueRows((prev) => {
+        let currentCredits = voucherInventory.filter(
+          (item) => item.inventoryStatus === VOUCHER_INVENTORY_STATUS.AVAILABLE,
+        );
+
+        const mappedRows = prev.map((row) => {
           if (row.verifyOrCrDone || row.verifyOrCrError) return row;
 
           const checkVal = `${row.plateNumber || ""} ${row.orCr?.plateNumber || ""} ${row.crCr?.plateNumber || ""} ${row.orCr?.chassisNumber || ""} ${row.orCr?.engineNumber || ""} ${row.crCr?.chassisNumber || ""} ${row.crCr?.engineNumber || ""}`;
           
+          let updatedRow = { ...row };
+
           if (checkVal.includes("0000")) {
-            return {
-              ...row,
-              verifyOrCrDone: false,
-              verifyOrCrError: "No matching records found in the LTO Database. Please check your OR/CR documents.",
-            };
+            updatedRow.verifyOrCrDone = false;
+            updatedRow.verifyOrCrError = "No matching records found in the LTO Database. Please check your OR/CR documents.";
           } else {
-            return {
-              ...row,
-              verifyOrCrDone: true,
-              verifyOrCrError: "",
-            };
+            updatedRow.verifyOrCrDone = true;
+            updatedRow.verifyOrCrError = "";
           }
-        })
-      );
+
+          if (updatedRow.verifyOrCrDone && !updatedRow.voucherAssigned) {
+            const creditToUse = currentCredits.shift();
+            if (creditToUse) {
+              updatedRow.voucherId = creditToUse.voucherId;
+              updatedRow.voucherCode = creditToUse.voucherCode;
+              updatedRow.voucherReferenceNo = creditToUse.voucherCode;
+              updatedRow.voucherAssigned = true;
+              updatedRow.voucherStatus = "VOUCHER_ISSUED";
+            }
+          }
+
+          return updatedRow;
+        });
+
+        updateVoucherInventory((inventoryRows) => {
+          let newInventory = [...inventoryRows];
+          mappedRows.forEach((row) => {
+            if (row.voucherId && row.verifyOrCrDone) {
+              newInventory = voucherInventoryService.assignVoucherToRequest(newInventory, {
+                voucherId: row.voucherId,
+                requestId: row.requestId,
+              });
+            }
+          });
+          return newInventory;
+        });
+
+        // Persist rows to reflect assigned vouchers globally
+        mappedRows.forEach((r) => persistRow(r));
+
+        return mappedRows;
+      });
       setIsVerifyingAll(false);
       setShowAllVerifiedCards(true);
     }, 2000);
@@ -531,6 +562,11 @@ export const ClearanceRequestFlow = ({
 
   const handleAddToQueue = () => {
     if (!isAgent) return;
+
+    if (certificationQueue.length >= availableCreditsCount) {
+      alert("You don't have enough credits to add another request.");
+      return;
+    }
 
     if (vehicleOption !== "new") {
       const orOk =
@@ -1597,7 +1633,7 @@ export const ClearanceRequestFlow = ({
                 </div>
                 <Button
                   onClick={handleVerifyAll}
-                  disabled={isVerifyingAll}
+                  disabled={isVerifyingAll || certificationQueue.every(row => row.verifyOrCrDone || row.verifyOrCrError)}
                   className="flex items-center gap-2"
                 >
                   {isVerifyingAll ? <Spinner size="xs" /> : null}
@@ -1665,7 +1701,9 @@ export const ClearanceRequestFlow = ({
                               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
                                 <CheckCircle size={20} className="text-green-500" />
                                 <h4 className="font-bold text-gray-900">Request {row.requestId}: LTO Verification Successful</h4>
-                                <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded ml-auto">PLATE: {row.plateNumber || "-"}</span>
+                                {row.vehicleOption !== "new" && (
+                                  <span className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded ml-auto">PLATE: {row.plateNumber || "-"}</span>
+                                )}
                               </div>
                               <div className="grid grid-cols-2 md:grid-cols-3 gap-y-3 gap-x-6 text-sm">
                                 <div>
@@ -1725,7 +1763,9 @@ export const ClearanceRequestFlow = ({
                               <div className="w-full">
                                 <div className="flex items-center justify-between pb-2 border-b border-gray-100 mb-3">
                                   <h4 className="text-sm font-bold text-red-900">Request {row.requestId}: Verification Failed</h4>
-                                  <span className="text-xs bg-red-50 text-red-700 px-2 py-0.5 rounded">PLATE: {row.plateNumber || "-"}</span>
+                                  {row.vehicleOption !== "new" && (
+                                    <span className="text-xs bg-red-50 text-red-700 px-2 py-0.5 rounded">PLATE: {row.plateNumber || "-"}</span>
+                                  )}
                                 </div>
                                 <p className="text-sm text-red-700 mb-3">{row.verifyOrCrError}</p>
                                 <div className="flex justify-end">
