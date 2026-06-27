@@ -255,9 +255,48 @@ export const ClearanceRequestFlow = ({
     setCrCr(emptyVehicle);
   };
 
+  const cacheVehicleDetails = (record) => {
+    if (!record) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem("dci_vehicle_details") || "{}");
+      const vehiclePayload = {
+        make: record.orCr?.make || record.crCr?.make || record.make || "",
+        series: record.orCr?.series || record.crCr?.series || record.series || "",
+        mvFileNumber: record.orCr?.mvFileNumber || record.orCr?.mvFileNo || record.crCr?.mvFileNumber || record.crCr?.mvFileNo || record.mvFileNumber || "",
+        engineNumber: record.orCr?.engineNumber || record.orCr?.engineNo || record.crCr?.engineNumber || record.crCr?.engineNo || record.engineNumber || "",
+        chassisNumber: record.orCr?.chassisNumber || record.orCr?.chassisNo || record.crCr?.chassisNumber || record.crCr?.chassisNo || record.chassisNumber || "",
+        plateNumber: record.orCr?.plateNumber || record.orCr?.plateNo || record.crCr?.plateNumber || record.crCr?.plateNo || record.plateNumber || record.plateNo || "",
+        color: record.orCr?.color || record.crCr?.color || record.color || "",
+        vehicleType: record.orCr?.vehicleType || record.crCr?.vehicleType || record.vehicleType || "",
+        yearModel: record.orCr?.yearModel || record.crCr?.yearModel || record.yearModel || "",
+        classification: record.orCr?.classification || record.crCr?.classification || record.classification || "",
+        mvcNo: record.mvcData?.mvcNo || record.mvcNo || "",
+        mvcIssueDate: record.mvcData?.mvcIssueDate || record.mvcData?.issueDate || record.mvcIssueDate || record.issueDate || "",
+      };
+
+      const keys = [
+        record.plateNumber,
+        record.plateNo,
+        record.orCr?.plateNumber,
+        record.crCr?.plateNumber,
+        record.requestId,
+        record.id,
+        record.certificateNo,
+        record.clearanceReferenceNo
+      ].filter(Boolean);
+
+      keys.forEach((key) => {
+        saved[key] = { ...saved[key], ...vehiclePayload };
+      });
+      localStorage.setItem("dci_vehicle_details", JSON.stringify(saved));
+    } catch (e) {
+      console.error("Failed to cache vehicle details:", e);
+    }
+  };
+
   const persistRow = (row) => {
     if (!row?.requestId) return;
-    onSaveRequest?.({
+    const payload = {
       ...row,
       requestId: row.requestId,
       plateNumber: row.plateNumber || row.orCr?.plateNumber || "",
@@ -270,7 +309,9 @@ export const ClearanceRequestFlow = ({
       status: row.status || "OR_CR_UPLOADED",
       clearanceStatus: row.clearanceStatus || "",
       certificateNo: row.certificateNo || "",
-    });
+    };
+    cacheVehicleDetails(payload);
+    onSaveRequest?.(payload);
   };
 
   const saveCitizenRequest = (overrides = {}) => {
@@ -321,6 +362,7 @@ export const ClearanceRequestFlow = ({
       ...overrides,
     };
 
+    cacheVehicleDetails(record);
     onSaveRequest?.(record);
     return record;
   };
@@ -1092,9 +1134,9 @@ export const ClearanceRequestFlow = ({
     }, 1200);
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!certificateNo) return;
-    const { doc, filename } = generateClearanceCertificatePDF({
+    const { doc, filename } = await generateClearanceCertificatePDF({
       requestId,
       certificateNo,
       clearanceReferenceNo: certificateNo,
