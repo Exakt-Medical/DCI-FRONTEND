@@ -17,6 +17,7 @@ import {
   X,
   Car,
   CarFront,
+  Eye,
 } from "lucide-react";
 import { VOUCHER_INVENTORY_STATUS } from "../../constants/voucherInventoryStatus";
 import {
@@ -1216,6 +1217,24 @@ export const ClearanceRequestFlow = ({
       clearanceStatus: "CERTIFICATE_ISSUED",
     });
     doc.save(filename);
+  };
+
+  const handlePreview = async () => {
+    if (!certificateNo) return;
+    const { doc } = await generateClearanceCertificatePDF({
+      requestId,
+      certificateNo,
+      clearanceReferenceNo: certificateNo,
+      plateNumber: orCr.plateNumber || crCr.plateNumber || selectedRequest?.plateNumber || "",
+      voucherCode,
+      voucherReferenceNo: voucherCode,
+      dateCreated,
+      status: requestStatus,
+      clearanceStatus: "CERTIFICATE_ISSUED",
+    });
+    const blob = doc.output("blob");
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
   };
 
   const canNext = () => {
@@ -2516,6 +2535,9 @@ export const ClearanceRequestFlow = ({
                   <p className="text-sm font-mono font-bold text-gray-900 mt-2">{certificateNo}</p>
                   <p className="text-xs text-gray-500 mt-1">Plate: {orCr.plateNumber}</p>
                   <div className="mt-4 flex justify-center gap-3">
+                    <Button onClick={handlePreview} variant="outline">
+                      <Eye size={16} /> Preview
+                    </Button>
                     <Button onClick={handleDownload} variant="outline">
                       <Download size={16} /> Download
                     </Button>
