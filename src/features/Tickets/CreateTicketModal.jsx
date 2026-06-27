@@ -1,5 +1,5 @@
 // components/CreateTicketModal.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Send, User, FileText, AlertCircle, Paperclip } from "lucide-react";
 import { Card } from "../../components/Card";
 import { ConcernTypeSelector } from "./components/modals/ConcernTypeSelector";
@@ -35,11 +35,21 @@ const attachmentApi = {
   },
 };
 
+
 export const CreateTicketModal = ({
   isOpen,
   onClose,
   onSubmit,
   isLoginPageMode = false,
+  initialRequestedByName = "",
+  initialRequestedByEmail = "",
+  initialConcernType = "",
+  initialVehicleSubType = "",
+  initialDescription = "",
+  initialPlateNo = "",
+  initialVehicleInfo = null,
+  initialOtherCategory = "",
+  initialOtherDetails = "",
 }) => {
   const [formData, setFormData] = useState({
     requestedBy: { name: "", email: "" },
@@ -68,6 +78,46 @@ export const CreateTicketModal = ({
       actualPlateAttachment: null,
     },
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        requestedBy: { 
+          name: initialRequestedByName || "", 
+          email: initialRequestedByEmail || "" 
+        },
+        concernType: initialConcernType || "",
+        subject: initialConcernType === "vehicle" 
+          ? (initialVehicleSubType === "dataMismatch" ? "Vehicle Data Mismatch" : "Vehicle Not Found")
+          : "",
+        description: initialDescription || "",
+        vehicleSubType: initialVehicleSubType || "",
+        vehicleInfo: {
+          plateNo: initialPlateNo || "",
+          make: "",
+          model: "",
+          mvFileNo: "",
+          engineNo: "",
+          chassisNo: "",
+          correctValue: "",
+          mismatchedField: "",
+          ...(initialVehicleInfo || {})
+        },
+        otherInfo: {
+          category: initialOtherCategory || "",
+          details: initialOtherDetails || "",
+        },
+        attachment: null,
+        attachments: {
+          crAttachment: null,
+          plateCertificationAttachment: null,
+          actualPlateAttachment: null,
+        },
+      });
+      setActiveSection("requestor");
+      setError("");
+    }
+  }, [isOpen, initialRequestedByName, initialRequestedByEmail, initialConcernType, initialVehicleSubType, initialDescription, initialPlateNo, initialVehicleInfo, initialOtherCategory, initialOtherDetails]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -513,23 +563,42 @@ const ticketResult = await onSubmit(ticketOnlyData);
               >
                 Cancel
               </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-5 py-2.5 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors flex items-center gap-2 disabled:opacity-50"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    {isLoginPageMode ? "Reporting..." : "Creating..."}
-                  </>
-                ) : (
-                  <>
-                    <Send size={14} />
-                    {isLoginPageMode ? "Report Issue" : "Create Ticket"}
-                  </>
-                )}
-              </button>
+              {activeSection === "requestor" ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!formData.requestedBy.name || !formData.requestedBy.email) {
+                      setError("Please fill in your name and email.");
+                      return;
+                    }
+                    setError("");
+                    setActiveSection("details");
+                  }}
+                  className="px-5 py-2.5 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors"
+                >
+                  Next
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-5 py-2.5 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      {isLoginPageMode ? "Reporting..." : "Creating..."}
+                    </>
+                  ) : (
+                    <>
+                      <Send size={14} />
+                      {isLoginPageMode ? "Report Issue" : "Create Ticket"}
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </form>
         </div>
