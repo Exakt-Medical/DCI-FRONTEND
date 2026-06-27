@@ -3,8 +3,9 @@ import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
 import { Spinner } from "../../components/Spinner";
-import { Shield, Search, CheckCircle, Car, User, ScanLine } from "lucide-react";
+import { Shield, Search, CheckCircle, Car, User, ScanLine, AlertTriangle, Paperclip } from "lucide-react";
 import { HpgQrScannerModal } from "./HpgQrScannerModal";
+import { ticketService } from "../../services/ticketService";
 
 const MOCK_VEHICLE_DATA = {
   plateNumber: "ABC1234",
@@ -27,6 +28,12 @@ export const HpgVerifyPage = () => {
   const [vehicleData, setVehicleData] = useState(null);
   const [error, setError] = useState("");
   const [markedVerified, setMarkedVerified] = useState(false);
+
+  // Ticket Modal States
+  const [showTicketModal, setShowTicketModal] = useState(false);
+  const [ticketDetails, setTicketDetails] = useState("");
+  const [ticketRequestor, setTicketRequestor] = useState("");
+  const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
 
   const handleQrScan = (scannedVoucherCode) => {
     setVoucherCode(scannedVoucherCode);
@@ -52,7 +59,7 @@ export const HpgVerifyPage = () => {
         setVerified(true);
         setError("");
       } else {
-        setError("Voucher not found or invalid");
+        setError("Transaction Code not found or invalid");
         setVehicleData(null);
         setVerified(false);
       }
@@ -69,6 +76,46 @@ export const HpgVerifyPage = () => {
     setVehicleData(null);
     setError("");
     setMarkedVerified(false);
+  };
+
+  const handleOpenTicketModal = () => {
+    const userObj = JSON.parse(localStorage.getItem("user") || "{}");
+    const name = localStorage.getItem("username") || userObj?.username || "HPG Agent";
+    setTicketRequestor(name);
+    setTicketDetails(
+      `Transaction Code "${voucherCode}" was verified but returned: HPG database record not found.`
+    );
+    setShowTicketModal(true);
+  };
+
+  const handleSubmitTicket = async () => {
+    setIsSubmittingTicket(true);
+    try {
+      const datePart = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const randPart = Math.floor(1000 + Math.random() * 9000);
+      const referenceNumber = `REF-${datePart}-${randPart}`;
+
+      const ticketPayload = {
+        referenceNumber,
+        type: "Transaction Code Not Found",
+        status: "PENDING",
+        requestedBy: ticketRequestor,
+        escalated: "YES",
+        roleBased: "HPG",
+        dateRequested: new Date().toISOString(),
+        dateUpdated: new Date().toISOString(),
+        address: ticketDetails,
+      };
+
+      await ticketService.create(ticketPayload);
+      alert(`Success! Support ticket ${referenceNumber} has been submitted.`);
+      setShowTicketModal(false);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to submit support ticket.");
+    } finally {
+      setIsSubmittingTicket(false);
+    }
   };
 
   return (
@@ -118,7 +165,15 @@ export const HpgVerifyPage = () => {
         </div>
 
         {error && (
-          <p className="text-xs text-red-500 mt-2">{error}</p>
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-red-800">{error}</p>
+              <p className="text-xs text-red-500 mt-1">If this persists, you can file a support ticket to verify the records manually.</p>
+            </div>
+            <Button size="sm" variant="outline" className="border-red-300 text-red-700 hover:bg-red-100" onClick={handleOpenTicketModal}>
+              Submit Ticket
+            </Button>
+          </div>
         )}
       </Card>
 
@@ -247,6 +302,72 @@ export const HpgVerifyPage = () => {
             )}
           </div>
         </>
+      )}
+
+      {/* Submit Ticket Modal */}
+      {showTicketModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <AlertTriangle size={20} className="text-[#0059b5]" />
+                Submit Verification Ticket
+              </h3>
+              <button
+                onClick={() => setShowTicketModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                  Requestor
+                </label>
+                <Input
+                  disabled
+                  value={ticketRequestor}
+                  onChange={(e) => setTicketRequestor(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+                  Ticket Details
+                </label>
+                <textarea
+                  className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={4}
+                  value={ticketDetails}
+                  onChange={(e) => setTicketDetails(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => setShowTicketModal(false)}
+                disabled={isSubmittingTicket}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex items-center gap-2"
+                onClick={handleSubmitTicket}
+                disabled={isSubmittingTicket}
+              >
+                <Spinner size="xs" className={isSubmittingTicket ? "block" : "hidden"} />
+                Submit Ticket
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       <HpgQrScannerModal

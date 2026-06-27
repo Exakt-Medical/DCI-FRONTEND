@@ -222,24 +222,23 @@ export const generateClearanceCertificatePDF = async (row = {}) => {
 
   y += 8;
 
-  // ─── PREMIUM TYPE SECTION ───────────────────────────────────────────────────
+  // ─── MVCC/MEC DETAILS SECTION ───────────────────────────────────────────────
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
   doc.setTextColor(20, 20, 20);
-  doc.text("Premium Type", marginLeft, y);
+  doc.text("MVCC & MEC Details", marginLeft, y);
   y += 8;
 
-  const premiumTypeRows = [
-    [
-      "Premium Type",
-      vehicle.classification && vehicle.classification !== "-"
-        ? `${vehicle.classification.toUpperCase()} CARS (INCLUDING JEEPS AND AUVS)`
-        : "PRIVATE CARS (INCLUDING JEEPS AND AUVS)",
-    ],
+  const mvccNo = row.mvcData?.mvcNo || row.mvcNo || "MVC-87654321";
+  const mvccIssueDate = row.mvcData?.issueDate || row.mvcData?.mvcIssueDate || row.mvcIssueDate || row.issueDate || new Date().toISOString().split("T")[0];
+
+  const mvccMecRows = [
+    ["MVCC Number", mvccNo],
+    ["MVCC Issue Date", mvccIssueDate],
   ];
 
-  for (const [label, value] of premiumTypeRows) {
+  for (const [label, value] of mvccMecRows) {
     y = drawTableRow(
       doc,
       y,
@@ -277,17 +276,9 @@ export const generateClearanceCertificatePDF = async (row = {}) => {
       })
     : String(rawDate);
 
-  const issuer = row.processedBy || "DCI PORTAL";
-
-  const mvccNo = row.mvcData?.mvcNo || row.mvcNo || "MVC-87654321";
-  const mvccIssueDate = row.mvcData?.issueDate || row.mvcData?.mvcIssueDate || row.mvcIssueDate || row.issueDate || new Date().toISOString().split("T")[0];
-
   const inspectionRows = [
     ["DCI Authentication Code", authNo],
     ["Date of Validation", dateStr],
-    ["Issuer", issuer],
-    ["MVCC Number", mvccNo],
-    ["MVCC Issue Date", mvccIssueDate],
   ];
 
   for (const [label, value] of inspectionRows) {
@@ -324,6 +315,13 @@ export const generateClearanceCertificatePDF = async (row = {}) => {
     doc.setTextColor(80, 80, 80);
     doc.text("[QR CODE]", qrX + 5, y + qrSize / 2 + 1);
   }
+
+  // Footer text - System generated notice
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(100, 100, 100);
+  const footerText = "This is a system-generated document. No signature is required.";
+  doc.text(footerText, pageWidth / 2, 280, { align: "center" });
 
   const filename = `Clearance_Certificate_${safeFileSegment(authNo)}.pdf`;
 
