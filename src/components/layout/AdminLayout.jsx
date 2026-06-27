@@ -34,7 +34,7 @@ export const AdminLayout = ({
     agent_fixer: [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, section: "MAIN", disabled: false },
       { id: "requests", label: "My Requests / Queue", icon: FileText, section: "REQUESTS", disabled: false },
-      { id: "new-voucher-request", label: "Voucher", icon: CreditCard, section: "REQUESTS", disabled: false },
+      { id: "new-transaction-credits", label: "Transaction Credits", icon: CreditCard, section: "REQUESTS", disabled: false },
       { id: "new-clearance-request", label: "Request for Certification", icon: Shield, section: "REQUESTS", disabled: false },
     ],
     hpg: [

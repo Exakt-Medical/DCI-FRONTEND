@@ -9,7 +9,7 @@ import {
   ChevronLeft, ChevronRight, X, AlertTriangle
 } from "lucide-react";
 
-const STEPS = ["Vehicle Info", "Payment", "Voucher"];
+const STEPS = ["Vehicle Info", "Payment", "Transaction Credit"];
 
 const emptyVehicle = {
   plateNumber: "", mvFileNumber: "", engineNumber: "", chassisNumber: "",
@@ -254,7 +254,7 @@ export const VoucherRequestFlow = ({ role, initialRequest, onSaveRequest, onComp
         <div className="bg-white rounded-t-xl shadow-lg overflow-hidden">
           <div className="p-4 flex items-center gap-3 border-b border-gray-200">
             <img src={DCI_LOGO} alt="DCI" className="h-10" />
-            <span className="font-bold text-gray-900">Voucher Request</span>
+            <span className="font-bold text-gray-900">Transaction Credit Request</span>
             <span className="text-xs text-gray-500 ml-auto">
               {role === "agent_fixer" ? "Agent / Fixer" : "Citizen"}
             </span>
@@ -381,7 +381,7 @@ export const VoucherRequestFlow = ({ role, initialRequest, onSaveRequest, onComp
                 <h3 className="text-base font-bold text-gray-900">Payment</h3>
               </div>
               <div className="bg-gray-50 rounded-lg p-5 mb-5 text-center">
-                <p className="text-sm text-gray-500 mb-1">Voucher Request Fee</p>
+                <p className="text-sm text-gray-500 mb-1">Transaction Credit Request Fee</p>
                 <p className="text-3xl font-bold text-gray-900">
                   {isAgent ? `PHP ${(batchRows.length * 100).toFixed(2)}` : "PHP 100.00"}
                 </p>
@@ -411,18 +411,18 @@ export const VoucherRequestFlow = ({ role, initialRequest, onSaveRequest, onComp
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <Ticket size={18} className="text-[#0059b5]" />
-                <h3 className="text-base font-bold text-gray-900">Voucher Issued</h3>
+                <h3 className="text-base font-bold text-gray-900">Transaction Credit Issued</h3>
               </div>
               {isAgent ? (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <p className="font-semibold text-green-700 mb-3">{batchRows.length} voucher request{batchRows.length !== 1 ? "s" : ""} issued</p>
+                  <p className="font-semibold text-green-700 mb-3">{batchRows.length} transaction credit{batchRows.length !== 1 ? "s" : ""} issued</p>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-green-200 text-left">
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request ID</th>
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Plate</th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Voucher Ref</th>
+                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Transaction Credit Ref</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -440,7 +440,7 @@ export const VoucherRequestFlow = ({ role, initialRequest, onSaveRequest, onComp
               ) : (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
                   <CheckCircle size={40} className="text-green-600 mx-auto mb-3" />
-                  <p className="font-semibold text-green-700 text-lg">Voucher Issued</p>
+                  <p className="font-semibold text-green-700 text-lg">Transaction Credit Issued</p>
                   <p className="text-sm font-mono font-bold text-gray-900 mt-2">{voucherCode}</p>
                   <p className="text-xs text-gray-500 mt-1">
                     Plate: {orCr.plateNumber}

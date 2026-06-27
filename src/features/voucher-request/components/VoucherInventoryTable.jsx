@@ -13,7 +13,7 @@ export const VoucherInventoryTable = ({ rows }) => {
     <Card className="p-4">
       {rows.length === 0 ? (
         <div className="py-10 text-center text-sm text-gray-500">
-          No vouchers found for this filter.
+          No transaction credits found for this filter.
         </div>
       ) : (
         <div className="overflow-x-auto">

@@ -21,22 +21,22 @@ export const AgentVoucherRequestPage = ({ onNavigate }) => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">
-            Client Voucher Requests
+            Client Transaction Credit Requests
           </h1>
           <p className="text-sm text-gray-500">
-            Manage voucher requests for your clients
+            Manage transaction credit requests for your clients
           </p>
         </div>
-        <Button onClick={() => onNavigate?.("new-voucher-request")}>
+        <Button onClick={() => onNavigate?.("new-transaction-credits")}>
           <Plus size={16} />
-          New Voucher Request
+          New Transaction Credit Request
         </Button>
       </div>
 
       <Card className="p-5 mb-5">
         <div className="flex items-center gap-3 mb-4 pb-2 border-b border-gray-200">
           <Users size={18} className="text-[#0059b5]" />
-          <h3 className="text-base font-bold text-gray-900">All Voucher Requests</h3>
+          <h3 className="text-base font-bold text-gray-900">All Transaction Credit Requests</h3>
           <span className="text-xs text-gray-400 ml-auto">
             {requests.length} record{requests.length !== 1 && "s"}
           </span>
@@ -45,8 +45,8 @@ export const AgentVoucherRequestPage = ({ onNavigate }) => {
         {requests.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
             <Ticket size={32} className="mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No voucher requests yet</p>
-            <p className="text-xs mt-1">Create a new voucher request for your client</p>
+            <p className="text-sm">No transaction credit requests yet</p>
+            <p className="text-xs mt-1">Create a new transaction credit request for your client</p>
           </div>
         ) : (
           <>

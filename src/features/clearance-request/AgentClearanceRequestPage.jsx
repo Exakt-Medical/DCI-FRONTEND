@@ -40,7 +40,7 @@ export const AgentClearanceRequestPage = ({ onNavigate }) => {
           <div className="text-center py-12 text-gray-400">
             <FileText size={32} className="mx-auto mb-2 opacity-50" />
             <p className="text-sm">No clearance requests yet</p>
-            <p className="text-xs mt-1">Complete voucher requests first to proceed</p>
+            <p className="text-xs mt-1">Complete transaction credit requests first to proceed</p>
           </div>
         ) : (
           <>
