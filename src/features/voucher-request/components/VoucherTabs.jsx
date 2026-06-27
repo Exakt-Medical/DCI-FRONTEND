@@ -2,7 +2,7 @@ import { CreditCard, Package } from "lucide-react";
 
 const TABS = [
   { id: "buy", label: "Buy", icon: CreditCard },
-  { id: "inventory", label: "My Vouchers", icon: Package },
+  { id: "inventory", label: "My Transaction Credits", icon: Package },
 ];
 
 export const VoucherTabs = ({ activeTab, onChange }) => {

@@ -27,7 +27,7 @@ export const VoucherRequestPage = ({ onNavigate }) => {
             View and manage your OR/CR and voucher requests
           </p>
         </div>
-        <Button onClick={() => onNavigate?.("new-voucher-request")}>
+        <Button onClick={() => onNavigate?.("new-transaction-credits")}>
           <Plus size={16} />
           New Voucher Request
         </Button>

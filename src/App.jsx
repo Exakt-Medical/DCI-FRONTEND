@@ -247,7 +247,7 @@ function AppContent() {
             onCancel={() => setPage("requests")}
           />
         );
-      case "new-voucher-request":
+      case "new-transaction-credits":
         if (role === "agent_fixer") {
           return (
             <AgentBuyVoucherPage
