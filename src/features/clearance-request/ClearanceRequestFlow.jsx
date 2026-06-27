@@ -92,6 +92,10 @@ export const ClearanceRequestFlow = ({
   const isAgent = role === "agent_fixer";
   const flowSteps = isAgent ? AGENT_STEPS : CITIZEN_STEPS;
 
+  const availableCreditsCount = voucherInventory.filter(
+    (item) => item.inventoryStatus === VOUCHER_INVENTORY_STATUS.AVAILABLE
+  ).length;
+
   const [requestId] = useState(() => selectedRequest?.requestId || makeRequestId());
   const [step, setStep] = useState(() => {
     if (selectedRequest) {
@@ -100,7 +104,7 @@ export const ClearanceRequestFlow = ({
         if (selectedRequest.mvcMecValidationState === VALIDATION_STATE.PASSED) return 6;
         if (selectedRequest.hpgStatus === HPG_STATUS.APPROVED) return 5;
         if (selectedRequest.voucherAssigned) return 4;
-        if (selectedRequest.orCr || selectedRequest.crCr) return 3;
+        if (selectedRequest.orCr || selectedRequest.crCr) return 2;
       }
       return selectedRequest.currentStep || 1;
     }
@@ -569,7 +573,6 @@ export const ClearanceRequestFlow = ({
     };
 
     setQueueRows((prev) => [row, ...prev]);
-    persistRow(row);
     clearOrCrForm();
   };
 
@@ -1291,7 +1294,7 @@ export const ClearanceRequestFlow = ({
         return Boolean(vehicleOption);
       }
       if (step === 2) {
-        return certificationQueue.length > 0;
+        return certificationQueue.length > 0 && certificationQueue.length <= availableCreditsCount;
       }
       if (step === 3) {
         return (
@@ -1344,6 +1347,9 @@ export const ClearanceRequestFlow = ({
   };
 
   const nextStep = () => {
+    if (isAgent && step === 2) {
+      certificationQueue.forEach((row) => persistRow(row));
+    }
     if (isAgent && step === 3) {
       handleAgentAutoAssignCodes();
       return;
@@ -1536,6 +1542,13 @@ export const ClearanceRequestFlow = ({
                     Add To Queue
                   </Button>
                 </div>
+
+                {certificationQueue.length > availableCreditsCount && (
+                  <div className="mb-4 p-3 bg-amber-50 text-amber-800 text-sm rounded-lg border border-amber-200 flex items-start gap-2">
+                    <span className="font-bold whitespace-nowrap">Warning:</span>
+                    <span>You don't have enough credits. You have {availableCreditsCount} available, please buy more credits to continue.</span>
+                  </div>
+                )}
 
                 {certificationQueue.length === 0 ? (
                   <p className="text-sm text-gray-500">No staged entries yet.</p>
