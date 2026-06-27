@@ -126,11 +126,7 @@ export const ClearanceRequestFlow = ({
   const [isTicketOpen, setIsTicketOpen] = useState(false);
   const [showMismatchModal, setShowMismatchModal] = useState(false);
   const [showTicketAttachmentModal, setShowTicketAttachmentModal] = useState(false);
-  const [ticketAttachmentFile, setTicketAttachmentFile] = useState({
-    crAttachment: null,
-    plateCertificationAttachment: null,
-    actualPlateAttachment: null,
-  });
+  const [ticketAttachments, setTicketAttachments] = useState([]);
   const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
 
   const [issuingVoucher, setIssuingVoucher] = useState(false);
@@ -938,12 +934,6 @@ export const ClearanceRequestFlow = ({
       if (selectedMismatches) {
         if (Array.isArray(selectedMismatches)) {
           mismatchesArray = selectedMismatches;
-        } else if (selectedMismatches.crAttachment) {
-          try {
-            mismatchesArray = JSON.parse(selectedMismatches.crAttachment);
-          } catch (e) {
-            console.error(e);
-          }
         }
       }
 
@@ -985,7 +975,8 @@ export const ClearanceRequestFlow = ({
         classification: orCr.classification || null,
         name: orCr.ownerName || null,
         address: description || orCr.ownerAddress || null,
-        crAttachment: selectedMismatches?.crAttachment || null,
+        attachments: ticketAttachments.map(f => f.name),
+        crAttachment: ticketAttachments[0]?.name || null,
       };
 
       // Save mismatch fields to localStorage so TicketDetailModal can display them
@@ -1000,11 +991,7 @@ export const ClearanceRequestFlow = ({
       await ticketService.create(ticketPayload);
       console.log("Mock submitted clearance flow ticket:", ticketPayload);
 
-      setTicketAttachmentFile({
-        crAttachment: null,
-        plateCertificationAttachment: null,
-        actualPlateAttachment: null,
-      });
+      setTicketAttachments([]);
       alert(`Success! Support ticket ${referenceNumber} has been submitted.`);
     } catch (err) {
       console.error("Error creating ticket:", err);
@@ -2416,12 +2403,15 @@ export const ClearanceRequestFlow = ({
             {/* Header */}
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
               <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                <Paperclip size={20} className="text-primary-600" />
-                Vehicle Attachments
+                <Paperclip size={20} className="text-[#0059b5]" />
+                Supporting Documents
               </h3>
 
               <button
-                onClick={() => setShowTicketAttachmentModal(false)}
+                onClick={() => {
+                  setTicketAttachments([]);
+                  setShowTicketAttachmentModal(false);
+                }}
                 className="text-gray-400 hover:text-gray-600 text-2xl"
               >
                 ×
@@ -2431,99 +2421,58 @@ export const ClearanceRequestFlow = ({
             {/* Body */}
             <div className="p-6">
               <div className="space-y-6">
-                {/* CR Attachment */}
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-2">
-                    CR Attachment (Optional)
+                    Upload Supporting Documents (e.g., OR/CR, Plate Certification, Actual Plate Photo, etc.)
                   </label>
 
-                  <div className="flex items-center gap-4">
-                    <label className="cursor-pointer bg-blue-50 hover:bg-blue-100 text-primary-700 font-semibold px-5 py-3 rounded-lg">
-                      Choose File
-                      <input
-                        type="file"
-                        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
-                        className="hidden"
-                        onChange={(e) =>
-                          setTicketAttachmentFile((prev) => ({
-                            ...prev,
-                            crAttachment: e.target.files?.[0] || null,
-                          }))
-                        }
-                      />
-                    </label>
-
-                    <span className="text-sm text-gray-500">
-                      {ticketAttachmentFile?.crAttachment
-                        ? ticketAttachmentFile.crAttachment.name
-                        : "No file chosen"}
-                    </span>
+                  <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-[#0059b5] transition-colors relative">
+                    <input
+                      type="file"
+                      multiple
+                      accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files || []);
+                        setTicketAttachments((prev) => [...prev, ...files]);
+                      }}
+                    />
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Upload size={32} className="text-gray-400" />
+                      <p className="text-sm font-medium text-gray-700">
+                        Drag and drop your files here, or click to browse
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Select multiple files to upload
+                      </p>
+                    </div>
                   </div>
                 </div>
 
-                {/* Plate Certification */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-2">
-                    Plate Certification Attachment (Optional)
-                  </label>
-
-                  <div className="flex items-center gap-4">
-                    <label className="cursor-pointer bg-blue-50 hover:bg-blue-100 text-primary-700 font-semibold px-5 py-3 rounded-lg">
-                      Choose File
-                      <input
-                        type="file"
-                        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
-                        className="hidden"
-                        onChange={(e) =>
-                          setTicketAttachmentFile((prev) => ({
-                            ...prev,
-                            plateCertificationAttachment:
-                              e.target.files?.[0] || null,
-                          }))
-                        }
-                      />
-                    </label>
-
-                    <span className="text-sm text-gray-500">
-                      {ticketAttachmentFile?.plateCertificationAttachment
-                        ? ticketAttachmentFile.plateCertificationAttachment.name
-                        : "No file chosen"}
-                    </span>
+                {ticketAttachments.length > 0 && (
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      Selected Files ({ticketAttachments.length})
+                    </p>
+                    {ticketAttachments.map((file, idx) => (
+                      <div key={idx} className="flex items-center justify-between bg-gray-50 p-2 rounded-lg border border-gray-200">
+                        <span className="text-sm text-gray-700 truncate max-w-md">
+                          {file.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setTicketAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                          className="text-red-500 hover:text-red-700 text-sm font-medium"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                </div>
-
-                {/* Actual Plate */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-600 mb-2">
-                    Actual Plate Attachment (Optional)
-                  </label>
-
-                  <div className="flex items-center gap-4">
-                    <label className="cursor-pointer bg-blue-50 hover:bg-blue-100 text-primary-700 font-semibold px-5 py-3 rounded-lg">
-                      Choose File
-                      <input
-                        type="file"
-                        accept=".jpg,.jpeg,.png,.pdf,.doc,.docx"
-                        className="hidden"
-                        onChange={(e) =>
-                          setTicketAttachmentFile((prev) => ({
-                            ...prev,
-                            actualPlateAttachment: e.target.files?.[0] || null,
-                          }))
-                        }
-                      />
-                    </label>
-
-                    <span className="text-sm text-gray-500">
-                      {ticketAttachmentFile?.actualPlateAttachment
-                        ? ticketAttachmentFile.actualPlateAttachment.name
-                        : "No file chosen"}
-                    </span>
-                  </div>
-                </div>
+                )}
 
                 <p className="text-xs text-gray-400">
-                  Supported formats: JPG, PNG, PDF, DOC (Max 5MB)
+                  Supported formats: JPG, PNG, PDF, DOC (Max 5MB per file)
                 </p>
               </div>
             </div>
@@ -2533,11 +2482,7 @@ export const ClearanceRequestFlow = ({
               <Button
                 variant="secondary"
                 onClick={() => {
-                  setTicketAttachmentFile({
-                    crAttachment: null,
-                    plateCertificationAttachment: null,
-                    actualPlateAttachment: null,
-                  });
+                  setTicketAttachments([]);
                   setShowTicketAttachmentModal(false);
                 }}
                 disabled={isSubmittingTicket}
@@ -2548,9 +2493,8 @@ export const ClearanceRequestFlow = ({
               <Button
                 className="flex items-center gap-2"
                 onClick={() => handleSubmitTicket()}
-                disabled={isSubmittingTicket}
+                disabled={isSubmittingTicket || ticketAttachments.length === 0}
               >
-                <Spinner size="xs" className={isSubmittingTicket ? "block" : "hidden"} />
                 Create Ticket
               </Button>
             </div>
