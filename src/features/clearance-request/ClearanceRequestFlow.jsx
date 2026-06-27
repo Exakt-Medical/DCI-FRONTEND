@@ -53,17 +53,18 @@ const emptyVehicle = {
 const emptyMvc = {
   mvcNo: "",
   mvcIssueDate: "",
-  mvcValidUntil: "",
-  mvcStatus: "",
+  engineNo: "",
+  chassisNo: "",
+  plateNo: "",
+  mvFileNo: "",
+  color: "",
 };
 
 const emptyMec = {
-  mecNo: "",
-  mecIssueDate: "",
-  mecValidUntil: "",
-  mecCo2: "",
-  mecHc: "",
-  mecResult: "",
+  engineNoStencilled: "",
+  chassisNoStencilled: "",
+  plateNo: "",
+  color: "",
 };
 
 const makeRequestId = () => `REQ-${Date.now()}-${String(Math.random()).slice(2, 6)}`;
@@ -71,17 +72,8 @@ const makeCertificateNo = (index = 0) =>
   `DCI-CERT-${String(Date.now() + index).slice(-8)}`;
 
 const evaluateMvcMecValidation = (mvcPayload, mecPayload) => {
-  if (!mvcPayload?.mvcNo || !mecPayload?.mecNo) {
-    return { valid: false, reason: "Missing MVC/MEC reference number." };
-  }
-  if (mvcPayload.mvcStatus && mvcPayload.mvcStatus.toUpperCase() !== "CLEAR") {
-    return { valid: false, reason: "MVC status is not CLEAR." };
-  }
-  if (mecPayload.mecResult && mecPayload.mecResult.toUpperCase() !== "PASS") {
-    return { valid: false, reason: "MEC result is not PASS." };
-  }
-  if (!mvcPayload.mvcIssueDate || !mecPayload.mecIssueDate) {
-    return { valid: false, reason: "Issue date is required for MVC and MEC." };
+  if (!mvcPayload?.mvcNo || !mvcPayload?.mvcIssueDate || !mecPayload?.plateNo) {
+    return { valid: false, reason: "Missing MVCC Number, MVCC Issue Date, or MEC Plate Number." };
   }
   return { valid: true, reason: "Validated by DCI portal." };
 };
@@ -191,7 +183,7 @@ export const ClearanceRequestFlow = ({
           ...selectedRequest,
           hpgStatus: selectedRequest.hpgStatus || HPG_STATUS.PENDING,
           mvcMecUploaded: Boolean(
-            selectedRequest.mvcData?.mvcNo && selectedRequest.mecData?.mecNo,
+            selectedRequest.mvcData?.mvcNo && selectedRequest.mecData?.plateNo,
           ),
         },
       ];
@@ -222,7 +214,7 @@ export const ClearanceRequestFlow = ({
       .map((item) => ({
         ...item,
         hpgStatus: item.hpgStatus || HPG_STATUS.PENDING,
-        mvcMecUploaded: Boolean(item.mvcData?.mvcNo && item.mecData?.mecNo),
+        mvcMecUploaded: Boolean(item.mvcData?.mvcNo && item.mecData?.plateNo),
       }));
   }, [availableVoucherRequests, isAgent, isResume]);
 
@@ -513,18 +505,19 @@ export const ClearanceRequestFlow = ({
           : {
               mvcNo: `MVC-${String(Date.now()).slice(-8)}`,
               mvcIssueDate: now,
-              mvcValidUntil: "2026-12-31",
-              mvcStatus: "CLEAR",
+              engineNo: "ENG-987654",
+              chassisNo: "CHA-123456",
+              plateNo: "ABC1234",
+              mvFileNo: "12345678901",
+              color: "WHITE",
             };
-        const nextMecData = uploadPayload.mecData?.mecNo
+        const nextMecData = uploadPayload.mecData?.plateNo
           ? uploadPayload.mecData
           : {
-              mecNo: `MEC-${String(Date.now()).slice(-8)}`,
-              mecIssueDate: now,
-              mecValidUntil: "2026-12-31",
-              mecCo2: "0.85 g/km",
-              mecHc: "0.12 g/km",
-              mecResult: "PASS",
+              engineNoStencilled: "ENG-987654",
+              chassisNoStencilled: "CHA-123456",
+              plateNo: "ABC1234",
+              color: "WHITE",
             };
         const updated = {
           ...row,
@@ -652,16 +645,22 @@ export const ClearanceRequestFlow = ({
       ...prev,
       mvcNo: "Extracting...",
       mvcIssueDate: "Extracting...",
-      mvcValidUntil: "Extracting...",
-      mvcStatus: "Extracting...",
+      engineNo: "Extracting...",
+      chassisNo: "Extracting...",
+      plateNo: "Extracting...",
+      mvFileNo: "Extracting...",
+      color: "Extracting...",
     }));
 
     setTimeout(() => {
       setAgentMvcData({
         mvcNo: `MVC-${String(Date.now()).slice(-8)}`,
         mvcIssueDate: new Date().toISOString().split("T")[0],
-        mvcValidUntil: "2026-12-31",
-        mvcStatus: "CLEAR",
+        engineNo: "ENG-987654",
+        chassisNo: "CHA-123456",
+        plateNo: "ABC1234",
+        mvFileNo: "12345678901",
+        color: "WHITE",
       });
     }, 1200);
   };
@@ -673,30 +672,26 @@ export const ClearanceRequestFlow = ({
 
     setAgentMecData((prev) => ({
       ...prev,
-      mecNo: "Extracting...",
-      mecIssueDate: "Extracting...",
-      mecValidUntil: "Extracting...",
-      mecCo2: "Extracting...",
-      mecHc: "Extracting...",
-      mecResult: "Extracting...",
+      engineNoStencilled: "Extracting...",
+      chassisNoStencilled: "Extracting...",
+      plateNo: "Extracting...",
+      color: "Extracting...",
     }));
 
     setTimeout(() => {
       setAgentMecData({
-        mecNo: `MEC-${String(Date.now()).slice(-8)}`,
-        mecIssueDate: new Date().toISOString().split("T")[0],
-        mecValidUntil: "2026-12-31",
-        mecCo2: "0.85 g/km",
-        mecHc: "0.12 g/km",
-        mecResult: "PASS",
+        engineNoStencilled: "ENG-987654",
+        chassisNoStencilled: "CHA-123456",
+        plateNo: "ABC1234",
+        color: "WHITE",
       });
     }, 1200);
   };
 
   const handleAddAgentMvcMecToQueue = () => {
     if (!agentMvcMecRequestId) return;
-    if (!agentMvcData.mvcNo || !agentMecData.mecNo) return;
-    if (agentMvcData.mvcNo === "Extracting..." || agentMecData.mecNo === "Extracting...") {
+    if (!agentMvcData.mvcNo || !agentMecData.plateNo) return;
+    if (agentMvcData.mvcNo === "Extracting..." || agentMecData.plateNo === "Extracting...") {
       return;
     }
 
@@ -713,7 +708,7 @@ export const ClearanceRequestFlow = ({
   };
 
   const validateCitizenMvcMec = () => {
-    if (!mvcData.mvcNo || !mecData.mecNo) return;
+    if (!mvcData.mvcNo || !mecData.plateNo) return;
 
     setCitizenValidationState(VALIDATION_STATE.VALIDATING);
     setCitizenValidationMessage("DCI validation in progress...");
@@ -1032,16 +1027,22 @@ export const ClearanceRequestFlow = ({
       ...prev,
       mvcNo: "Extracting...",
       mvcIssueDate: "Extracting...",
-      mvcValidUntil: "Extracting...",
-      mvcStatus: "Extracting...",
+      engineNo: "Extracting...",
+      chassisNo: "Extracting...",
+      plateNo: "Extracting...",
+      mvFileNo: "Extracting...",
+      color: "Extracting...",
     }));
 
     setTimeout(() => {
       const next = {
         mvcNo: `MVC-${String(Date.now()).slice(-8)}`,
         mvcIssueDate: new Date().toISOString().split("T")[0],
-        mvcValidUntil: "2026-12-31",
-        mvcStatus: "CLEAR",
+        engineNo: "ENG-987654",
+        chassisNo: "CHA-123456",
+        plateNo: "ABC1234",
+        mvFileNo: "12345678901",
+        color: "WHITE",
       };
       setMvcData(next);
       saveCitizenRequest({
@@ -1065,22 +1066,18 @@ export const ClearanceRequestFlow = ({
 
     setMecData((prev) => ({
       ...prev,
-      mecNo: "Extracting...",
-      mecIssueDate: "Extracting...",
-      mecValidUntil: "Extracting...",
-      mecCo2: "Extracting...",
-      mecHc: "Extracting...",
-      mecResult: "Extracting...",
+      engineNoStencilled: "Extracting...",
+      chassisNoStencilled: "Extracting...",
+      plateNo: "Extracting...",
+      color: "Extracting...",
     }));
 
     setTimeout(() => {
       const next = {
-        mecNo: `MEC-${String(Date.now()).slice(-8)}`,
-        mecIssueDate: new Date().toISOString().split("T")[0],
-        mecValidUntil: "2026-12-31",
-        mecCo2: "0.85 g/km",
-        mecHc: "0.12 g/km",
-        mecResult: "PASS",
+        engineNoStencilled: "ENG-987654",
+        chassisNoStencilled: "CHA-123456",
+        plateNo: "ABC1234",
+        color: "WHITE",
       };
       setMecData(next);
       saveCitizenRequest({
@@ -1522,11 +1519,11 @@ export const ClearanceRequestFlow = ({
                     fields={[
                       {
                         key: "agent-mvc-number",
-                        label: "MVC Number",
+                        label: "MVCC Number",
                         value: agentMvcData.mvcNo,
                         onChange: (e) =>
                           setAgentMvcData((prev) => ({ ...prev, mvcNo: e.target.value })),
-                        placeholder: "Auto-extracted from MVC",
+                        placeholder: "Auto-extracted from MVCC",
                       },
                       {
                         key: "agent-mvc-issue-date",
@@ -1534,23 +1531,47 @@ export const ClearanceRequestFlow = ({
                         value: agentMvcData.mvcIssueDate,
                         onChange: (e) =>
                           setAgentMvcData((prev) => ({ ...prev, mvcIssueDate: e.target.value })),
-                        placeholder: "Auto-extracted from MVC",
+                        placeholder: "Auto-extracted from MVCC",
                       },
                       {
-                        key: "agent-mvc-valid-until",
-                        label: "Valid Until",
-                        value: agentMvcData.mvcValidUntil,
+                        key: "agent-mvc-engine-number",
+                        label: "Engine Number",
+                        value: agentMvcData.engineNo,
                         onChange: (e) =>
-                          setAgentMvcData((prev) => ({ ...prev, mvcValidUntil: e.target.value })),
-                        placeholder: "Auto-extracted from MVC",
+                          setAgentMvcData((prev) => ({ ...prev, engineNo: e.target.value })),
+                        placeholder: "Auto-extracted from MVCC",
                       },
                       {
-                        key: "agent-mvc-status",
-                        label: "Status",
-                        value: agentMvcData.mvcStatus,
+                        key: "agent-mvc-chassis-number",
+                        label: "Chassis Number",
+                        value: agentMvcData.chassisNo,
                         onChange: (e) =>
-                          setAgentMvcData((prev) => ({ ...prev, mvcStatus: e.target.value })),
-                        placeholder: "Auto-extracted from MVC",
+                          setAgentMvcData((prev) => ({ ...prev, chassisNo: e.target.value })),
+                        placeholder: "Auto-extracted from MVCC",
+                      },
+                      {
+                        key: "agent-mvc-plate-number",
+                        label: "Plate Number",
+                        value: agentMvcData.plateNo,
+                        onChange: (e) =>
+                          setAgentMvcData((prev) => ({ ...prev, plateNo: e.target.value })),
+                        placeholder: "Auto-extracted from MVCC",
+                      },
+                      {
+                        key: "agent-mvc-mvfile-number",
+                        label: "MV File Number",
+                        value: agentMvcData.mvFileNo,
+                        onChange: (e) =>
+                          setAgentMvcData((prev) => ({ ...prev, mvFileNo: e.target.value })),
+                        placeholder: "Auto-extracted from MVCC",
+                      },
+                      {
+                        key: "agent-mvc-color",
+                        label: "Color",
+                        value: agentMvcData.color,
+                        onChange: (e) =>
+                          setAgentMvcData((prev) => ({ ...prev, color: e.target.value })),
+                        placeholder: "Auto-extracted from MVCC",
                       },
                     ]}
                   />
@@ -1562,51 +1583,35 @@ export const ClearanceRequestFlow = ({
                     preview={agentMecPreview}
                     fields={[
                       {
-                        key: "agent-mec-number",
-                        label: "MEC Number",
-                        value: agentMecData.mecNo,
+                        key: "agent-mec-engine-stencilled",
+                        label: "engineNoStencilled",
+                        value: agentMecData.engineNoStencilled,
                         onChange: (e) =>
-                          setAgentMecData((prev) => ({ ...prev, mecNo: e.target.value })),
+                          setAgentMecData((prev) => ({ ...prev, engineNoStencilled: e.target.value })),
                         placeholder: "Auto-extracted from MEC",
                       },
                       {
-                        key: "agent-mec-issue-date",
-                        label: "Issue Date",
-                        value: agentMecData.mecIssueDate,
+                        key: "agent-mec-chassis-stencilled",
+                        label: "chassisNoStencilled",
+                        value: agentMecData.chassisNoStencilled,
                         onChange: (e) =>
-                          setAgentMecData((prev) => ({ ...prev, mecIssueDate: e.target.value })),
+                          setAgentMecData((prev) => ({ ...prev, chassisNoStencilled: e.target.value })),
                         placeholder: "Auto-extracted from MEC",
                       },
                       {
-                        key: "agent-mec-valid-until",
-                        label: "Valid Until",
-                        value: agentMecData.mecValidUntil,
+                        key: "agent-mec-plate-number",
+                        label: "plateNo",
+                        value: agentMecData.plateNo,
                         onChange: (e) =>
-                          setAgentMecData((prev) => ({ ...prev, mecValidUntil: e.target.value })),
+                          setAgentMecData((prev) => ({ ...prev, plateNo: e.target.value })),
                         placeholder: "Auto-extracted from MEC",
                       },
                       {
-                        key: "agent-mec-co2",
-                        label: "CO2",
-                        value: agentMecData.mecCo2,
+                        key: "agent-mec-color",
+                        label: "color",
+                        value: agentMecData.color,
                         onChange: (e) =>
-                          setAgentMecData((prev) => ({ ...prev, mecCo2: e.target.value })),
-                        placeholder: "Auto-extracted from MEC",
-                      },
-                      {
-                        key: "agent-mec-hc",
-                        label: "HC",
-                        value: agentMecData.mecHc,
-                        onChange: (e) =>
-                          setAgentMecData((prev) => ({ ...prev, mecHc: e.target.value })),
-                        placeholder: "Auto-extracted from MEC",
-                      },
-                      {
-                        key: "agent-mec-result",
-                        label: "Result",
-                        value: agentMecData.mecResult,
-                        onChange: (e) =>
-                          setAgentMecData((prev) => ({ ...prev, mecResult: e.target.value })),
+                          setAgentMecData((prev) => ({ ...prev, color: e.target.value })),
                         placeholder: "Auto-extracted from MEC",
                       },
                     ]}
@@ -1627,9 +1632,9 @@ export const ClearanceRequestFlow = ({
                       disabled={
                         !agentMvcMecRequestId ||
                         !agentMvcData.mvcNo ||
-                        !agentMecData.mecNo ||
+                        !agentMecData.plateNo ||
                         agentMvcData.mvcNo === "Extracting..." ||
-                        agentMecData.mecNo === "Extracting..."
+                        agentMecData.plateNo === "Extracting..."
                       }
                     >
                       Add To MVC/MEC Queue
@@ -1661,7 +1666,7 @@ export const ClearanceRequestFlow = ({
                           </th>
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Plate</th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">MVC</th>
+                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">MVCC</th>
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">MEC</th>
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">DCI Validation</th>
                         </tr>
@@ -1682,7 +1687,7 @@ export const ClearanceRequestFlow = ({
                             <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
                             <td className="py-2 text-gray-700">{row.plateNumber || "-"}</td>
                             <td className="py-2 text-gray-700 font-mono text-xs">{row.mvcData?.mvcNo || "-"}</td>
-                            <td className="py-2 text-gray-700 font-mono text-xs">{row.mecData?.mecNo || "-"}</td>
+                            <td className="py-2 text-gray-700 font-mono text-xs">{row.mecData?.plateNo || "-"}</td>
                             <td className="py-2 text-gray-700">
                               {row.mvcMecValidationState || VALIDATION_STATE.PENDING}
                               {row.mvcMecValidationMessage ? ` - ${row.mvcMecValidationMessage}` : ""}
@@ -2150,20 +2155,44 @@ export const ClearanceRequestFlow = ({
                       placeholder: "Auto-extracted from MVCC",
                     },
                     {
-                      key: "citizen-mvc-valid-until",
-                      label: "Valid Until",
-                      value: mvcData.mvcValidUntil,
+                      key: "citizen-mvc-engine-number",
+                      label: "Engine Number",
+                      value: mvcData.engineNo,
                       onChange: (e) =>
-                        setMvcData((prev) => ({ ...prev, mvcValidUntil: e.target.value })),
+                        setMvcData((prev) => ({ ...prev, engineNo: e.target.value })),
                       placeholder: "Auto-extracted from MVCC",
                     },
                     {
-                      key: "citizen-mvc-status",
-                      label: "Status",
-                      value: mvcData.mvcStatus,
+                      key: "citizen-mvc-chassis-number",
+                      label: "Chassis Number",
+                      value: mvcData.chassisNo,
                       onChange: (e) =>
-                        setMvcData((prev) => ({ ...prev, mvcStatus: e.target.value })),
-                      placeholder: "Auto-extracted from MVC",
+                        setMvcData((prev) => ({ ...prev, chassisNo: e.target.value })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
+                    {
+                      key: "citizen-mvc-plate-number",
+                      label: "Plate Number",
+                      value: mvcData.plateNo,
+                      onChange: (e) =>
+                        setMvcData((prev) => ({ ...prev, plateNo: e.target.value })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
+                    {
+                      key: "citizen-mvc-mvfile-number",
+                      label: "MV File Number",
+                      value: mvcData.mvFileNo,
+                      onChange: (e) =>
+                        setMvcData((prev) => ({ ...prev, mvFileNo: e.target.value })),
+                      placeholder: "Auto-extracted from MVCC",
+                    },
+                    {
+                      key: "citizen-mvc-color",
+                      label: "Color",
+                      value: mvcData.color,
+                      onChange: (e) =>
+                        setMvcData((prev) => ({ ...prev, color: e.target.value })),
+                      placeholder: "Auto-extracted from MVCC",
                     },
                   ]}
                 />
@@ -2175,51 +2204,35 @@ export const ClearanceRequestFlow = ({
                   preview={mecPreview}
                   fields={[
                     {
-                      key: "citizen-mec-number",
-                      label: "MEC Number",
-                      value: mecData.mecNo,
+                      key: "citizen-mec-engine-stencilled",
+                      label: "engineNoStencilled",
+                      value: mecData.engineNoStencilled,
                       onChange: (e) =>
-                        setMecData((prev) => ({ ...prev, mecNo: e.target.value })),
+                        setMecData((prev) => ({ ...prev, engineNoStencilled: e.target.value })),
                       placeholder: "Auto-extracted from MEC",
                     },
                     {
-                      key: "citizen-mec-issue-date",
-                      label: "Issue Date",
-                      value: mecData.mecIssueDate,
+                      key: "citizen-mec-chassis-stencilled",
+                      label: "chassisNoStencilled",
+                      value: mecData.chassisNoStencilled,
                       onChange: (e) =>
-                        setMecData((prev) => ({ ...prev, mecIssueDate: e.target.value })),
+                        setMecData((prev) => ({ ...prev, chassisNoStencilled: e.target.value })),
                       placeholder: "Auto-extracted from MEC",
                     },
                     {
-                      key: "citizen-mec-valid-until",
-                      label: "Valid Until",
-                      value: mecData.mecValidUntil,
+                      key: "citizen-mec-plate-number",
+                      label: "plateNo",
+                      value: mecData.plateNo,
                       onChange: (e) =>
-                        setMecData((prev) => ({ ...prev, mecValidUntil: e.target.value })),
+                        setMecData((prev) => ({ ...prev, plateNo: e.target.value })),
                       placeholder: "Auto-extracted from MEC",
                     },
                     {
-                      key: "citizen-mec-co2",
-                      label: "CO2",
-                      value: mecData.mecCo2,
+                      key: "citizen-mec-color",
+                      label: "color",
+                      value: mecData.color,
                       onChange: (e) =>
-                        setMecData((prev) => ({ ...prev, mecCo2: e.target.value })),
-                      placeholder: "Auto-extracted from MEC",
-                    },
-                    {
-                      key: "citizen-mec-hc",
-                      label: "HC",
-                      value: mecData.mecHc,
-                      onChange: (e) =>
-                        setMecData((prev) => ({ ...prev, mecHc: e.target.value })),
-                      placeholder: "Auto-extracted from MEC",
-                    },
-                    {
-                      key: "citizen-mec-result",
-                      label: "Result",
-                      value: mecData.mecResult,
-                      onChange: (e) =>
-                        setMecData((prev) => ({ ...prev, mecResult: e.target.value })),
+                        setMecData((prev) => ({ ...prev, color: e.target.value })),
                       placeholder: "Auto-extracted from MEC",
                     },
                   ]}
@@ -2238,7 +2251,7 @@ export const ClearanceRequestFlow = ({
                     onClick={validateCitizenMvcMec}
                     disabled={
                       !mvcData.mvcNo ||
-                      !mecData.mecNo ||
+                      !mecData.plateNo ||
                       citizenValidationState === VALIDATION_STATE.VALIDATING
                     }
                   >
