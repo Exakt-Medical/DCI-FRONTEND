@@ -255,7 +255,7 @@ export const UserFormModal = ({
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
               >
               <option value="CITIZEN">Citizen</option>
-                <option value="AGENT_FIXER">Agent/Fixer</option>
+                <option value="AGENT_FIXER">Agent</option>
                 <option value="ADMIN">Admin</option>
               </select>
             </div>

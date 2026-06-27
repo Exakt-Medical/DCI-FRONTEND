@@ -301,7 +301,7 @@ export const HpgVerifyPage = () => {
         }}
         initialRequestedByName={ticketRequestor}
         initialRequestedByEmail={
-          JSON.parse(localStorage.getItem("user") || "{}")?.email || ""
+          JSON.parse(localStorage.getItem("user") || "{}")?.email || "hpg@dci.gov.ph"
         }
         initialConcernType="other"
         initialOtherCategory="voucher"

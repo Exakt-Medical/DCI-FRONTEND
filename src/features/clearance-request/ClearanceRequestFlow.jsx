@@ -1287,6 +1287,29 @@ export const ClearanceRequestFlow = ({
     window.open(url, "_blank");
   };
 
+  const handleDownloadAllCertificates = async () => {
+    const issuedRows = certificationQueue.filter((row) => row.certificateNo);
+    if (issuedRows.length === 0) {
+      alert("No issued certificates to download.");
+      return;
+    }
+    for (const row of issuedRows) {
+      const plate = row.plateNumber || row.orCr?.plateNumber || "";
+      const { doc, filename } = await generateClearanceCertificatePDF({
+        requestId: row.requestId,
+        certificateNo: row.certificateNo,
+        clearanceReferenceNo: row.certificateNo,
+        plateNumber: plate,
+        voucherCode: row.voucherCode,
+        voucherReferenceNo: row.voucherCode,
+        dateCreated: row.dateCreated,
+        status: row.status,
+        clearanceStatus: "CERTIFICATE_ISSUED",
+      });
+      doc.save(filename);
+    }
+  };
+
   const canNext = () => {
     if (isAgent) {
       if (step === 1) {
@@ -1411,7 +1434,7 @@ export const ClearanceRequestFlow = ({
             <img src={DCI_LOGO} alt="DCI" className="h-10" />
             <span className="font-bold text-gray-900">Clearance Request</span>
             <span className="text-xs text-gray-500 ml-auto">
-              {role === "agent_fixer" ? "Agent / Fixer" : "Citizen"}
+              {role === "agent_fixer" ? "Agent" : "Citizen"}
             </span>
           </div>
 
@@ -1936,13 +1959,6 @@ export const ClearanceRequestFlow = ({
                 <div className="mt-4 flex justify-end">
                   <div className="flex gap-2">
                     <Button
-                      variant="secondary"
-                      onClick={validateSelectedMvcMecRows}
-                      disabled={!hasSelectedMvcMecRows}
-                    >
-                      Validate
-                    </Button>
-                    <Button
                       onClick={handleAddAgentMvcMecToQueue}
                       disabled={
                         !agentMvcMecRequestId ||
@@ -1959,9 +1975,18 @@ export const ClearanceRequestFlow = ({
               </Card>
 
               <Card className="p-5">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
-                  <FileText size={18} className="text-[#0059b5]" />
-                  <h3 className="text-base font-bold text-gray-900">MVC/MEC Upload Queue</h3>
+                <div className="flex items-center justify-between gap-3 mb-4 pb-2 border-b border-gray-200">
+                  <div className="flex items-center gap-2">
+                    <FileText size={18} className="text-[#0059b5]" />
+                    <h3 className="text-base font-bold text-gray-900">MVC/MEC Upload Queue</h3>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={validateSelectedMvcMecRows}
+                    disabled={!hasSelectedMvcMecRows}
+                  >
+                    Validate Selected
+                  </Button>
                 </div>
                 {certificationQueue.length === 0 ? (
                   <p className="text-sm text-gray-500">No active requests available in queue.</p>
@@ -2035,9 +2060,20 @@ export const ClearanceRequestFlow = ({
 
           {isAgent && step === 6 && (
             <Card className="p-5">
-              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
-                <FileText size={18} className="text-[#0059b5]" />
-                <h3 className="text-base font-bold text-gray-900">Certificate Issuance (Bulk)</h3>
+              <div className="flex items-center justify-between gap-3 mb-4 pb-2 border-b border-gray-200">
+                <div className="flex items-center gap-2">
+                  <FileText size={18} className="text-[#0059b5]" />
+                  <h3 className="text-base font-bold text-gray-900">Certificate Issuance (Bulk)</h3>
+                </div>
+                {!isIssuingBulk && (
+                  <Button
+                    onClick={handleDownloadAllCertificates}
+                    className="flex items-center gap-2"
+                    size="sm"
+                  >
+                    <Download size={16} /> Download All
+                  </Button>
+                )}
               </div>
 
               {isIssuingBulk ? (
@@ -2055,7 +2091,6 @@ export const ClearanceRequestFlow = ({
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-gray-200 text-left">
-                          <th className="pb-2 w-28" />
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
                           {vehicleOption === "new" ? (
                             <>
@@ -2072,9 +2107,6 @@ export const ClearanceRequestFlow = ({
                       <tbody>
                         {certificationQueue.map((row) => (
                           <tr key={row.requestId} className="border-b border-gray-100">
-                            <td className="py-2 align-middle">
-                              <CertificateActionButtons row={row} />
-                            </td>
                             <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
                             {vehicleOption === "new" ? (
                               <>
