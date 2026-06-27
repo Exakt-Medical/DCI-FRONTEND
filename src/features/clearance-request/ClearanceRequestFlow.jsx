@@ -2129,7 +2129,7 @@ export const ClearanceRequestFlow = ({
               ) : voucherAssigned ? (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
                   <CheckCircle size={40} className="text-green-600 mx-auto mb-3" />
-                  <p className="font-semibold text-green-700 text-lg">Code Issued</p>
+                  <p className="font-semibold text-green-700 text-lg">Transaction Code Issued</p>
                   <p className="text-sm font-mono font-bold text-gray-900 mt-2">{voucherCode}</p>
                   <p className="text-xs text-gray-500 mt-1">Plate: {orCr.plateNumber}</p>
                 </div>
