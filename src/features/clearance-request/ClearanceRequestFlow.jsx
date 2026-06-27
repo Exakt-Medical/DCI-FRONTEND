@@ -123,6 +123,7 @@ export const ClearanceRequestFlow = ({
   const [inputMvFileNumber, setInputMvFileNumber] = useState(selectedRequest?.inputMvFileNumber || "");
   const [verifyingOrCr, setVerifyingOrCr] = useState(false);
   const [verifyOrCrError, setVerifyOrCrError] = useState(selectedRequest?.verifyOrCrError || "");
+  const [verifyingAgentRowId, setVerifyingAgentRowId] = useState("");
   const [isTicketOpen, setIsTicketOpen] = useState(false);
   const [showMismatchModal, setShowMismatchModal] = useState(false);
   const [showTicketAttachmentModal, setShowTicketAttachmentModal] = useState(false);
@@ -238,6 +239,63 @@ export const ClearanceRequestFlow = ({
         (item.inventoryStatus === VOUCHER_INVENTORY_STATUS.ASSIGNED &&
           item.assignedToRequestId === requestId),
     );
+  };
+
+  const handleAgentAutoAssignCodes = () => {
+    const validQueue = certificationQueue.filter((row) => row.verifyOrCrDone);
+
+    const unassignedRows = validQueue.filter((r) => !r.voucherAssigned);
+    if (unassignedRows.length === 0) {
+      setQueueRows((prev) => prev.filter((row) => !row.verifyOrCrError));
+      setStep((prev) => prev + 1);
+      return;
+    }
+
+    const availableCredits = voucherInventory.filter(
+      (item) => item.inventoryStatus === VOUCHER_INVENTORY_STATUS.AVAILABLE,
+    );
+
+    if (availableCredits.length < unassignedRows.length) {
+      alert("Insufficient Transaction Credits. Please purchase more credits to proceed.");
+      return;
+    }
+
+    let currentCredits = [...availableCredits];
+    const updatedRows = validQueue.map((row) => {
+      if (row.voucherAssigned) return row;
+      const creditToUse = currentCredits.shift();
+      return {
+        ...row,
+        voucherId: creditToUse.voucherId,
+        voucherCode: creditToUse.voucherCode,
+        voucherReferenceNo: creditToUse.voucherCode,
+        voucherAssigned: true,
+        voucherStatus: "VOUCHER_ISSUED",
+      };
+    });
+
+    setQueueRows((prev) => {
+      const withoutFailed = prev.filter((row) => !row.verifyOrCrError);
+      return withoutFailed.map((row) => {
+        const updated = updatedRows.find((u) => u.requestId === row.requestId);
+        return updated ? updated : row;
+      });
+    });
+
+    updateVoucherInventory((inventoryRows) => {
+      let newInventory = [...inventoryRows];
+      updatedRows.forEach((row) => {
+        if (row.voucherId) {
+          newInventory = voucherInventoryService.assignVoucherToRequest(newInventory, {
+            voucherId: row.voucherId,
+            requestId: row.requestId,
+          });
+        }
+      });
+      return newInventory;
+    });
+
+    setStep((prev) => prev + 1);
   };
 
   const clearOrCrForm = () => {
@@ -424,20 +482,22 @@ export const ClearanceRequestFlow = ({
   const handleAddToQueue = () => {
     if (!isAgent) return;
 
-    const orOk =
-      orNumber &&
-      orCr.mvFileNumber &&
-      orCr.engineNumber &&
-      orCr.chassisNumber &&
-      orCr.mvFileNumber !== "Extracting...";
-    const crOk =
-      crNumber &&
-      crCr.mvFileNumber &&
-      crCr.engineNumber &&
-      crCr.chassisNumber &&
-      crCr.mvFileNumber !== "Extracting...";
-    const match = !vehicleMismatch;
-    if (!(orOk && crOk && match)) return;
+    if (vehicleOption !== "new") {
+      const orOk =
+        orNumber &&
+        orCr.mvFileNumber &&
+        orCr.mvFileNumber !== "Extracting...";
+      const crOk =
+        crNumber &&
+        crCr.mvFileNumber &&
+        crCr.engineNumber &&
+        crCr.chassisNumber &&
+        crCr.mvFileNumber !== "Extracting...";
+      const match = !vehicleMismatch;
+      if (!(orOk && crOk && match)) return;
+    } else {
+      if (!orCr.engineNumber || !orCr.chassisNumber) return;
+    }
 
     const row = {
       requestId: makeRequestId(),
@@ -638,7 +698,7 @@ export const ClearanceRequestFlow = ({
 
   const toggleSelectAllMvcMecRows = () => {
     const selectableIds = certificationQueue
-      .filter((row) => row.mvcMecUploaded)
+      .filter((row) => row.mvcMecUploaded && row.mvcMecValidationState !== VALIDATION_STATE.PASSED)
       .map((row) => row.requestId);
 
     setSelectedMvcMecRequestIds((prev) =>
@@ -652,9 +712,9 @@ export const ClearanceRequestFlow = ({
     selectedMvcMecRequestIds.includes(row.requestId),
   );
   const allMvcMecSelectableSelected =
-    certificationQueue.some((row) => row.mvcMecUploaded) &&
+    certificationQueue.some((row) => row.mvcMecUploaded && row.mvcMecValidationState !== VALIDATION_STATE.PASSED) &&
     certificationQueue
-      .filter((row) => row.mvcMecUploaded)
+      .filter((row) => row.mvcMecUploaded && row.mvcMecValidationState !== VALIDATION_STATE.PASSED)
       .every((row) => selectedMvcMecRequestIds.includes(row.requestId));
   const hasSelectedMvcMecRows = selectedMvcMecRows.length > 0;
 
@@ -897,7 +957,8 @@ export const ClearanceRequestFlow = ({
   };
 
   useEffect(() => {
-    if (isAgent || step !== 4) return;
+    if (!isAgent && step !== 4) return;
+    if (isAgent && (step !== 3 || !verifyingAgentRowId)) return;
     if (!verifyOrCrDone && !verifyingOrCr && !verifyOrCrError) {
       setVerifyingOrCr(true);
       setVerifyOrCrError("");
@@ -910,14 +971,34 @@ export const ClearanceRequestFlow = ({
           setVerifyOrCrDone(false);
           const errorMsg = "No matching records found in the LTO Database. Please check your OR/CR documents.";
           setVerifyOrCrError(errorMsg);
-          saveCitizenRequest({ verifyOrCrDone: false, verifyOrCrError: errorMsg });
+          if (isAgent) {
+            setQueueRows((prev) =>
+              prev.map((r) =>
+                r.requestId === verifyingAgentRowId
+                  ? { ...r, verifyOrCrDone: false, verifyOrCrError: errorMsg }
+                  : r,
+              ),
+            );
+          } else {
+            saveCitizenRequest({ verifyOrCrDone: false, verifyOrCrError: errorMsg });
+          }
         } else {
           setVerifyOrCrDone(true);
-          saveCitizenRequest({ verifyOrCrDone: true, verifyOrCrError: "" });
+          if (isAgent) {
+            setQueueRows((prev) =>
+              prev.map((r) =>
+                r.requestId === verifyingAgentRowId
+                  ? { ...r, verifyOrCrDone: true, verifyOrCrError: "" }
+                  : r,
+              ),
+            );
+          } else {
+            saveCitizenRequest({ verifyOrCrDone: true, verifyOrCrError: "" });
+          }
         }
       }, 1500);
     }
-  }, [isAgent, step, verifyOrCrDone, verifyingOrCr, verifyOrCrError, orCr, crCr]);
+  }, [isAgent, step, verifyingAgentRowId, verifyOrCrDone, verifyingOrCr, verifyOrCrError, orCr, crCr]);
 
   const handleSubmitTicket = async (selectedMismatches = null) => {
     setIsSubmittingTicket(true);
@@ -1139,20 +1220,27 @@ export const ClearanceRequestFlow = ({
 
   const canNext = () => {
     if (isAgent) {
-      if (step === 1) return certificationQueue.length > 0;
+      if (step === 1) {
+        if (vehicleOption) return Boolean(transactionType);
+        return Boolean(vehicleOption);
+      }
       if (step === 2) {
-        return (
-          certificationQueue.length > 0 &&
-          certificationQueue.every((row) => Boolean(row.voucherId))
-        );
+        return certificationQueue.length > 0;
       }
       if (step === 3) {
+        return (
+          certificationQueue.length > 0 &&
+          certificationQueue.some((row) => row.verifyOrCrDone) &&
+          certificationQueue.every((row) => row.verifyOrCrDone || row.verifyOrCrError)
+        );
+      }
+      if (step === 4) {
         return (
           certificationQueue.length > 0 &&
           certificationQueue.every((row) => row.hpgStatus === HPG_STATUS.APPROVED)
         );
       }
-      if (step === 4) {
+      if (step === 5) {
         return (
           certificationQueue.length > 0 &&
           certificationQueue.every(
@@ -1190,7 +1278,11 @@ export const ClearanceRequestFlow = ({
   };
 
   const nextStep = () => {
-    const maxStep = isAgent ? 5 : 8;
+    if (isAgent && step === 3) {
+      handleAgentAutoAssignCodes();
+      return;
+    }
+    const maxStep = isAgent ? 6 : 8;
     if (step < maxStep && canNext()) setStep((prev) => prev + 1);
   };
 
@@ -1288,45 +1380,73 @@ export const ClearanceRequestFlow = ({
         </div>
 
         <div className="bg-white rounded-b-xl shadow-lg p-6">
-          {isAgent && step === 1 && (
+          {isAgent && step === 2 && (
             <div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <VehicleDocumentUploadCard
-                  title="OR"
-                  uploadLabel="Upload Official Receipt"
-                  onFile={handleOrUpload}
-                  preview={orPreview}
-                  numberLabel="or no."
-                  numberValue={orNumber}
-                  onNumberChange={(e) => setOrNumber(e.target.value)}
-                  numberPlaceholder="Auto-extracted from OR"
-                  vehicleLabel="Vehicle Details (from OR)"
-                  vehicleValues={orCr}
-                  onVehicleChange={updateOrCr}
-                />
+              {vehicleOption === "existing" ? (
+                <>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <VehicleDocumentUploadCard
+                      title="OR"
+                      uploadLabel="Upload Official Receipt"
+                      onFile={handleOrUpload}
+                      preview={orPreview}
+                      numberLabel="or no."
+                      numberValue={orNumber}
+                      onNumberChange={(e) => setOrNumber(e.target.value)}
+                      numberPlaceholder="Auto-extracted from OR"
+                      vehicleLabel="Vehicle Details (from OR)"
+                      vehicleValues={orCr}
+                      onVehicleChange={updateOrCr}
+                      hideEngineAndChassis={true}
+                    />
 
-                <VehicleDocumentUploadCard
-                  title="CR"
-                  uploadLabel="Upload Certificate of Registration"
-                  onFile={handleCrUpload}
-                  preview={crPreview}
-                  numberLabel="Cr no."
-                  numberValue={crNumber}
-                  onNumberChange={(e) => setCrNumber(e.target.value)}
-                  numberPlaceholder="Auto-extracted from CR"
-                  vehicleLabel="Vehicle Details (from CR)"
-                  vehicleValues={crCr}
-                  onVehicleChange={updateCrCr}
-                />
-              </div>
+                    <VehicleDocumentUploadCard
+                      title="CR"
+                      uploadLabel="Upload Certificate of Registration"
+                      onFile={handleCrUpload}
+                      preview={crPreview}
+                      numberLabel="Cr no."
+                      numberValue={crNumber}
+                      onNumberChange={(e) => setCrNumber(e.target.value)}
+                      numberPlaceholder="Auto-extracted from CR"
+                      vehicleLabel="Vehicle Details (from CR)"
+                      vehicleValues={crCr}
+                      onVehicleChange={updateCrCr}
+                    />
+                  </div>
 
-              {vehicleMismatch && (
-                <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
-                  <AlertTriangle size={18} className="text-red-500 shrink-0" />
-                  <p className="text-sm text-red-700">
-                    Vehicle details mismatch: Please ensure MV File Number, Engine Number, and Chassis Number match between OR and CR.
-                  </p>
-                </div>
+                  {vehicleMismatch && (
+                    <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
+                      <AlertTriangle size={18} className="text-red-500 shrink-0" />
+                      <p className="text-sm text-red-700">
+                        Vehicle details mismatch: Please ensure MV File Number, Engine Number, and Chassis Number match between OR and CR.
+                      </p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <Card className="p-6 max-w-lg mx-auto">
+                  <div className="text-center mb-6">
+                    <h3 className="text-lg font-bold text-gray-900 mb-1">New Vehicle Details</h3>
+                    <p className="text-sm text-gray-600">Please enter the engine and chassis numbers for your new vehicle.</p>
+                  </div>
+                  <div className="space-y-4">
+                    <Input
+                      label="Engine Number"
+                      value={orCr.engineNumber || ""}
+                      onChange={(e) => updateOrCr("engineNumber", e.target.value)}
+                      placeholder="Enter Engine Number"
+                      required
+                    />
+                    <Input
+                      label="Chassis Number"
+                      value={orCr.chassisNumber || ""}
+                      onChange={(e) => updateOrCr("chassisNumber", e.target.value)}
+                      placeholder="Enter Chassis Number"
+                      required
+                    />
+                  </div>
+                </Card>
               )}
 
               <Card className="mt-4 p-4 border border-blue-100 bg-blue-50/40">
@@ -1338,11 +1458,13 @@ export const ClearanceRequestFlow = ({
                   <Button
                     onClick={handleAddToQueue}
                     disabled={
-                      !orNumber ||
-                      !crNumber ||
-                      !orCr.mvFileNumber ||
-                      !crCr.mvFileNumber ||
-                      vehicleMismatch
+                      vehicleOption === "new"
+                        ? !orCr.engineNumber || !orCr.chassisNumber
+                        : !orNumber ||
+                          !crNumber ||
+                          !orCr.mvFileNumber ||
+                          !crCr.mvFileNumber ||
+                          vehicleMismatch
                     }
                   >
                     Add To Queue
@@ -1357,8 +1479,12 @@ export const ClearanceRequestFlow = ({
                       <thead>
                         <tr className="border-b border-blue-100 text-left">
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request ID</th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Plate</th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Owner</th>
+                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            {vehicleOption === "new" ? "Engine No." : "Plate"}
+                          </th>
+                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            {vehicleOption === "new" ? "Chassis No." : "Owner"}
+                          </th>
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                         </tr>
                       </thead>
@@ -1366,8 +1492,12 @@ export const ClearanceRequestFlow = ({
                         {certificationQueue.map((row) => (
                           <tr key={row.requestId} className="border-b border-blue-50">
                             <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
-                            <td className="py-2 text-gray-700">{row.plateNumber || "-"}</td>
-                            <td className="py-2 text-gray-700">{row.orCr?.ownerName || row.crCr?.ownerName || "-"}</td>
+                            <td className="py-2 text-gray-700">
+                              {vehicleOption === "new" ? row.orCr?.engineNumber || "-" : row.plateNumber || "-"}
+                            </td>
+                            <td className="py-2 text-gray-700">
+                              {vehicleOption === "new" ? row.orCr?.chassisNumber || "-" : row.orCr?.ownerName || row.crCr?.ownerName || "-"}
+                            </td>
                             <td className="py-2 text-gray-600">{row.status || "OR_CR_UPLOADED"}</td>
                           </tr>
                         ))}
@@ -1379,86 +1509,98 @@ export const ClearanceRequestFlow = ({
             </div>
           )}
 
-          {isAgent && step === 2 && (
+          {isAgent && step === 3 && (
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <FileText size={18} className="text-[#0059b5]" />
-                <h3 className="text-base font-bold text-gray-900">Assign Code (Bulk)</h3>
+                <h3 className="text-base font-bold text-gray-900">Verify OR/CR (Bulk)</h3>
               </div>
 
-              {certificationQueue.length === 0 ? (
-                <p className="text-sm text-gray-500">No active requests available in queue.</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-200 text-left">
-                        <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
-                        <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Plate</th>
-                        <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Assigned Code</th>
-                        <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {certificationQueue.map((row) => {
-                        const options = assignableVouchersForRequest(row.requestId);
-                        return (
-                          <tr key={row.requestId} className="border-b border-gray-100">
-                            <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
-                            <td className="py-2 text-gray-700">{row.plateNumber || "-"}</td>
-                            <td className="py-2 text-gray-700 font-mono text-xs">{row.voucherReferenceNo || "-"}</td>
-                            <td className="py-2">
-                              <select
-                                value={row.voucherId || ""}
-                                onChange={(e) => assignVoucherForRow(row.requestId, e.target.value)}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-800 focus:outline-none focus:border-blue-500"
-                              >
-                                <option value="">Select voucher</option>
-                                {options.map((item) => (
-                                  <option key={item.voucherId} value={item.voucherId}>
-                                    {item.voucherCode} - {item.inventoryStatus}
-                                  </option>
-                                ))}
-                              </select>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+              {verifyingAgentRowId && verifyingOrCr ? (
+                <div className="flex flex-col items-center justify-center py-6 mb-4">
+                  <Spinner size="md" />
+                  <p className="text-sm text-gray-500 mt-2">Connecting to LTO Database...</p>
                 </div>
-              )}
-            </Card>
-          )}
-
-          {isAgent && step === 3 && (
-            <Card className="p-5">
-              <div className="flex items-center justify-between gap-3 mb-4 pb-2 border-b border-gray-200">
-                <div className="flex items-center gap-2">
-                  <CheckCircle size={18} className="text-[#0059b5]" />
-                  <h3 className="text-base font-bold text-gray-900">HPG Portal (Bulk)</h3>
+              ) : verifyingAgentRowId && verifyOrCrDone ? (
+                <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-5 mb-4">
+                  <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
+                    <CheckCircle size={20} className="text-green-500" />
+                    <h4 className="font-bold text-gray-900">LTO Verification Successful</h4>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-6 text-sm">
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Make</p>
+                      <p className="font-medium text-gray-900">{orCr.make || "TOYOTA"}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Series</p>
+                      <p className="font-medium text-gray-900">{orCr.series || "VIOS"}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Year Model</p>
+                      <p className="font-medium text-gray-900">{orCr.yearModel || "2020"}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Color</p>
+                      <p className="font-medium text-gray-900">{orCr.color || "WHITE"}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Owner</p>
+                      <p className="font-medium text-gray-900">{orCr.ownerName || "JUAN DELA CRUZ"}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Classification</p>
+                      <p className="font-medium text-gray-900">{orCr.classification || "PRIVATE"}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Vehicle Type</p>
+                      <p className="font-medium text-gray-900">{orCr.vehicleType || "CAR"}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Engine Number</p>
+                      <p className="font-medium text-gray-900">{orCr.engineNumber || "ENG-098765"}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Chassis No.</p>
+                      <p className="font-medium text-gray-900">{orCr.chassisNumber || "CHA-123456"}</p>
+                    </div>
+                    {vehicleOption === "existing" && (
+                      <div>
+                        <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Plate Number</p>
+                        <p className="font-medium text-gray-900">{orCr.plateNumber || "ABC1234"}</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end">
+                    <Button onClick={() => setShowMismatchModal(true)} variant="secondary">
+                      Report Data Mismatch
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setHpgForAll(HPG_STATUS.INSPECTION)}
-                  >
-                    Mark All Under Inspection
-                  </Button>
-                  <Button size="sm" onClick={() => setHpgForAll(HPG_STATUS.APPROVED)}>
-                    Mark All Approved
-                  </Button>
+              ) : verifyingAgentRowId && verifyOrCrError ? (
+                <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle size={20} className="text-red-500 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-sm font-bold text-red-900 mb-1">Verification Failed</h4>
+                      <p className="text-sm text-red-700 mb-3">{verifyOrCrError}</p>
+                      <Button variant="danger" size="sm" onClick={() => setShowTicketAttachmentModal(true)}>
+                        <FileText size={16} /> Open Ticket
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : null}
 
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 text-left">
                       <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
-                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Plate</th>
-                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">HPG Status</th>
+                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                        {vehicleOption === "new" ? "Engine No." : "Plate"}
+                      </th>
+                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                       <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Action</th>
                     </tr>
                   </thead>
@@ -1466,31 +1608,29 @@ export const ClearanceRequestFlow = ({
                     {certificationQueue.map((row) => (
                       <tr key={row.requestId} className="border-b border-gray-100">
                         <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
-                        <td className="py-2 text-gray-700">{row.plateNumber || "-"}</td>
-                        <td className="py-2 text-gray-700">{row.hpgStatus || HPG_STATUS.PENDING}</td>
+                        <td className="py-2 text-gray-700">
+                          {vehicleOption === "new" ? row.orCr?.engineNumber || "-" : row.plateNumber || "-"}
+                        </td>
                         <td className="py-2">
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              onClick={() => setHpgForRow(row.requestId, HPG_STATUS.INSPECTION)}
-                            >
-                              Inspection
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => setHpgForRow(row.requestId, HPG_STATUS.APPROVED)}
-                            >
-                              Approve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="danger"
-                              onClick={() => setHpgForRow(row.requestId, HPG_STATUS.REJECTED)}
-                            >
-                              Reject
-                            </Button>
-                          </div>
+                          {row.verifyOrCrDone ? (
+                            <span className="text-green-600 font-semibold text-xs">VERIFIED</span>
+                          ) : row.verifyOrCrError ? (
+                            <span className="text-red-600 font-semibold text-xs">FAILED</span>
+                          ) : (
+                            <span className="text-amber-600 font-semibold text-xs">PENDING</span>
+                          )}
+                        </td>
+                        <td className="py-2">
+                           <Button size="sm" onClick={() => {
+                             setOrCr(row.orCr || emptyVehicle);
+                             setCrCr(row.crCr || emptyVehicle);
+                             setVerifyOrCrDone(row.verifyOrCrDone || false);
+                             setVerifyOrCrError(row.verifyOrCrError || "");
+                             setVerifyingAgentRowId(row.requestId);
+                             if (row.verifyOrCrError) setShowTicketAttachmentModal(true);
+                           }}>
+                             {verifyingAgentRowId === row.requestId && verifyingOrCr ? "Verifying..." : "Verify"}
+                           </Button>
                         </td>
                       </tr>
                     ))}
@@ -1500,17 +1640,51 @@ export const ClearanceRequestFlow = ({
             </Card>
           )}
 
+
+
           {isAgent && step === 4 && (
+            <Card className="p-5">
+              <div className="flex items-center justify-between gap-3 mb-4 pb-2 border-b border-gray-200">
+                <div className="flex items-center gap-2">
+                  <CheckCircle size={18} className="text-[#0059b5]" />
+                  <h3 className="text-base font-bold text-gray-900">HPG Portal (Bulk)</h3>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => setHpgForAll(HPG_STATUS.APPROVED)}>
+                    <CheckCircle size={16} className="mr-1 inline" /> Mark All Verified by HPG
+                  </Button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 text-left">
+                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
+                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Transaction Code</th>
+                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">HPG Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {certificationQueue.map((row) => (
+                      <tr key={row.requestId} className="border-b border-gray-100">
+                        <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
+                        <td className="py-2 font-mono font-semibold text-gray-700">{row.voucherCode || "-"}</td>
+                        <td className="py-2 text-gray-700">{row.hpgStatus === HPG_STATUS.APPROVED ? "VERIFIED" : (row.hpgStatus || HPG_STATUS.PENDING)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+
+          {isAgent && step === 5 && (
             <div className="space-y-5">
               <Card className="p-5">
-                <div className="flex items-center justify-between gap-3 mb-4 pb-2 border-b border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <Upload size={18} className="text-[#0059b5]" />
-                    <h3 className="text-base font-bold text-gray-900">Upload MVCC/MEC (Bulk)</h3>
-                  </div>
-                  <Button onClick={uploadMvcMecForAll} variant="secondary">
-                    Auto Fill All
-                  </Button>
+                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
+                  <Upload size={18} className="text-[#0059b5]" />
+                  <h3 className="text-base font-bold text-gray-900">Upload MVCC/MEC (Bulk)</h3>
                 </div>
 
                 <div className="mb-4">
@@ -1525,7 +1699,7 @@ export const ClearanceRequestFlow = ({
                     <option value="">Select request for MVCC/MEC upload</option>
                     {selectableMvcMecRows.map((row) => (
                       <option key={row.requestId} value={row.requestId}>
-                        {row.requestId} - {row.plateNumber || "NO_PLATE"}
+                        {row.requestId} - {vehicleOption === "new" ? "New Vehicle" : (row.plateNumber || "NO PLATE")}
                       </option>
                     ))}
                   </select>
@@ -1692,7 +1866,14 @@ export const ClearanceRequestFlow = ({
                             />
                           </th>
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Plate</th>
+                          {vehicleOption === "new" ? (
+                            <>
+                              <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Engine No.</th>
+                              <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Chassis No.</th>
+                            </>
+                          ) : (
+                            <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Plate</th>
+                          )}
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">MVCC</th>
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">MEC</th>
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">DCI Validation</th>
@@ -1702,17 +1883,26 @@ export const ClearanceRequestFlow = ({
                         {certificationQueue.map((row) => (
                           <tr key={row.requestId} className="border-b border-gray-100">
                             <td className="py-2 align-middle pr-3">
-                              <input
-                                type="checkbox"
-                                className="h-4 w-4 rounded border-gray-300 text-[#0059b5] focus:ring-[#0059b5]"
-                                checked={selectedMvcMecRequestIds.includes(row.requestId)}
-                                onChange={() => toggleSelectedMvcMecRow(row.requestId)}
-                                disabled={!row.mvcMecUploaded}
-                                aria-label={`Select MVC and MEC row for ${row.requestId}`}
-                              />
+                              {row.mvcMecValidationState !== VALIDATION_STATE.PASSED && (
+                                <input
+                                  type="checkbox"
+                                  className="h-4 w-4 rounded border-gray-300 text-[#0059b5] focus:ring-[#0059b5]"
+                                  checked={selectedMvcMecRequestIds.includes(row.requestId)}
+                                  onChange={() => toggleSelectedMvcMecRow(row.requestId)}
+                                  disabled={!row.mvcMecUploaded}
+                                  aria-label={`Select MVC and MEC row for ${row.requestId}`}
+                                />
+                              )}
                             </td>
                             <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
-                            <td className="py-2 text-gray-700">{row.plateNumber || "-"}</td>
+                            {vehicleOption === "new" ? (
+                              <>
+                                <td className="py-2 text-gray-700">{row.orCr?.engineNumber || "-"}</td>
+                                <td className="py-2 text-gray-700">{row.orCr?.chassisNumber || "-"}</td>
+                              </>
+                            ) : (
+                              <td className="py-2 text-gray-700">{row.plateNumber || "-"}</td>
+                            )}
                             <td className="py-2 text-gray-700 font-mono text-xs">{row.mvcData?.mvcNo || "-"}</td>
                             <td className="py-2 text-gray-700 font-mono text-xs">{row.mecData?.plateNo || "-"}</td>
                             <td className="py-2 text-gray-700">
@@ -1729,7 +1919,7 @@ export const ClearanceRequestFlow = ({
             </div>
           )}
 
-          {isAgent && step === 5 && (
+          {isAgent && step === 6 && (
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <FileText size={18} className="text-[#0059b5]" />
@@ -1753,7 +1943,14 @@ export const ClearanceRequestFlow = ({
                         <tr className="border-b border-gray-200 text-left">
                           <th className="pb-2 w-28" />
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Plate</th>
+                          {vehicleOption === "new" ? (
+                            <>
+                              <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Engine No.</th>
+                              <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Chassis No.</th>
+                            </>
+                          ) : (
+                            <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Plate</th>
+                          )}
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Certificate</th>
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                         </tr>
@@ -1765,7 +1962,14 @@ export const ClearanceRequestFlow = ({
                               <CertificateActionButtons row={row} />
                             </td>
                             <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
-                            <td className="py-2 text-gray-700">{row.plateNumber || "-"}</td>
+                            {vehicleOption === "new" ? (
+                              <>
+                                <td className="py-2 text-gray-700">{row.orCr?.engineNumber || "-"}</td>
+                                <td className="py-2 text-gray-700">{row.orCr?.chassisNumber || "-"}</td>
+                              </>
+                            ) : (
+                              <td className="py-2 text-gray-700">{row.plateNumber || "-"}</td>
+                            )}
                             <td className="py-2 font-mono text-xs font-semibold text-gray-900">{row.certificateNo || "-"}</td>
                             <td className="py-2 text-gray-700">{row.certificateNo ? "CERTIFICATE_ISSUED" : "READY"}</td>
                           </tr>
@@ -1784,7 +1988,7 @@ export const ClearanceRequestFlow = ({
             </Card>
           )}
 
-          {!isAgent && step === 1 && (
+          {step === 1 && (
             <Card className="p-8">
               <div className="text-center mb-8">
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Vehicle Option</h3>
