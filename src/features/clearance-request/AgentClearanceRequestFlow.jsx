@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
@@ -52,10 +52,8 @@ import {
   mergeVehicleFields,
 } from "./utils/clearanceRequestUtils";
 import { useOrCrOcr } from "./hooks/useOrCrOcr";
-import { useCitizenPayment } from "./hooks/useCitizenPayment";
-import { useAgentQueue } from "./hooks/useAgentQueue";
 
-export const ClearanceRequestFlow = () => {
+export const AgentClearanceRequestFlow = () => {
   const { error: showError, success: showSuccessAlert } = useAlert();
   const { role } = useAuth();
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
@@ -103,8 +101,8 @@ export const ClearanceRequestFlow = () => {
     ) ||
     null;
   const onCancel = () => navigate("/dci-access/requests");
-  const isAgent = role === "agent_fixer";
-  const flowSteps = isAgent ? AGENT_STEPS : CITIZEN_STEPS;
+  const isAgent = true;
+  const flowSteps = AGENT_STEPS;
   const maxStep = flowSteps.length;
   const handledPaymentTransactionRef = useRef("");
   const hasSyncedStep = useRef(false);
@@ -171,7 +169,7 @@ export const ClearanceRequestFlow = () => {
 
   const [isVerifyingDocuments, setIsVerifyingDocuments] = useState(false);
   const [paymentDone, setPaymentDone] = useState(
-    Boolean(isAgent || selectedRequest?.paymentDone),
+    true,
   );
   const [voucherCode, setVoucherCode] = useState(
     selectedRequest?.voucherCode || selectedRequest?.voucherReferenceNo || "",
@@ -208,13 +206,7 @@ export const ClearanceRequestFlow = () => {
     () => selectedRequest?.mecData || emptyMec,
   );
 
-  const [agentMvcPreview, setAgentMvcPreview] = useState(null);
-  const [agentMvcFileName, setAgentMvcFileName] = useState("");
-  const [agentMvcData, setAgentMvcData] = useState(emptyMvc);
-  const [agentMecPreview, setAgentMecPreview] = useState(null);
-  const [agentMecFileName, setAgentMecFileName] = useState("");
-  const [agentMecData, setAgentMecData] = useState(emptyMec);
-  const [agentMvcMecId, setAgentMvcMecId] = useState("");
+
 
   const [isIssuingCertificate, setIsIssuingCertificate] = useState(false);
   const [certificateNo, setCertificateNo] = useState(
@@ -280,59 +272,14 @@ export const ClearanceRequestFlow = () => {
     setValidationErrors((prev) => ({ ...prev, [field]: false }));
   };
 
-  // ── useAgentQueue hook ────────────────────────────────────────────────────
-  const agentQueue = useAgentQueue({
-    isAgent,
-    role,
-    step,
-    selectedRequest,
-    availableVoucherRequests,
-    voucherInventory,
-    setVoucherInventory,
-    onSaveRequest,
-    showError,
-    orCr,
-    crCr,
-    orNumber,
-    crNumber,
-    orPreview,
-    crPreview,
-    hasMismatch,
-    setOrPreview,
-    setCrPreview,
-    setOrNumber,
-    setCrNumber,
-    setOrCr,
-    setCrCr,
-    setOcrUploadState: null,
-    emptyOcrUploadState,
-  });
-  const {
-    queueRows, setQueueRows,
-    selectedMvcMecIds, setSelectedMvcMecIds,
-    isIssuingBulk,
-    certificationQueue, fallbackRows,
-    pendingMvcMecRows, selectableMvcMecRows,
-    selectedMvcMecRows, allMvcMecSelectableSelected, hasSelectedMvcMecRows,
-    persistRow, clearOrCrForm,
-    handleAddToQueue,
-    setHpgForRow, setHpgForAll,
-    uploadMvcMecForRow, uploadMvcMecForAll,
-    validateMvcMecForRow, validateSelectedMvcMecRows,
-    toggleSelectedMvcMecRow, toggleSelectAllMvcMecRows,
-    handleAddAgentMvcMecToQueue: _handleAddAgentMvcMecToQueue,
-    issueCertificatesForAll, updateVoucherInventory,
-    getQueueTimestamp,
-  } = agentQueue;
 
-  // ── useOrCrOcr hook ────────────────────────────────────────────────────────
+
   const ocrHook = useOrCrOcr({
-    orCr, crCr, mvcData, mecData, agentMvcData, agentMecData,
-    setOrCr, setCrCr, setMvcData, setMecData, setAgentMvcData, setAgentMecData,
+    orCr, crCr, mvcData, mecData,
+    setOrCr, setCrCr, setMvcData, setMecData,
     setOrNumber, setCrNumber,
     setOrPreview, setCrPreview, setMvcPreview, setMecPreview,
-    setAgentMvcPreview, setAgentMecPreview,
-    setMvcFileName, setMecFileName, setAgentMvcFileName, setAgentMecFileName,
+    setMvcFileName, setMecFileName,
     setValidationErrors,
     setCitizenValidationState, setCitizenValidationMessage,
     saveCitizenRequest,
@@ -343,7 +290,6 @@ export const ClearanceRequestFlow = () => {
     setOcrState,
     handleOrUpload, handleCrUpload,
     handleMvcUpload, handleMecUpload,
-    handleAgentMvcUpload, handleAgentMecUpload,
   } = ocrHook;
 
 
@@ -408,17 +354,7 @@ export const ClearanceRequestFlow = () => {
     return record;
   };
 
-  const handleAddAgentMvcMecToQueue = () => {
-    _handleAddAgentMvcMecToQueue(
-      agentMvcMecId, agentMvcData, agentMecData,
-      agentMvcPreview, agentMecPreview,
-      agentMvcFileName, agentMecFileName,
-      () => {
-        setAgentMvcPreview(null); setAgentMvcFileName(""); setAgentMvcData(emptyMvc);
-        setAgentMecPreview(null); setAgentMecFileName(""); setAgentMecData(emptyMec);
-      }
-    );
-  };
+
 
   const validateCitizenMvcMecStep = async () => {
     if (!isDocumentComplete(mvcData) || !isDocumentComplete(mecData)) return;
@@ -432,7 +368,7 @@ export const ClearanceRequestFlow = () => {
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
       await saveCitizenRequest({
-        currentStep: isAgent ? 5 : 6,
+        currentStep: 5,
         status: "MVC_MEC_VALIDATED",
         mvcData,
         mecData,
@@ -443,7 +379,7 @@ export const ClearanceRequestFlow = () => {
       setCitizenValidationState(VALIDATION_STATE.PASSED);
       setCitizenValidationMessage("Validated by DCI portal.");
       setRequestStatus("MVC_MEC_VALIDATED");
-      setStep(isAgent ? 5 : 6);
+      setStep(5);
     } catch (error) {
       const errMsg = error?.response?.data?.error || error?.message || "An error occurred during DCI validation.";
       setCitizenValidationState(VALIDATION_STATE.FAILED);
@@ -451,7 +387,7 @@ export const ClearanceRequestFlow = () => {
       setRequestStatus("MVC_MEC_VALIDATION_PENDING");
 
       await saveCitizenRequest({
-        currentStep: isAgent ? 4 : 5,
+        currentStep: 4,
         status: "MVC_MEC_VALIDATION_PENDING",
         mvcData,
         mecData,
@@ -479,9 +415,9 @@ export const ClearanceRequestFlow = () => {
     setTimeout(() => {
       setIsIssuingCertificate(false);
       setRequestStatus("CERTIFICATE_ISSUED");
-      setStep(isAgent ? 5 : 6);
+      setStep(5);
       saveCitizenRequest({
-        currentStep: isAgent ? 5 : 6,
+        currentStep: 5,
         status: "CERTIFICATE_ISSUED",
         certificateNo: "", // Let backend generate a unique certificate number
         clearanceReferenceNo: "",
@@ -504,22 +440,7 @@ export const ClearanceRequestFlow = () => {
     requestStatus
   ]);
 
-  // ── useCitizenPayment hook ──────────────────────────────────────────────────
-  const {
-    processingPayment,
-    issuingVoucher,
-    fetchVoucherFailed,
-    handleProceedToPayment,
-  } = useCitizenPayment({
-    id, step, isAgent, orCr, crCr,
-    paymentDone, voucherAssigned, voucherCode, hpgVerified,
-    paymentTransactionId, selectedRequest,
-    setPaymentDone, setVoucherCode, setVoucherAssigned,
-    setHpgVerified, setRequestStatus, setStep,
-    setAvailableVoucherRequests,
-    saveCitizenRequest,
-    showError, navigate,
-  });
+
 
   const handleDownload = async () => {
     if (!certificateNo) return;
@@ -723,32 +644,17 @@ export const ClearanceRequestFlow = () => {
     let engineNo = "";
     let chassisNo = "";
 
-    if (isAgent) {
-      if (currentStepNum === 1) {
-        plateNo = orCr?.plateNumber || crCr?.plateNumber || "";
-        make = orCr?.make || crCr?.make || "";
-        model = orCr?.series || crCr?.series || "";
-        mvFileNo = orCr?.mvFileNumber || crCr?.mvFileNumber || "";
-        engineNo = orCr?.engineNumber || crCr?.engineNumber || "";
-        chassisNo = orCr?.chassisNumber || crCr?.chassisNumber || "";
-      } else if (currentStepNum === 3) {
-        plateNo = agentMvcData?.plateNo || agentMecData?.plateNo || "";
-        engineNo = agentMvcData?.engineNo || agentMecData?.engineNoStencilled || "";
-        chassisNo = agentMvcData?.chassisNo || agentMecData?.chassisNoStencilled || "";
-      }
-    } else {
-      if (currentStepNum === 1) {
-        plateNo = orCr?.plateNumber || crCr?.plateNumber || "";
-        make = orCr?.make || crCr?.make || "";
-        model = orCr?.series || crCr?.series || "";
-        mvFileNo = orCr?.mvFileNumber || crCr?.mvFileNumber || "";
-        engineNo = orCr?.engineNumber || crCr?.engineNumber || "";
-        chassisNo = orCr?.chassisNumber || crCr?.chassisNumber || "";
-      } else if (currentStepNum === 5) {
-        plateNo = mvcData?.plateNo || "";
-        engineNo = mvcData?.engineNo || mecData?.engineNoStencilled || "";
-        chassisNo = mvcData?.chassisNo || mecData?.chassisNoStencilled || "";
-      }
+    if (currentStepNum === 1) {
+      plateNo = orCr?.plateNumber || crCr?.plateNumber || "";
+      make = orCr?.make || crCr?.make || "";
+      model = orCr?.series || crCr?.series || "";
+      mvFileNo = orCr?.mvFileNumber || crCr?.mvFileNumber || "";
+      engineNo = orCr?.engineNumber || crCr?.engineNumber || "";
+      chassisNo = orCr?.chassisNumber || crCr?.chassisNumber || "";
+    } else if (currentStepNum === 5) {
+      plateNo = mvcData?.plateNo || "";
+      engineNo = mvcData?.engineNo || mecData?.engineNoStencilled || "";
+      chassisNo = mvcData?.chassisNo || mecData?.chassisNoStencilled || "";
     }
 
     return {
@@ -848,7 +754,7 @@ export const ClearanceRequestFlow = () => {
       return;
     }
 
-    if ((isAgent && step === 4) || (!isAgent && step === 5)) {
+    if (step === 4) {
       await validateCitizenMvcMecStep();
       return;
     }
@@ -857,7 +763,7 @@ export const ClearanceRequestFlow = () => {
   };
 
   const canPrev = () => {
-    if (isAgent) return step > 1;
+    return step > 1;
 
     if (certificateNo) return false;
     if (processingPayment) return false;
@@ -870,10 +776,7 @@ export const ClearanceRequestFlow = () => {
     setStep((prev) => prev - 1);
   };
 
-  const finishBulk = () => {
-    onComplete?.({ rows: certificationQueue });
-    navigate("/dci-access/requests");
-  };
+
 
   const finishCitizen = () => {
     onComplete?.({
@@ -1071,69 +974,9 @@ export const ClearanceRequestFlow = () => {
             </div>
           )}
 
-          {!isAgent && step === 3 && (
-            <Card className="p-5">
-              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
-                <CreditCard size={18} className="text-[#0059b5]" />
-                <h3 className="text-base font-bold text-gray-900">Payment</h3>
-              </div>
-              <div className="bg-gray-50 rounded-lg p-5 mb-5 text-center">
-                <p className="text-sm text-gray-500 mb-1">
-                  Certificate Request Fee
-                </p>
-                <p className="text-3xl font-bold text-gray-900">PHP 60.00</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Single payment covers the whole request.
-                </p>
-              </div>
-              {processingPayment ? (
-                <div className="text-center py-8">
-                  <Spinner size="lg" />
-                  <p className="text-sm font-medium text-gray-700 mt-4 animate-pulse">
-                    Verifying Payment Status...
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Please wait while we confirm your transaction with the payment gateway.
-                  </p>
-                </div>
-              ) : paymentDone ? (
-                <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
-                  <CheckCircle
-                    size={44}
-                    className="text-green-600 mx-auto mb-3"
-                  />
-                  <h4 className="text-lg font-bold text-green-800">
-                    Payment Successful
-                  </h4>
-                  {issuingVoucher ? (
-                    <div className="mt-4 flex flex-col items-center justify-center gap-2">
-                      <Spinner size="md" />
-                      <p className="text-xs text-gray-500">
-                        Generating voucher reference...
-                      </p>
-                    </div>
-                  ) : voucherAssigned ? (
-                    <div className="mt-3">
-                      <p className="text-xs text-gray-600 mt-1.5 max-w-md mx-auto leading-relaxed">
-                        The voucher has been issued for your vehicle (Plate: <strong className="font-bold text-gray-900">{orCr.plateNumber || "N/A"}</strong>).
-                        Please click <strong className="font-semibold text-gray-900">Next</strong> to proceed to the HPG Verification step.
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-500 mt-3">
-                      Voucher will be issued shortly.
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <Button onClick={handleProceedToPayment} className="w-full">
-                  <CreditCard size={16} /> Proceed to Payment
-                </Button>
-              )}
-            </Card>
-          )}
 
-          {((!isAgent && step === 4) || (isAgent && step === 3)) && (
+
+          {step === 3 && (
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <FileText size={18} className="text-[#0059b5]" />
@@ -1189,7 +1032,7 @@ export const ClearanceRequestFlow = () => {
             </Card>
           )}
 
-          {((!isAgent && step === 5) || (isAgent && step === 4)) && (
+          {step === 4 && (
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <MvcMecUploadCard
@@ -1336,7 +1179,7 @@ export const ClearanceRequestFlow = () => {
             </div>
           )}
 
-          {((!isAgent && step >= 6) || (isAgent && step >= 5)) && (
+          {step >= 5 && (
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <FileText size={18} className="text-[#0059b5]" />
@@ -1409,20 +1252,7 @@ export const ClearanceRequestFlow = () => {
             </div>
             {step < flowSteps.length ? (
               <div className="flex items-center gap-3">
-                {!canNext() && step === 2 && !isAgent && (orPreview || crPreview) && (
-                  <div className="text-[11px] text-red-600 space-y-0.5 font-medium text-right mr-2">
-                    {orPreview && (!orNumber || orNumber === "Extracting...") && <p>• Missing OR Number</p>}
-                    {orPreview && getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS)}</p>}
-                    {crPreview && (!crNumber || crNumber === "Extracting...") && <p>• Missing CR Number</p>}
-                    {crPreview && getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS)}</p>}
-                  </div>
-                )}
-                {!canNext() && step === 5 && !isAgent && (mvcPreview || mecPreview) && (
-                  <div className="text-[11px] text-red-600 space-y-0.5 font-medium text-right mr-2">
-                    {mvcPreview && getMissingFieldsText(mvcData, "MVCC") && <p>• {getMissingFieldsText(mvcData, "MVCC")}</p>}
-                    {mecPreview && getMissingFieldsText(mecData, "MEC") && <p>• {getMissingFieldsText(mecData, "MEC")}</p>}
-                  </div>
-                )}
+
                 <Button onClick={nextStep} disabled={!canNext() || isVerifyingDocuments}>
                   {isVerifyingDocuments ? "Verifying..." : "Next"} <ChevronRight size={16} />
                 </Button>

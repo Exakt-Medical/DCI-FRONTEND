@@ -16,7 +16,6 @@ import { fetchMyRequests } from "../../../services/certificateRequestService";
 export const useCitizenPayment = ({
   id,
   step,
-  isAgent,
   orCr,
   crCr,
   paymentDone,
@@ -45,7 +44,7 @@ export const useCitizenPayment = ({
   // ── Initiate TLPE Payment ───────────────────────────────────────────────────
 
   const handleProceedToPayment = async () => {
-    if (isAgent || processingPayment) return;
+    if (processingPayment) return;
 
     const storedProfile  = JSON.parse(localStorage.getItem("userProfile") || "{}");
     const storedFirstName = localStorage.getItem("firstname") || storedProfile.firstName || "";
@@ -126,7 +125,7 @@ export const useCitizenPayment = ({
   // ── Verify Payment Redirect ──────────────────────────────────────────────────
 
   useEffect(() => {
-    if (isAgent || !paymentTransactionId) return;
+    if (!paymentTransactionId) return;
     if (handledPaymentTransactionRef.current === paymentTransactionId) return;
     if (paymentDone || step >= 3) return;
 
@@ -204,14 +203,13 @@ export const useCitizenPayment = ({
       }
     };
   }, [
-    isAgent, navigate, paymentTransactionId, id, showError, paymentDone, step,
+    navigate, paymentTransactionId, id, showError, paymentDone, step,
     saveCitizenRequest, setPaymentDone, setRequestStatus, setStep
   ]);
 
   // ── Fetch Voucher after Payment ────────────────────────────────────────────
 
   useEffect(() => {
-    if (isAgent) return;
     if (step !== 3 || !paymentDone || voucherAssigned || issuingVoucher || fetchVoucherFailed) return;
 
     setIssuingVoucher(true);
@@ -258,7 +256,7 @@ export const useCitizenPayment = ({
 
     fetchVoucher();
   }, [
-    isAgent, issuingVoucher, paymentDone, step, voucherAssigned,
+    issuingVoucher, paymentDone, step, voucherAssigned,
     voucherCode, fetchVoucherFailed, paymentTransactionId,
     selectedRequest?.tlpeTransactionId,
   ]);
@@ -266,7 +264,7 @@ export const useCitizenPayment = ({
   // ── Poll for HPG Verification ──────────────────────────────────────────────
 
   useEffect(() => {
-    const isHpgStep = isAgent ? step === 3 : step === 4;
+    const isHpgStep = step === 4;
     if (!isHpgStep || hpgVerified) return;
 
     let intervalId;
@@ -299,7 +297,7 @@ export const useCitizenPayment = ({
       isActive = false;
       clearInterval(intervalId);
     };
-  }, [id, step, hpgVerified, isAgent, setAvailableVoucherRequests]);
+  }, [id, step, hpgVerified, setAvailableVoucherRequests]);
 
 
 

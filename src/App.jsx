@@ -15,7 +15,8 @@ import { VoucherRequestFlow } from "./features/voucher-request/VoucherRequestFlo
 import { AgentBuyVoucherPage } from "./features/voucher-request/AgentBuyVoucherPage";
 import { AgentVoucherRequestPage } from "./features/voucher-request/AgentVoucherRequestPage";
 import { ClearanceRequestPage } from "./features/clearance-request/ClearanceRequestPage";
-import { ClearanceRequestFlow } from "./features/clearance-request/ClearanceRequestFlow";
+import { CitizenClearanceRequestFlow } from "./features/clearance-request/CitizenClearanceRequestFlow";
+import { AgentClearanceRequestFlow } from "./features/clearance-request/AgentClearanceRequestFlow";
 import { AgentClearanceRequestPage } from "./features/clearance-request/AgentClearanceRequestPage";
 import { HpgVerifyPage } from "./features/hpg/HpgVerifyPage";
 import { LtoLookupPage } from "./features/lto/LtoLookupPage";
@@ -75,8 +76,8 @@ function App() {
           <Route path="/dci-access/new-voucher-request" element={<ProtectedRoute allowedRoles={AGENT_ROLES}>{isAgent(role) ? <AgentBuyVoucherPage /> : <VoucherRequestFlow role={role} />}</ProtectedRoute>} />
           
           <Route path="/dci-access/clearance-requests" element={<ProtectedRoute allowedRoles={AGENT_ROLES}>{isAgent(role) ? <AgentClearanceRequestPage /> : <ClearanceRequestPage />}</ProtectedRoute>} />
-          <Route path="/dci-access/new-clearance-request" element={<ProtectedRoute allowedRoles={AGENT_ROLES}><ClearanceRequestFlow role={role} /></ProtectedRoute>} />
-          <Route path="/dci-access/new-certificate-request" element={<ProtectedRoute allowedRoles={AGENT_ROLES}><ClearanceRequestFlow role={role} /></ProtectedRoute>} />
+          <Route path="/dci-access/new-clearance-request" element={<ProtectedRoute allowedRoles={AGENT_ROLES}>{isAgent(role) ? <AgentClearanceRequestFlow role={role} /> : <CitizenClearanceRequestFlow role={role} />}</ProtectedRoute>} />
+          <Route path="/dci-access/new-certificate-request" element={<ProtectedRoute allowedRoles={AGENT_ROLES}>{isAgent(role) ? <AgentClearanceRequestFlow role={role} /> : <CitizenClearanceRequestFlow role={role} />}</ProtectedRoute>} />
           
           <Route path="/dci-access/verification" element={<ProtectedRoute allowedRoles={["hpg"]}><HpgVerifyPage /></ProtectedRoute>} />
           <Route path="/dci-access/certificate-lookup" element={<ProtectedRoute allowedRoles={["lto"]}><LtoLookupPage /></ProtectedRoute>} />
