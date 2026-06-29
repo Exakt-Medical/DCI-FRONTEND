@@ -985,7 +985,7 @@ export const ClearanceRequestFlow = ({
   }, [agentMvcMecRequestId, isAgent, selectableMvcMecRows]);
 
   useEffect(() => {
-    if (isAgent || step !== 8 || citizenValidationState !== VALIDATION_STATE.PASSED) return;
+    if (isAgent || step !== 7) return;
     if (certificateNo || isIssuingCertificate) return;
     if (!voucherAssigned) return;
 
@@ -996,7 +996,7 @@ export const ClearanceRequestFlow = ({
       setIsIssuingCertificate(false);
       setRequestStatus("CERTIFICATE_ISSUED");
       saveCitizenRequest({
-        currentStep: 8,
+        currentStep: 7,
         status: "CERTIFICATE_ISSUED",
         certificateNo: certNo,
         clearanceReferenceNo: certNo,
@@ -1009,7 +1009,6 @@ export const ClearanceRequestFlow = ({
     }, 1500);
   }, [
     certificateNo,
-    citizenValidationState,
     isAgent,
     isIssuingCertificate,
     step,
@@ -1401,7 +1400,6 @@ export const ClearanceRequestFlow = ({
     if (step === 4) return verifyOrCrDone;
     if (step === 5) return voucherAssigned;
     if (step === 6) return hpgVerified;
-    if (step === 7) return citizenValidationState === VALIDATION_STATE.PASSED && voucherAssigned;
     return false;
   };
 
@@ -1413,7 +1411,7 @@ export const ClearanceRequestFlow = ({
       handleAgentAutoAssignCodes();
       return;
     }
-    const maxStep = isAgent ? 6 : 8;
+    const maxStep = isAgent ? 6 : 7;
     if (step < maxStep && canNext()) setStep((prev) => prev + 1);
   };
 
@@ -2268,7 +2266,8 @@ export const ClearanceRequestFlow = ({
                     {[
                       "Registration of Brand New Vehicle (locally purchased)",
                       "Registration of Brand New Imported Vehicle",
-                      "Registration of CKD (Completely Knocked Down) Imported Vehicle"
+                      "Registration of CKD (Completely Knocked Down) Imported Vehicle",
+                      "Omission of New Vehicle"
                     ].map(type => (
                       <div
                         key={type}
@@ -2541,150 +2540,6 @@ export const ClearanceRequestFlow = ({
           )}
 
           {!isAgent && step === 7 && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <MvcMecUploadCard
-                  title="MVCC"
-                  uploadLabel="Upload Motor Vehicle Clearance"
-                  onFile={handleMvcUpload}
-                  preview={mvcPreview}
-                  fields={[
-                    {
-                      key: "citizen-mvc-number",
-                      label: "MVCC Number",
-                      value: mvcData.mvcNo,
-                      onChange: (e) =>
-                        setMvcData((prev) => ({ ...prev, mvcNo: e.target.value })),
-                      placeholder: "Auto-extracted from MVCC",
-                    },
-                    {
-                      key: "citizen-mvc-issue-date",
-                      label: "Issue Date",
-                      value: mvcData.mvcIssueDate,
-                      onChange: (e) =>
-                        setMvcData((prev) => ({ ...prev, mvcIssueDate: e.target.value })),
-                      placeholder: "Auto-extracted from MVCC",
-                    },
-                    {
-                      key: "citizen-mvc-engine-number",
-                      label: "Engine Number",
-                      value: mvcData.engineNo,
-                      onChange: (e) =>
-                        setMvcData((prev) => ({ ...prev, engineNo: e.target.value })),
-                      placeholder: "Auto-extracted from MVCC",
-                    },
-                    {
-                      key: "citizen-mvc-chassis-number",
-                      label: "Chassis Number",
-                      value: mvcData.chassisNo,
-                      onChange: (e) =>
-                        setMvcData((prev) => ({ ...prev, chassisNo: e.target.value })),
-                      placeholder: "Auto-extracted from MVCC",
-                    },
-                    {
-                      key: "citizen-mvc-plate-number",
-                      label: "Plate Number",
-                      value: mvcData.plateNo,
-                      onChange: (e) =>
-                        setMvcData((prev) => ({ ...prev, plateNo: e.target.value })),
-                      placeholder: "Auto-extracted from MVCC",
-                    },
-                    {
-                      key: "citizen-mvc-mvfile-number",
-                      label: "MV File Number",
-                      value: mvcData.mvFileNo,
-                      onChange: (e) =>
-                        setMvcData((prev) => ({ ...prev, mvFileNo: e.target.value })),
-                      placeholder: "Auto-extracted from MVCC",
-                    },
-                    {
-                      key: "citizen-mvc-color",
-                      label: "Color",
-                      value: mvcData.color,
-                      onChange: (e) =>
-                        setMvcData((prev) => ({ ...prev, color: e.target.value })),
-                      placeholder: "Auto-extracted from MVCC",
-                    },
-                  ]}
-                />
-
-                <MvcMecUploadCard
-                  title="MEC"
-                  uploadLabel="Upload Motor Vehicle Emission"
-                  onFile={handleMecUpload}
-                  preview={mecPreview}
-                  fields={[
-                    {
-                      key: "citizen-mec-engine-stencilled",
-                      label: "engineNoStencilled",
-                      value: mecData.engineNoStencilled,
-                      onChange: (e) =>
-                        setMecData((prev) => ({ ...prev, engineNoStencilled: e.target.value })),
-                      placeholder: "Auto-extracted from MEC",
-                    },
-                    {
-                      key: "citizen-mec-chassis-stencilled",
-                      label: "chassisNoStencilled",
-                      value: mecData.chassisNoStencilled,
-                      onChange: (e) =>
-                        setMecData((prev) => ({ ...prev, chassisNoStencilled: e.target.value })),
-                      placeholder: "Auto-extracted from MEC",
-                    },
-                    {
-                      key: "citizen-mec-plate-number",
-                      label: "plateNo",
-                      value: mecData.plateNo,
-                      onChange: (e) =>
-                        setMecData((prev) => ({ ...prev, plateNo: e.target.value })),
-                      placeholder: "Auto-extracted from MEC",
-                    },
-                    {
-                      key: "citizen-mec-color",
-                      label: "color",
-                      value: mecData.color,
-                      onChange: (e) =>
-                        setMecData((prev) => ({ ...prev, color: e.target.value })),
-                      placeholder: "Auto-extracted from MEC",
-                    },
-                  ]}
-                />
-              </div>
-
-              <Card className="p-5">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">DCI Validation</p>
-                    <p className="text-xs text-gray-600">
-                      DCI portal validates MVCC/MEC before certificate issuance.
-                    </p>
-                  </div>
-                  <Button
-                    onClick={validateCitizenMvcMec}
-                    disabled={
-                      !mvcData.mvcNo ||
-                      !mecData.plateNo ||
-                      citizenValidationState === VALIDATION_STATE.VALIDATING
-                    }
-                  >
-                    {citizenValidationState === VALIDATION_STATE.VALIDATING
-                      ? "Validating..."
-                      : "Validate with DCI"}
-                  </Button>
-                </div>
-                <div className="mt-3 text-sm text-gray-700">
-                  Status: <span className="font-semibold">{citizenValidationState}</span>
-                  {citizenValidationMessage ? ` - ${citizenValidationMessage}` : ""}
-                </div>
-                {citizenValidationState === VALIDATION_STATE.FAILED && (
-                  <p className="mt-2 text-xs text-amber-700">
-                    Validation failed. Request remains pending and cannot proceed to certificate issuance.
-                  </p>
-                )}
-              </Card>
-            </div>
-          )}
-
-          {!isAgent && step === 8 && (
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <FileText size={18} className="text-[#0059b5]" />
@@ -2716,7 +2571,7 @@ export const ClearanceRequestFlow = ({
               ) : (
                 <div className="text-center py-6">
                   <p className="text-sm text-gray-500 mb-4">
-                    Certificate issuance starts automatically after successful MVC/MEC validation.
+                    Certificate issuance starts automatically after successful HPG verification.
                   </p>
                 </div>
               )}

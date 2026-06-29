@@ -33,7 +33,6 @@ export const CITIZEN_STEPS = [
   "Verify OR/CR",
   "Issue Code",
   "Go To HPG",
-  "Upload MVCC/MEC",
   "Issue Certificate",
 ];
 
