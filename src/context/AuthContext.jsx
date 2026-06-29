@@ -26,6 +26,7 @@ export function AuthProvider({ children }) {
       if (lowerUser.includes("agent")) mockRole = "agent_fixer";
       if (lowerUser.includes("admin")) mockRole = "admin";
       if (lowerUser.includes("hpg")) mockRole = "HPG";
+      if (lowerUser.includes("dci")) mockRole = "dci";
 
       const data = {
         token: "mock-token-" + Date.now(),

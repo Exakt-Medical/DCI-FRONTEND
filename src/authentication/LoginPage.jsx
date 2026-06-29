@@ -57,6 +57,7 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
       if (lowerUser.includes("agent")) mockRole = "AGENT_FIXER";
       if (lowerUser.includes("admin")) mockRole = "ADMIN";
       if (lowerUser.includes("hpg")) mockRole = "HPG";
+      if (lowerUser.includes("dci")) mockRole = "dci";
 
       const token = "mock-token-" + Date.now();
       const role = mockRole;

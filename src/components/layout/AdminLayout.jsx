@@ -41,6 +41,10 @@ export const AdminLayout = ({
       { id: "verification", label: "Verify Vehicle", icon: Shield, section: "VERIFICATION", disabled: false },
       { id: "tickets", label: "Tickets", icon: Ticket, section: "SUPPORT", disabled: false },
     ],
+    dci: [
+      { id: "verification", label: "Verify Vehicle", icon: Shield, section: "VERIFICATION", disabled: false },
+      { id: "tickets", label: "Tickets", icon: Ticket, section: "SUPPORT", disabled: false },
+    ],
     lto: [
       { id: "certificate-lookup", label: "Cert Lookup", icon: Search, section: "CERTIFICATE", disabled: false },
       { id: "tickets", label: "Tickets", icon: Ticket, section: "SUPPORT", disabled: false },
@@ -61,6 +65,7 @@ export const AdminLayout = ({
     citizen: { label: "Citizen", initial: "C", color: "bg-primary-500" },
     agent_fixer: { label: "Agent", initial: "A", color: "bg-primary-500" },
     hpg: { label: "HPG Officer", initial: "HPG", color: "bg-blue-600" },
+    dci: { label: "DCI Officer", initial: "DCI", color: "bg-blue-600" },
     lto: { label: "LTO Officer", initial: "LTO", color: "bg-green-600" },
     admin: { label: "Admin", initial: "A", color: "bg-red-600" },
   };

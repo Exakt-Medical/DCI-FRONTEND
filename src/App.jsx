@@ -19,6 +19,7 @@ import { ClearanceRequestPage } from "./features/clearance-request/ClearanceRequ
 import { ClearanceRequestFlow } from "./features/clearance-request/ClearanceRequestFlow";
 import { AgentClearanceRequestPage } from "./features/clearance-request/AgentClearanceRequestPage";
 import { HpgVerifyPage } from "./features/hpg/HpgVerifyPage";
+import { DciVerifyPage } from "./features/dci/DciVerifyPage";
 import { LtoLookupPage } from "./features/lto/LtoLookupPage";
 import { ProfilePage } from "./features/Profile/ProfilePage";
 import { TicketPage } from "./features/Tickets/TicketPage";
@@ -32,7 +33,7 @@ import { useAlert } from "./hooks/useAlert";
 
 const getDefaultPageForRole = (currentRole) => {
   if (currentRole === "citizen") return "requests";
-  if (currentRole === "hpg") return "verification";
+  if (currentRole === "hpg" || currentRole === "dci") return "verification";
   if (currentRole === "lto") return "certificate-lookup";
   return "dashboard";
 };
@@ -270,6 +271,7 @@ function AppContent() {
         if (role === "agent_fixer") return <AgentClearanceRequestPage onNavigate={handleNavigate} />;
         return <PlaceholderPage title="Access Denied" />;
       case "verification":
+        if (role === "dci") return <DciVerifyPage />;
         return <HpgVerifyPage />;
       case "certificate-lookup":
         return <LtoLookupPage />;
