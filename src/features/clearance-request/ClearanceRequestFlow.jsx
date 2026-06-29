@@ -116,7 +116,7 @@ export const ClearanceRequestFlow = ({
   const [dateCreated] = useState(
     () => selectedRequest?.dateCreated || new Date().toISOString().split("T")[0],
   );
-  const [vehicleOption, setVehicleOption] = useState(selectedRequest?.vehicleOption || "");
+  const [vehicleOption, setVehicleOption] = useState(selectedRequest?.vehicleOption || "existing");
   const [transactionType, setTransactionType] = useState(selectedRequest?.transactionType || "");
 
   const [orPreview, setOrPreview] = useState(selectedRequest?.orPreview || null);
@@ -2180,24 +2180,16 @@ export const ClearanceRequestFlow = ({
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
                 <div
-                  onClick={() => {
-                    if (vehicleOption !== "new") {
-                      setVehicleOption("new");
-                      setTransactionType("");
-                    }
-                  }}
-                  className={`border-2 rounded-xl p-6 cursor-pointer transition-all ${vehicleOption === "new"
-                      ? "border-[#0059b5] bg-blue-50 ring-4 ring-blue-500/20"
-                      : "border-gray-200 hover:border-[#0059b5] hover:bg-gray-50"
-                    }`}
+                  className="border-2 rounded-xl p-6 transition-all opacity-50 cursor-not-allowed border-gray-200 bg-gray-50"
+                  title="Temporarily disabled"
                 >
                   <div className="flex flex-col items-center text-center gap-4">
-                    <div className={`p-4 rounded-full ${vehicleOption === "new" ? "bg-[#0059b5] text-white" : "bg-gray-100 text-gray-500"}`}>
+                    <div className="p-4 rounded-full bg-gray-200 text-gray-400">
                       <CarFront size={32} />
                     </div>
                     <div>
                       <h4 className="font-bold text-gray-900 mb-1">New Vehicle</h4>
-                      <p className="text-sm text-gray-500">For newly purchased or unregistered vehicles.</p>
+                      <p className="text-sm text-gray-500">Currently disabled.</p>
                     </div>
                   </div>
                 </div>
