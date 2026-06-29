@@ -1440,10 +1440,14 @@ export const ClearanceRequestFlow = ({
       const orOk =
         orCr.plateNumber &&
         orCr.ownerName &&
+        orCr.mvFileNumber &&
+        orCr.mvFileNumber.length === 15 &&
         orCr.plateNumber !== "Extracting...";
       const crOk =
         crCr.plateNumber &&
         crCr.ownerName &&
+        crCr.mvFileNumber &&
+        crCr.mvFileNumber.length === 15 &&
         crCr.plateNumber !== "Extracting...";
       return Boolean(orOk && crOk && !vehicleMismatch);
     }
@@ -1996,9 +2000,13 @@ export const ClearanceRequestFlow = ({
                         key: "agent-mvc-mvfile-number",
                         label: "MV File Number",
                         value: agentMvcData.mvFileNo,
-                        onChange: (e) =>
-                          setAgentMvcData((prev) => ({ ...prev, mvFileNo: e.target.value })),
+                        onChange: (e) => {
+                          const val = e.target.value.replace(/[^a-zA-Z0-9]/g, "").slice(0, 15).toUpperCase();
+                          setAgentMvcData((prev) => ({ ...prev, mvFileNo: val }));
+                        },
                         placeholder: "Auto-extracted from MVCC",
+                        maxLength: 15,
+                        error: agentMvcData.mvFileNo && agentMvcData.mvFileNo.length !== 15 ? "MV number is 15 characters" : undefined,
                       },
                       {
                         key: "agent-mvc-color",
@@ -2062,7 +2070,8 @@ export const ClearanceRequestFlow = ({
                         !agentMvcData.mvcNo ||
                         !agentMecData.plateNo ||
                         agentMvcData.mvcNo === "Extracting..." ||
-                        agentMecData.plateNo === "Extracting..."
+                        agentMecData.plateNo === "Extracting..." ||
+                        (agentMvcData.mvFileNo && agentMvcData.mvFileNo.length !== 15)
                       }
                     >
                       Add To MVC/MEC Queue

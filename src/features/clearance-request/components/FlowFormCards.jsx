@@ -3,15 +3,25 @@ import { Card } from "../../../components/Card";
 import { Input } from "../../../components/Input";
 import { FileUpload } from "../../../components/FileUpload";
 
-export const VehicleFields = ({ values, onChange, hideEngineAndChassis }) => (
-  <div className="space-y-3">
-    <Input
-      label="MV File No."
-      value={values.mvFileNumber}
-      onChange={(e) => onChange("mvFileNumber", e.target.value)}
-      placeholder="Auto-extracted"
-      required
-    />
+export const VehicleFields = ({ values, onChange, hideEngineAndChassis }) => {
+  const handleMvFileChange = (e) => {
+    const val = e.target.value.replace(/[^a-zA-Z0-9]/g, "").slice(0, 15).toUpperCase();
+    onChange("mvFileNumber", val);
+  };
+
+  const isInvalid = values.mvFileNumber && values.mvFileNumber.length !== 15;
+
+  return (
+    <div className="space-y-3">
+      <Input
+        label="MV File No."
+        value={values.mvFileNumber || ""}
+        onChange={handleMvFileChange}
+        placeholder="Auto-extracted"
+        required
+        maxLength={15}
+        error={isInvalid ? "MV number is 15 characters" : undefined}
+      />
     <Input
       label="Plate No."
       value={values.plateNumber}
@@ -38,7 +48,8 @@ export const VehicleFields = ({ values, onChange, hideEngineAndChassis }) => (
       </>
     )}
   </div>
-);
+  );
+};
 
 export const VehicleDocumentUploadCard = ({
   title,
@@ -104,6 +115,7 @@ export const MvcMecUploadCard = ({ title, uploadLabel, onFile, preview, fields }
           value={field.value}
           onChange={field.onChange}
           placeholder={field.placeholder}
+          {...field}
         />
       ))}
     </div>
