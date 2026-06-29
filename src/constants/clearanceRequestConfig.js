@@ -41,7 +41,6 @@ export const AGENT_STEPS = [
   "Upload OR/CR",
   "Verify OR/CR",
   "Go To HPG",
-  "Upload MVCC/MEC",
   "Issue Certificate",
 ];
 
