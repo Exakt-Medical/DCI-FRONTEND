@@ -118,6 +118,7 @@ export const ClearanceRequestFlow = ({
   );
   const [vehicleOption, setVehicleOption] = useState(selectedRequest?.vehicleOption || "existing");
   const [transactionType, setTransactionType] = useState(selectedRequest?.transactionType || "");
+  const [showConfirmUploadModal, setShowConfirmUploadModal] = useState(false);
 
   const [orPreview, setOrPreview] = useState(selectedRequest?.orPreview || null);
   const [orNumber, setOrNumber] = useState(selectedRequest?.orNumber || "");
@@ -1415,6 +1416,14 @@ export const ClearanceRequestFlow = ({
     if (step < maxStep && canNext()) setStep((prev) => prev + 1);
   };
 
+  const handleNextClick = () => {
+    if (step === 2) {
+      setShowConfirmUploadModal(true);
+    } else {
+      nextStep();
+    }
+  };
+
   const canPrev = () => {
     if (isAgent) return step > 1;
 
@@ -2583,9 +2592,17 @@ export const ClearanceRequestFlow = ({
               )}
             </div>
             {step < flowSteps.length ? (
-              <Button onClick={nextStep} disabled={!canNext()}>
-                Next <ChevronRight size={16} />
-              </Button>
+              <div className="flex items-center gap-4">
+                {step === 2 && (
+                  <div className="flex items-center gap-2 text-amber-600 bg-amber-50 px-3 py-1.5 rounded-md border border-amber-200">
+                    <AlertTriangle size={16} />
+                    <span className="text-sm font-medium">Double check details before proceeding</span>
+                  </div>
+                )}
+                <Button onClick={handleNextClick} disabled={!canNext()}>
+                  Next <ChevronRight size={16} />
+                </Button>
+              </div>
             ) : !isAgent && certificateNo ? (
               <Button onClick={finishCitizen}>
                 <CheckCircle size={16} /> Complete
@@ -2736,6 +2753,34 @@ export const ClearanceRequestFlow = ({
                 disabled={isSubmittingTicket || ticketAttachments.length === 0}
               >
                 Create Ticket
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {showConfirmUploadModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6 text-center">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Are you sure?</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure the details are correct? Do you want to proceed?
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Button
+                variant="outline"
+                onClick={() => setShowConfirmUploadModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowConfirmUploadModal(false);
+                  nextStep();
+                }}
+              >
+                Proceed
               </Button>
             </div>
           </div>
