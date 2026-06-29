@@ -49,18 +49,22 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
     setLoading(true);
     setError("");
     try {
-      const response = await authService.login(form.username, form.password);
+      // Mock authentication for demonstration
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
-      const {
-        token,
-        role,
-        firstname,
-        lastname,
-        email,
-        userId,
-        companyId,
-        companyCode,
-      } = response.data;
+      let mockRole = "CITIZEN";
+      const lowerUser = form.username.toLowerCase();
+      if (lowerUser.includes("agent")) mockRole = "AGENT_FIXER";
+      if (lowerUser.includes("admin")) mockRole = "ADMIN";
+
+      const token = "mock-token-" + Date.now();
+      const role = mockRole;
+      const firstname = "Mock";
+      const lastname = "User";
+      const email = `${form.username}@mock.local`;
+      const userId = "mock-user-123";
+      const companyId = 1;
+      const companyCode = "MOCK";
 
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);

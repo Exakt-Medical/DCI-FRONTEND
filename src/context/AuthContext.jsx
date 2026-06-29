@@ -18,29 +18,40 @@ export function AuthProvider({ children }) {
   const login = async (username, password) => {
     setLoading(true);
     try {
-      const response = await authService.login(username, password);
-      const data = response.data;
+      // Mock authentication for demonstration
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      let mockRole = "citizen";
+      const lowerUser = username.toLowerCase();
+      if (lowerUser.includes("agent")) mockRole = "agent_fixer";
+      if (lowerUser.includes("admin")) mockRole = "admin";
+
+      const data = {
+        token: "mock-token-" + Date.now(),
+        role: mockRole,
+        username: username,
+        email: `${username}@mock.local`,
+        firstname: "Mock",
+        lastname: "User",
+        companyId: 1,
+        companyCode: "MOCK",
+      };
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("role", data.role);
       localStorage.setItem("username", data.username);
-      localStorage.setItem("email", data.email ?? "");
-      localStorage.setItem("firstname", data.firstname ?? "");
-      localStorage.setItem("lastname", data.lastname ?? "");
-      if (data.companyId != null)
-        localStorage.setItem("companyId", String(data.companyId));
-      if (data.companyCode != null)
-        localStorage.setItem("companyCode", data.companyCode);
+      localStorage.setItem("email", data.email);
+      localStorage.setItem("firstname", data.firstname);
+      localStorage.setItem("lastname", data.lastname);
+      localStorage.setItem("companyId", String(data.companyId));
+      localStorage.setItem("companyCode", data.companyCode);
+
       setToken(data.token);
       setRole(data.role);
       setUser({ token: data.token, role: data.role });
       return data.role;
     } catch (error) {
-      throw new Error(
-        error.response?.data?.message ||
-          error.response?.data?.error ||
-          "Login failed",
-      );
+      throw new Error("Mock login failed");
     } finally {
       setLoading(false);
     }
