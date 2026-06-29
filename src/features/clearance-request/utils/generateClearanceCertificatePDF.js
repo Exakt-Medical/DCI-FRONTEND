@@ -1,7 +1,7 @@
 import { jsPDF } from "jspdf";
 import QRCode from "qrcode";
 import DOTRLogo from "../../../assets/DOTR-LOGO.png";
-import LTOLogo from "../../../assets/LTO-LOGO.png";
+import DCILogo from "../../../assets/DCI-LOGO.png";
 
 /**
  * Converts image URL to base64 for embedding in PDF
@@ -17,7 +17,11 @@ const getImageBase64 = (imageUrl) => {
         canvas.height = img.height;
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0);
-        resolve(canvas.toDataURL("image/png"));
+        resolve({
+          base64: canvas.toDataURL("image/png"),
+          width: img.width,
+          height: img.height,
+        });
       } catch (e) {
         resolve(null);
       }
@@ -98,13 +102,15 @@ export const generateClearanceCertificatePDF = async (row = {}) => {
 
   // Load logos
   const dotrLogoBase64 = await getImageBase64(DOTRLogo);
-  const ltoLogoBase64 = await getImageBase64(LTOLogo);
+  const dciLogoBase64 = await getImageBase64(DCILogo);
 
   // ─── HEADER WITH LOGOS ──────────────────────────────────────────────────────
 
   if (dotrLogoBase64) {
     try {
-      doc.addImage(dotrLogoBase64, "PNG", marginLeft, y - 5, 22, 22);
+      const logoWidth = 22;
+      const logoHeight = logoWidth * (dotrLogoBase64.height / dotrLogoBase64.width);
+      doc.addImage(dotrLogoBase64.base64, "PNG", marginLeft, y - 5, logoWidth, logoHeight);
     } catch (e) {
       doc.setDrawColor(0, 89, 181);
       doc.setLineWidth(0.5);
@@ -122,15 +128,17 @@ export const generateClearanceCertificatePDF = async (row = {}) => {
     doc.text("DOTR", marginLeft + 8, y + 1.5);
   }
 
-  if (ltoLogoBase64) {
+  if (dciLogoBase64) {
     try {
+      const logoWidth = 28;
+      const logoHeight = logoWidth * (dciLogoBase64.height / dciLogoBase64.width);
       doc.addImage(
-        ltoLogoBase64,
+        dciLogoBase64.base64,
         "PNG",
-        pageWidth - marginRight - 22,
-        y - 5,
-        22,
-        22,
+        pageWidth - marginRight - logoWidth,
+        y - 19,
+        logoWidth,
+        logoHeight,
       );
     } catch (e) {
       doc.setDrawColor(180, 30, 30);

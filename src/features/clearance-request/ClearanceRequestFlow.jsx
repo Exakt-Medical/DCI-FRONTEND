@@ -33,6 +33,7 @@ import {
 } from "./components/FlowFormCards";
 import { CertificateActionButtons } from "./components/CertificateActionButtons";
 import { generateClearanceCertificatePDF } from "./utils/generateClearanceCertificatePDF";
+import { generateDciCodeSlipPDF } from "./utils/generateDciCodeSlipPDF";
 import { CreateTicketModal } from "../Tickets/CreateTicketModal";
 import { DataMismatchModal } from "../verification/components/Datamismatchmodal";
 import { ticketService } from "../../services/ticketService";
@@ -66,6 +67,13 @@ const emptyMec = {
   chassisNoStencilled: "",
   plateNo: "",
   color: "",
+};
+
+const maskOwnerName = (name) => {
+  if (!name) return "-";
+  const str = String(name).trim();
+  if (str.length <= 2) return str;
+  return str.slice(0, 2) + "*".repeat(str.length - 2);
 };
 
 const makeRequestId = () => `REQ-${Date.now()}-${String(Math.random()).slice(2, 6)}`;
@@ -1323,6 +1331,48 @@ export const ClearanceRequestFlow = ({
     window.open(url, "_blank");
   };
 
+  const handleDownloadSlip = async () => {
+    if (!voucherCode) return;
+    const { doc, filename } = await generateDciCodeSlipPDF({
+      requestId,
+      voucherCode,
+      voucherReferenceNo: voucherCode,
+      dateCreated,
+      ownerName: orCr.ownerName || crCr.ownerName || selectedRequest?.ownerName || "",
+      plateNumber: orCr.plateNumber || crCr.plateNumber || selectedRequest?.plateNumber || "",
+      mvFileNumber: orCr.mvFileNumber || crCr.mvFileNumber || selectedRequest?.mvFileNumber || "",
+      engineNumber: orCr.engineNumber || crCr.engineNumber || selectedRequest?.engineNumber || "",
+      chassisNumber: orCr.chassisNumber || crCr.chassisNumber || selectedRequest?.chassisNumber || "",
+      make: orCr.make || crCr.make || selectedRequest?.make || "",
+      series: orCr.series || crCr.series || selectedRequest?.series || "",
+      color: orCr.color || crCr.color || selectedRequest?.color || "",
+      yearModel: orCr.yearModel || crCr.yearModel || selectedRequest?.yearModel || "",
+    });
+    doc.save(filename);
+  };
+
+  const handlePreviewSlip = async () => {
+    if (!voucherCode) return;
+    const { doc } = await generateDciCodeSlipPDF({
+      requestId,
+      voucherCode,
+      voucherReferenceNo: voucherCode,
+      dateCreated,
+      ownerName: orCr.ownerName || crCr.ownerName || selectedRequest?.ownerName || "",
+      plateNumber: orCr.plateNumber || crCr.plateNumber || selectedRequest?.plateNumber || "",
+      mvFileNumber: orCr.mvFileNumber || crCr.mvFileNumber || selectedRequest?.mvFileNumber || "",
+      engineNumber: orCr.engineNumber || crCr.engineNumber || selectedRequest?.engineNumber || "",
+      chassisNumber: orCr.chassisNumber || crCr.chassisNumber || selectedRequest?.chassisNumber || "",
+      make: orCr.make || crCr.make || selectedRequest?.make || "",
+      series: orCr.series || crCr.series || selectedRequest?.series || "",
+      color: orCr.color || crCr.color || selectedRequest?.color || "",
+      yearModel: orCr.yearModel || crCr.yearModel || selectedRequest?.yearModel || "",
+    });
+    const blob = doc.output("blob");
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+  };
+
   const handleDownloadAllCertificates = async () => {
     const issuedRows = certificationQueue.filter((row) => row.certificateNo);
     if (issuedRows.length === 0) {
@@ -1641,7 +1691,7 @@ export const ClearanceRequestFlow = ({
                               {vehicleOption === "new" ? row.orCr?.engineNumber || "-" : row.plateNumber || "-"}
                             </td>
                             <td className="py-2 text-gray-700">
-                              {vehicleOption === "new" ? row.orCr?.chassisNumber || "-" : row.orCr?.ownerName || row.crCr?.ownerName || "-"}
+                              {vehicleOption === "new" ? row.orCr?.chassisNumber || "-" : maskOwnerName(row.orCr?.ownerName || row.crCr?.ownerName || "-")}
                             </td>
                             <td className="py-2 text-gray-600">{row.status || "OR_CR_UPLOADED"}</td>
                           </tr>
@@ -1754,7 +1804,7 @@ export const ClearanceRequestFlow = ({
                                 </div>
                                 <div>
                                   <p className="text-gray-500 text-xs uppercase mb-0.5">Owner</p>
-                                  <p className="font-medium text-gray-900">{vSpec.ownerName || "JUAN DELA CRUZ"}</p>
+                                  <p className="font-medium text-gray-900">{maskOwnerName(vSpec.ownerName || "JUAN DELA CRUZ")}</p>
                                 </div>
                                 <div>
                                   <p className="text-gray-500 text-xs uppercase mb-0.5">Classification</p>
@@ -2429,7 +2479,7 @@ export const ClearanceRequestFlow = ({
                     </div>
                     <div>
                       <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Owner</p>
-                      <p className="font-medium text-gray-900">{orCr.ownerName || "JUAN DELA CRUZ"}</p>
+                      <p className="font-medium text-gray-900">{maskOwnerName(orCr.ownerName || "JUAN DELA CRUZ")}</p>
                     </div>
                     <div>
                       <p className="text-gray-500 text-xs uppercase tracking-wider mb-1">Classification</p>
@@ -2509,6 +2559,14 @@ export const ClearanceRequestFlow = ({
                   <p className="font-semibold text-green-700 text-lg">Transaction Code Issued</p>
                   <p className="text-sm font-mono font-bold text-gray-900 mt-2">{voucherCode}</p>
                   <p className="text-xs text-gray-500 mt-1">Plate: {orCr.plateNumber}</p>
+                  <div className="mt-4 flex justify-center gap-3">
+                    <Button onClick={handlePreviewSlip} variant="outline">
+                      <Eye size={16} /> Preview Slip
+                    </Button>
+                    <Button onClick={handleDownloadSlip} variant="outline">
+                      <Download size={16} /> Download Slip
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-6">
@@ -2528,9 +2586,17 @@ export const ClearanceRequestFlow = ({
                 <p className="text-sm text-amber-800">
                   Please present your transaction to HPG/LTO. You can verify status below.
                 </p>
-                <p className="text-xs text-gray-600 mt-2">
+                <p className="text-xs text-gray-600 mt-2 pb-2">
                   Transaction Code: <span className="font-mono font-semibold">{voucherCode}</span>
                 </p>
+                <div className="mt-2 flex justify-start gap-3 border-t border-amber-200 pt-3">
+                  <Button onClick={handlePreviewSlip} variant="outline" size="sm">
+                    <Eye size={14} /> Preview Slip
+                  </Button>
+                  <Button onClick={handleDownloadSlip} variant="outline" size="sm">
+                    <Download size={14} /> Download Slip
+                  </Button>
+                </div>
               </div>
               <div className="mt-4">
                 <Button onClick={handleCitizenHpgVerify}>
