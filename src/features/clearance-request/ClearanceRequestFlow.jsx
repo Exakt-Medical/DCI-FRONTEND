@@ -96,9 +96,11 @@ export const ClearanceRequestFlow = ({
   onSaveRequest,
   onComplete,
   onCancel,
+  onOngoingChange,
 }) => {
   const isAgent = role === "agent_fixer";
   const flowSteps = isAgent ? AGENT_STEPS : CITIZEN_STEPS;
+
 
   const availableCreditsCount = voucherInventory.filter(
     (item) => item.inventoryStatus === VOUCHER_INVENTORY_STATUS.AVAILABLE
@@ -215,6 +217,21 @@ export const ClearanceRequestFlow = ({
     }
     return [];
   });
+
+  useEffect(() => {
+    let ongoing = false;
+    if (isAgent) {
+      if (step === 2 || step === 3) {
+        ongoing = true;
+      }
+    } else {
+      if (step >= 2 && step <= 5) {
+        ongoing = true;
+      }
+    }
+    onOngoingChange?.(ongoing);
+    return () => onOngoingChange?.(false);
+  }, [step, isAgent, onOngoingChange]);
 
   const vehicleMismatch =
     (orCr.mvFileNumber && crCr.mvFileNumber && orCr.mvFileNumber !== crCr.mvFileNumber) ||

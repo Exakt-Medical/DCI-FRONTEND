@@ -145,8 +145,7 @@ export const generateDciCodeSlipPDF = async (row = {}) => {
 
   const instructions = [
     "1. Keep a copy of the code by printing or downloading.",
-    "2. Present to your nearest Highway Patrol Group (HPG) officer.",
-    "3. Present this slip to the HPG officer for scanning and vehicle verification."
+    "2. Present this slip to the HPG officer for scanning and vehicle verification."
   ];
 
   const maxTextWidth = pageWidth - rightColX - 12; // 148 - 68 - 12 = 68mm
