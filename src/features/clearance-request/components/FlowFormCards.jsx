@@ -95,7 +95,7 @@ export const VehicleDocumentUploadCard = ({
   </Card>
 );
 
-export const MvcMecUploadCard = ({ title, uploadLabel, onFile, preview, fields }) => (
+export const MvcMecUploadCard = ({ title, uploadLabel, onFile, preview, fields, disabled }) => (
   <Card className="p-5 border border-gray-200">
     <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
       <Upload size={18} className="text-[#0059b5]" />
@@ -106,6 +106,7 @@ export const MvcMecUploadCard = ({ title, uploadLabel, onFile, preview, fields }
       accept="image/*,application/pdf"
       onFile={onFile}
       preview={preview}
+      disabled={disabled}
     />
     <div className="mt-4 space-y-3">
       {fields.map((field) => (

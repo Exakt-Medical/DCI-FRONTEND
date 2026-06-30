@@ -388,55 +388,56 @@ export const DciVerifyPage = () => {
                 uploadLabel="Upload Motor Vehicle Clearance"
                 onFile={handleMvccUpload}
                 preview={mvccPreview}
+                disabled={markedVerified}
                 fields={[
                   {
                     key: "dci-mvc-number",
                     label: "MVCC Number",
                     value: mvccData.mvcNo,
                     onChange: (e) => setMvccData((prev) => ({ ...prev, mvcNo: e.target.value })),
-                    placeholder: "Auto-extracted from MVCC",
+                    placeholder: "Auto-extracted from MVCC", readOnly: markedVerified,
                   },
                   {
                     key: "dci-mvc-issue-date",
                     label: "Issue Date",
                     value: mvccData.mvcIssueDate,
                     onChange: (e) => setMvccData((prev) => ({ ...prev, mvcIssueDate: e.target.value })),
-                    placeholder: "Auto-extracted from MVCC",
+                    placeholder: "Auto-extracted from MVCC", readOnly: markedVerified,
                   },
                   {
                     key: "dci-mvc-engine-number",
                     label: "Engine Number",
                     value: mvccData.engineNo,
                     onChange: (e) => setMvccData((prev) => ({ ...prev, engineNo: e.target.value })),
-                    placeholder: "Auto-extracted from MVCC",
+                    placeholder: "Auto-extracted from MVCC", readOnly: markedVerified,
                   },
                   {
                     key: "dci-mvc-chassis-number",
                     label: "Chassis Number",
                     value: mvccData.chassisNo,
                     onChange: (e) => setMvccData((prev) => ({ ...prev, chassisNo: e.target.value })),
-                    placeholder: "Auto-extracted from MVCC",
+                    placeholder: "Auto-extracted from MVCC", readOnly: markedVerified,
                   },
                   {
                     key: "dci-mvc-plate-number",
                     label: "Plate Number",
                     value: mvccData.plateNo,
                     onChange: (e) => setMvccData((prev) => ({ ...prev, plateNo: e.target.value })),
-                    placeholder: "Auto-extracted from MVCC",
+                    placeholder: "Auto-extracted from MVCC", readOnly: markedVerified,
                   },
                   {
                     key: "dci-mvc-mvfile-number",
                     label: "MV File Number",
                     value: mvccData.mvFileNo,
                     onChange: (e) => setMvccData((prev) => ({ ...prev, mvFileNo: e.target.value })),
-                    placeholder: "Auto-extracted from MVCC",
+                    placeholder: "Auto-extracted from MVCC", readOnly: markedVerified,
                   },
                   {
                     key: "dci-mvc-color",
                     label: "Color",
                     value: mvccData.color,
                     onChange: (e) => setMvccData((prev) => ({ ...prev, color: e.target.value })),
-                    placeholder: "Auto-extracted from MVCC",
+                    placeholder: "Auto-extracted from MVCC", readOnly: markedVerified,
                   },
                 ]}
               />
@@ -445,34 +446,35 @@ export const DciVerifyPage = () => {
                 uploadLabel="Upload Motor Vehicle Emission"
                 onFile={handleMecUpload}
                 preview={mecPreview}
+                disabled={markedVerified}
                 fields={[
                   {
                     key: "dci-mec-engine-stencilled",
                     label: "engine Number Stencilled",
                     value: mecData.engineNoStencilled,
                     onChange: (e) => setMecData((prev) => ({ ...prev, engineNoStencilled: e.target.value })),
-                    placeholder: "Auto-extracted from MEC",
+                    placeholder: "Auto-extracted from MEC", readOnly: markedVerified,
                   },
                   {
                     key: "dci-mec-chassis-stencilled",
                     label: "chassis Number Stencilled",
                     value: mecData.chassisNoStencilled,
                     onChange: (e) => setMecData((prev) => ({ ...prev, chassisNoStencilled: e.target.value })),
-                    placeholder: "Auto-extracted from MEC",
+                    placeholder: "Auto-extracted from MEC", readOnly: markedVerified,
                   },
                   {
                     key: "dci-mec-plate-number",
                     label: "Plate Number",
                     value: mecData.plateNo,
                     onChange: (e) => setMecData((prev) => ({ ...prev, plateNo: e.target.value })),
-                    placeholder: "Auto-extracted from MEC",
+                    placeholder: "Auto-extracted from MEC", readOnly: markedVerified,
                   },
                   {
                     key: "dci-mec-color",
                     label: "color",
                     value: mecData.color,
                     onChange: (e) => setMecData((prev) => ({ ...prev, color: e.target.value })),
-                    placeholder: "Auto-extracted from MEC",
+                    placeholder: "Auto-extracted from MEC", readOnly: markedVerified,
                   },
                 ]}
               />
@@ -541,6 +543,8 @@ export const DciVerifyPage = () => {
     </div>
   );
 };
+
+
 
 
 
