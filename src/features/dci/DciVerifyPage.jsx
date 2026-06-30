@@ -300,7 +300,7 @@ export const DciVerifyPage = () => {
                   Vehicle Details
                 </h3>
                 <span className="text-xs text-green-600 ml-auto">
-                  ? Found in system
+                  ✓ Found in system
                 </span>
               </div>
 
@@ -375,6 +375,27 @@ export const DciVerifyPage = () => {
                   </label>
                   <p className="text-sm font-medium text-gray-900">
                     {vehicleData.encumberedTo || "N/A"}
+                  </p>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {verified && vehicleData && (
+            <Card className="p-5 mb-5">
+              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
+                <User size={18} className="text-[#0059b5]" />
+                <h3 className="text-base font-bold text-gray-900">
+                  Owner Information
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <label className="text-xs text-gray-500 block mb-1">
+                    Owner Name
+                  </label>
+                  <p className="text-sm font-medium text-gray-900">
+                    {vehicleData.ownerName}
                   </p>
                 </div>
               </div>

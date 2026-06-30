@@ -2,6 +2,21 @@ import { useState, useEffect } from "react";
 import { Expand, Minimize } from "lucide-react";
 import { UserMenu } from "./UserMenu";
 
+const PAGE_TITLES = {
+  "dashboard": "Dashboard",
+  "requests": "My Requests / Queue",
+  "new-transaction-credits": "Transaction Credits",
+  "new-clearance-request": "Request for Certification",
+  "profile": "My Profile",
+  "verification": "Verify Vehicle",
+  "tickets": "Support Tickets",
+  "accounts": "Accounts",
+  "activitylogs": "Activity Logs",
+  "accesslogs": "Access Logs",
+  "transactions": "Transaction Logs",
+  "certificate-lookup": "Certificate Lookup",
+};
+
 export const Header = ({
   currentPage,
   isSidebarOpen,
@@ -38,7 +53,7 @@ export const Header = ({
     <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6">
       <div>
         <h1 className="text-xl font-semibold text-gray-800 capitalize">
-          {currentPage}
+          {PAGE_TITLES[currentPage] || currentPage.replace(/-/g, " ")}
         </h1>
       </div>
 

@@ -10,11 +10,11 @@ import {
 const getVoucherStatus = (request) => {
   if (request?.voucherStatus) return request.voucherStatus;
   if (
-    request?.status === "VOUCHER_ISSUED" ||
+    request?.status === "TRANSACTION_CODE_ISSUED" ||
     request?.status === "HPG_VERIFIED" ||
     request?.status === "CERTIFICATE_ISSUED"
   ) {
-    return "VOUCHER_ISSUED";
+    return "TRANSACTION_CODE_ISSUED";
   }
   return request?.status || "";
 };
@@ -27,7 +27,18 @@ const getClearanceStatus = (request) => {
   return "";
 };
 
-const voucherDone = (request) => getVoucherStatus(request) === "VOUCHER_ISSUED";
+const voucherDone = (request) => {
+  const status = getVoucherStatus(request);
+  return (
+    status === "TRANSACTION_CODE_ISSUED" ||
+    status === "VOUCHER_ISSUED" ||
+    status === "VOUCHER_ASSIGNED" ||
+    status === "HPG_VERIFIED" ||
+    status === "CERTIFICATE_ISSUED" ||
+    Boolean(request?.voucherCode || request?.voucherReferenceNo) ||
+    clearanceDone(request)
+  );
+};
 const clearanceDone = (request) => getClearanceStatus(request) === "CERTIFICATE_ISSUED";
 
 const summaryCardStyles = {
@@ -124,19 +135,19 @@ export const MyRequestsPage = ({ role, requests = [], onNavigate }) => {
         id: "completed",
         label: "Completed Requests",
         value: requests.filter((request) => isCompletedRequest(request)).length,
-        description: "Voucher and clearance already issued",
+        description: "Transaction code and clearance already issued",
       },
       {
         id: "voucher",
-        label: "Pending Voucher",
+        label: "Pending Transaction Code",
         value: requests.filter((request) => !voucherDone(request)).length,
-        description: "Still waiting on voucher issuance",
+        description: "Still waiting on transaction code issuance",
       },
       {
         id: "clearance",
         label: "Pending Clearance",
         value: requests.filter((request) => voucherDone(request) && !clearanceDone(request)).length,
-        description: "Voucher done, clearance still in progress",
+        description: "Transaction code done, clearance still in progress",
       },
     ],
     [requests],
@@ -159,7 +170,7 @@ export const MyRequestsPage = ({ role, requests = [], onNavigate }) => {
           <h1 className="text-2xl font-bold text-gray-900 mb-1">{isAgent ? "Client Requests" : "My Requests"}</h1>
           <p className="text-sm text-gray-500">
             {isAgent
-              ? "Manage your clients from voucher issuance to certificate completion"
+              ? "Manage your clients from transaction code issuance to certificate completion"
               : "Track your request progress and bring pending items to the top"}
           </p>
         </div>
@@ -237,7 +248,7 @@ export const MyRequestsPage = ({ role, requests = [], onNavigate }) => {
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Engine No.</th>
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Chassis No.</th>
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Plate No.</th>
-                  <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Voucher</th>
+                  <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Transaction Code</th>
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Clearance</th>
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Date</th>
                 </tr>

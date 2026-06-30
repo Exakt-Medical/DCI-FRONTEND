@@ -235,7 +235,6 @@ export const HpgVerifyPage = () => {
               </div>
             </div>
           </Card>
-
           <Card className="p-5 mb-5">
             <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
               <User size={18} className="text-[#0059b5]" />

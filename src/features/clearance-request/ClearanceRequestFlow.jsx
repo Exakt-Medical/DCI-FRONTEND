@@ -993,15 +993,23 @@ export const ClearanceRequestFlow = ({
     setAgentMvcMecRequestId(selectableMvcMecRows[0]?.requestId || "");
   }, [agentMvcMecRequestId, isAgent, selectableMvcMecRows]);
 
-  useEffect(() => {
-    if (isAgent || step !== 7) return;
-    if (certificateNo || isIssuingCertificate) return;
-    if (!voucherAssigned) return;
-
+  const handleCitizenDciValidation = () => {
+    if (isIssuingCertificate) return;
     setIsIssuingCertificate(true);
     setTimeout(() => {
       const certNo = makeCertificateNo(0);
       setCertificateNo(certNo);
+      
+      const mockMvcNo = mvcData?.mvcNo && mvcData.mvcNo !== "Extracting..."
+        ? mvcData.mvcNo
+        : `MVCC-${String(Date.now()).slice(-8)}`;
+
+      const newMvc = {
+        ...mvcData,
+        mvcNo: mockMvcNo,
+      };
+      setMvcData(newMvc);
+
       setIsIssuingCertificate(false);
       setRequestStatus("CERTIFICATE_ISSUED");
       saveCitizenRequest({
@@ -1014,16 +1022,59 @@ export const ClearanceRequestFlow = ({
         voucherStatus: "VOUCHER_ISSUED",
         voucherCode: voucherCode,
         voucherReferenceNo: voucherCode,
+        mvcData: newMvc,
       });
     }, 1500);
-  }, [
-    certificateNo,
-    isAgent,
-    isIssuingCertificate,
-    step,
-    voucherAssigned,
-    voucherCode,
-  ]);
+  };
+
+  const handleAgentMockDciValidation = () => {
+    if (isIssuingBulk) return;
+    setIsIssuingBulk(true);
+
+    setTimeout(() => {
+      setQueueRows((prev) => {
+        const source = prev.length > 0 ? prev : fallbackRows;
+        const next = source.map((row, idx) => {
+          const certNo = row.certificateNo || makeCertificateNo(idx);
+          const mockMvcNo = row.mvcData?.mvcNo && row.mvcData.mvcNo !== "Extracting..."
+            ? row.mvcData.mvcNo
+            : `MVCC-${String(Date.now() + idx).slice(-8)}`;
+
+          const updated = {
+            ...row,
+            mvcMecValidationState: VALIDATION_STATE.PASSED,
+            mvcMecValidationMessage: "Validated by DCI portal.",
+            mvcData: {
+              ...row.mvcData,
+              mvcNo: mockMvcNo,
+            },
+            certificateNo: certNo,
+            clearanceReferenceNo: certNo,
+            clearanceStatus: "CERTIFICATE_ISSUED",
+            status: "CERTIFICATE_ISSUED",
+            currentStep: 5,
+          };
+          persistRow(updated);
+          return updated;
+        });
+
+        updateVoucherInventory((inventoryRows) => {
+          return next.reduce((acc, row) => {
+            if (!row.voucherId) return acc;
+            return voucherInventoryService.markVoucherUsed(acc, {
+              voucherId: row.voucherId,
+              requestId: row.requestId,
+            });
+          }, inventoryRows);
+        });
+
+        return next;
+      });
+
+      setIsIssuingBulk(false);
+    }, 1500);
+  };
+
 
   useEffect(() => {
     if (!isAgent || step !== 5 || isIssuingBulk) return;
@@ -1916,15 +1967,28 @@ export const ClearanceRequestFlow = ({
                   <FileText size={18} className="text-[#0059b5]" />
                   <h3 className="text-base font-bold text-gray-900">Certificate Issuance (Bulk)</h3>
                 </div>
-                {!isIssuingBulk && (
-                  <Button
-                    onClick={handleDownloadAllCertificates}
-                    className="flex items-center gap-2"
-                    size="sm"
-                  >
-                    <Download size={16} /> Download All
-                  </Button>
-                )}
+                <div className="flex gap-2">
+                  {certificationQueue.some(row => !row.certificateNo) && !isIssuingBulk && (
+                    <Button
+                      onClick={handleAgentMockDciValidation}
+                      className="flex items-center gap-2"
+                      size="sm"
+                    >
+                      <CheckCircle size={16} /> Run DCI Validation
+                    </Button>
+                  )}
+                  {!isIssuingBulk && (
+                    <Button
+                      onClick={handleDownloadAllCertificates}
+                      className="flex items-center gap-2"
+                      size="sm"
+                      variant="outline"
+                      disabled={certificationQueue.some(row => !row.certificateNo)}
+                    >
+                      <Download size={16} /> Download All
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {isIssuingBulk ? (
@@ -1951,6 +2015,7 @@ export const ClearanceRequestFlow = ({
                           ) : (
                             <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Plate</th>
                           )}
+                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">MVCC / MEC No.</th>
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Certificate</th>
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                         </tr>
@@ -1967,6 +2032,7 @@ export const ClearanceRequestFlow = ({
                             ) : (
                               <td className="py-2 text-gray-700">{row.plateNumber || "-"}</td>
                             )}
+                            <td className="py-2 font-mono text-xs text-gray-700">{row.mvcData?.mvcNo || "-"}</td>
                             <td className="py-2 font-mono text-xs font-semibold text-gray-900">{row.certificateNo || "-"}</td>
                             <td className="py-2 text-gray-700">{row.certificateNo ? "CERTIFICATE_ISSUED" : "READY"}</td>
                           </tr>
@@ -1976,9 +2042,11 @@ export const ClearanceRequestFlow = ({
                   </div>
 
                   {certificationQueue.every((row) => row.certificateNo) && (
-                    <Button onClick={finishBulk}>
-                      <CheckCircle size={16} /> Complete
-                    </Button>
+                    <div className="flex justify-end">
+                      <Button onClick={finishBulk}>
+                        <CheckCircle size={16} /> Complete
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}
@@ -1991,22 +2059,7 @@ export const ClearanceRequestFlow = ({
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Vehicle Option</h3>
                 <p className="text-gray-600">Please select if you are requesting a clearance certificate for a new or an existing vehicle.</p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-                <div
-                  className="border-2 rounded-xl p-6 transition-all opacity-50 cursor-not-allowed border-gray-200 bg-gray-50"
-                  title="Temporarily disabled"
-                >
-                  <div className="flex flex-col items-center text-center gap-4">
-                    <div className="p-4 rounded-full bg-gray-200 text-gray-400">
-                      <CarFront size={32} />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900 mb-1">New Vehicle</h4>
-                      <p className="text-sm text-gray-500">Currently disabled.</p>
-                    </div>
-                  </div>
-                </div>
-
+              <div className="max-w-md mx-auto">
                 <div
                   onClick={() => {
                     if (vehicleOption !== "existing") {
@@ -2338,7 +2391,7 @@ export const ClearanceRequestFlow = ({
               </div>
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                 <p className="text-sm text-amber-800">
-                  Please present your transaction to HPG/LTO. You can verify status below.
+                  Please present your transaction to HPG/LTO.
                 </p>
                 <p className="text-xs text-gray-600 mt-2 pb-2">
                   Transaction Code: <span className="font-mono font-semibold">{voucherCode}</span>
@@ -2377,6 +2430,7 @@ export const ClearanceRequestFlow = ({
                   <p className="font-semibold text-green-700 text-lg">Certificate Issued</p>
                   <p className="text-sm font-mono font-bold text-gray-900 mt-2">{certificateNo}</p>
                   <p className="text-xs text-gray-500 mt-1">Plate: {orCr.plateNumber}</p>
+                  <p className="text-xs text-blue-700 mt-1 font-mono font-semibold">MVCC/MEC No: {mvcData?.mvcNo || "—"}</p>
                   <div className="mt-4 flex justify-center gap-3">
                     <Button onClick={handlePreview} variant="outline">
                       <Eye size={16} /> Preview
@@ -2384,16 +2438,16 @@ export const ClearanceRequestFlow = ({
                     <Button onClick={handleDownload} variant="outline">
                       <Download size={16} /> Download
                     </Button>
-                    <Button onClick={finishCitizen}>
-                      <CheckCircle size={16} /> Complete
-                    </Button>
                   </div>
                 </div>
               ) : (
                 <div className="text-center py-6">
                   <p className="text-sm text-gray-500 mb-4">
-                    Certificate issuance starts automatically after successful HPG verification.
+                    Please wait for DCI Validation to verify the documents and issue the certificate.
                   </p>
+                  <Button onClick={handleCitizenDciValidation} className="mx-auto flex items-center gap-2">
+                    <CheckCircle size={16} /> Run DCI Validation
+                  </Button>
                 </div>
               )}
             </Card>
@@ -2585,7 +2639,7 @@ export const ClearanceRequestFlow = ({
           <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6 text-center">
             <h3 className="text-lg font-bold text-gray-900 mb-2">Are you sure?</h3>
             <p className="text-gray-600 mb-6">
-              Are you sure the details are correct? Do you want to proceed?
+              Please confirm that all uploaded data is accurate and final for this transaction.
             </p>
             <div className="flex gap-3 justify-center">
               <Button
