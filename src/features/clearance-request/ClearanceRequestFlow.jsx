@@ -1441,6 +1441,61 @@ export const ClearanceRequestFlow = ({
     window.open(url, "_blank");
   };
 
+  const handleAgentDownloadSlip = async (row) => {
+    if (!row?.voucherCode) return;
+    const vInfo = row.orCr || row.crCr || emptyVehicle;
+    const { doc, filename } = await generateDciCodeSlipPDF({
+      requestId: row.requestId,
+      voucherCode: row.voucherCode,
+      voucherReferenceNo: row.voucherCode,
+      dateCreated: row.dateCreated || dateCreated,
+      ownerName: vInfo.ownerName || "",
+      plateNumber: row.plateNumber || vInfo.plateNumber || "",
+      mvFileNumber: vInfo.mvFileNumber || "",
+      engineNumber: vInfo.engineNumber || "",
+      chassisNumber: vInfo.chassisNumber || "",
+      make: vInfo.make || "",
+      series: vInfo.series || "",
+      color: vInfo.color || "",
+      yearModel: vInfo.yearModel || "",
+    });
+    doc.save(filename);
+  };
+
+  const handleAgentPreviewSlip = async (row) => {
+    if (!row?.voucherCode) return;
+    const vInfo = row.orCr || row.crCr || emptyVehicle;
+    const { doc } = await generateDciCodeSlipPDF({
+      requestId: row.requestId,
+      voucherCode: row.voucherCode,
+      voucherReferenceNo: row.voucherCode,
+      dateCreated: row.dateCreated || dateCreated,
+      ownerName: vInfo.ownerName || "",
+      plateNumber: row.plateNumber || vInfo.plateNumber || "",
+      mvFileNumber: vInfo.mvFileNumber || "",
+      engineNumber: vInfo.engineNumber || "",
+      chassisNumber: vInfo.chassisNumber || "",
+      make: vInfo.make || "",
+      series: vInfo.series || "",
+      color: vInfo.color || "",
+      yearModel: vInfo.yearModel || "",
+    });
+    const blob = doc.output("blob");
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+  };
+
+  const handleAgentDownloadAllSlips = async () => {
+    const validRows = certificationQueue.filter((row) => row.voucherCode);
+    if (validRows.length === 0) {
+      alert("No transaction codes to download.");
+      return;
+    }
+    for (const row of validRows) {
+      await handleAgentDownloadSlip(row);
+    }
+  };
+
   const handleDownloadAllCertificates = async () => {
     const issuedRows = certificationQueue.filter((row) => row.certificateNo);
     if (issuedRows.length === 0) {
@@ -1796,8 +1851,7 @@ export const ClearanceRequestFlow = ({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 text-left">
-                      <th className="pb-2 w-16"></th>
-                            <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
+                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
                       <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
                         {vehicleOption === "new" ? "Engine No." : "Plate"}
                       </th>
@@ -1807,12 +1861,7 @@ export const ClearanceRequestFlow = ({
                   <tbody>
                     {certificationQueue.map((row) => (
                       <tr key={row.requestId} className="border-b border-gray-100">
-                        <td className="py-2 w-16">
-                                  <div className="flex items-center gap-1">
-                                    <CertificateActionButtons row={row} />
-                                  </div>
-                                </td>
-                              <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
+                        <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
                         <td className="py-2 text-gray-700">
                           {vehicleOption === "new" ? row.orCr?.engineNumber || "-" : row.plateNumber || "-"}
                         </td>
@@ -1961,6 +2010,16 @@ export const ClearanceRequestFlow = ({
                   <h3 className="text-base font-bold text-gray-900">HPG Portal (Bulk)</h3>
                 </div>
                 <div className="flex gap-2">
+                  {certificationQueue.some(row => row.voucherCode) && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleAgentDownloadAllSlips}
+                      className="flex items-center gap-2"
+                    >
+                      <Download size={14} /> Download All Slips
+                    </Button>
+                  )}
                   <Button size="sm" onClick={() => setHpgForAll(HPG_STATUS.APPROVED)}>
                     <CheckCircle size={16} className="mr-1 inline" /> Mark All Verified by HPG
                   </Button>
@@ -1972,8 +2031,8 @@ export const ClearanceRequestFlow = ({
                   <thead>
                     <tr className="border-b border-gray-200 text-left">
                       <th className="pb-2 w-16"></th>
-                            <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
                       <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Transaction Code</th>
+                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
                       <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">HPG Status</th>
                     </tr>
                   </thead>
@@ -1981,12 +2040,35 @@ export const ClearanceRequestFlow = ({
                     {certificationQueue.map((row) => (
                       <tr key={row.requestId} className="border-b border-gray-100">
                         <td className="py-2 w-16">
-                                  <div className="flex items-center gap-1">
-                                    <CertificateActionButtons row={row} />
-                                  </div>
-                                </td>
-                              <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
+                          {row.voucherCode && (
+                            <div className="mx-auto grid w-16 grid-cols-2 items-center justify-items-center gap-1">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="!px-2 !py-1.5"
+                                onClick={() => handleAgentPreviewSlip(row)}
+                                title="Preview Slip"
+                                aria-label="Preview Slip"
+                              >
+                                <Eye size={14} />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="!px-2 !py-1.5"
+                                onClick={() => handleAgentDownloadSlip(row)}
+                                title="Download Slip"
+                                aria-label="Download Slip"
+                              >
+                                <Download size={14} />
+                              </Button>
+                            </div>
+                          )}
+                        </td>
                         <td className="py-2 font-mono font-semibold text-gray-700">{row.voucherCode || "-"}</td>
+                        <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
                         <td className="py-2 text-gray-700">{row.hpgStatus === HPG_STATUS.APPROVED ? "VERIFIED" : (row.hpgStatus || HPG_STATUS.PENDING)}</td>
                       </tr>
                     ))}
