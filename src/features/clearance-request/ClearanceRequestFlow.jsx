@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
+import { CertificateActionButtons } from "./components/CertificateActionButtons";
 import { Input } from "../../components/Input";
 import { Spinner } from "../../components/Spinner";
 import DCI_LOGO from "../../assets/DCI-LOGO.png";
@@ -31,7 +32,6 @@ import {
   MvcMecUploadCard,
   VehicleDocumentUploadCard,
 } from "./components/FlowFormCards";
-import { CertificateActionButtons } from "./components/CertificateActionButtons";
 import { generateClearanceCertificatePDF } from "./utils/generateClearanceCertificatePDF";
 import { generateDciCodeSlipPDF } from "./utils/generateDciCodeSlipPDF";
 import { CreateTicketModal } from "../Tickets/CreateTicketModal";
@@ -1779,7 +1779,8 @@ export const ClearanceRequestFlow = ({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 text-left">
-                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
+                      <th className="pb-2 w-16"></th>
+                            <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
                       <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
                         {vehicleOption === "new" ? "Engine No." : "Plate"}
                       </th>
@@ -1789,7 +1790,12 @@ export const ClearanceRequestFlow = ({
                   <tbody>
                     {certificationQueue.map((row) => (
                       <tr key={row.requestId} className="border-b border-gray-100">
-                        <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
+                        <td className="py-2 w-16">
+                                  <div className="flex items-center gap-1">
+                                    <CertificateActionButtons row={row} />
+                                  </div>
+                                </td>
+                              <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
                         <td className="py-2 text-gray-700">
                           {vehicleOption === "new" ? row.orCr?.engineNumber || "-" : row.plateNumber || "-"}
                         </td>
@@ -1948,7 +1954,8 @@ export const ClearanceRequestFlow = ({
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200 text-left">
-                      <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
+                      <th className="pb-2 w-16"></th>
+                            <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
                       <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Transaction Code</th>
                       <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">HPG Status</th>
                     </tr>
@@ -1956,7 +1963,12 @@ export const ClearanceRequestFlow = ({
                   <tbody>
                     {certificationQueue.map((row) => (
                       <tr key={row.requestId} className="border-b border-gray-100">
-                        <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
+                        <td className="py-2 w-16">
+                                  <div className="flex items-center gap-1">
+                                    <CertificateActionButtons row={row} />
+                                  </div>
+                                </td>
+                              <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
                         <td className="py-2 font-mono font-semibold text-gray-700">{row.voucherCode || "-"}</td>
                         <td className="py-2 text-gray-700">{row.hpgStatus === HPG_STATUS.APPROVED ? "VERIFIED" : (row.hpgStatus || HPG_STATUS.PENDING)}</td>
                       </tr>
@@ -2013,7 +2025,8 @@ export const ClearanceRequestFlow = ({
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-gray-200 text-left">
-                          <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
+                          <th className="pb-2 w-16"></th>
+                            <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request</th>
                           {vehicleOption === "new" ? (
                             <>
                               <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Engine No.</th>
@@ -2030,7 +2043,12 @@ export const ClearanceRequestFlow = ({
                       <tbody>
                         {certificationQueue.map((row) => (
                           <tr key={row.requestId} className="border-b border-gray-100">
-                            <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
+                            <td className="py-2 w-16">
+                                  <div className="flex items-center gap-1">
+                                    <CertificateActionButtons row={row} />
+                                  </div>
+                                </td>
+                              <td className="py-2 font-mono text-xs text-gray-700">{row.requestId}</td>
                             {vehicleOption === "new" ? (
                               <>
                                 <td className="py-2 text-gray-700">{row.orCr?.engineNumber || "-"}</td>
@@ -2670,4 +2688,7 @@ export const ClearanceRequestFlow = ({
     </div>
   );
 };
+
+
+
 
