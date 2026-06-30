@@ -30,6 +30,7 @@ import { AccountPage } from "./features/accounts/AccountPage";
 import { PlaceholderPage } from "./features/placeholder/PlaceholderPage";
 import { MaintenancePage } from "./features/Maintenance/MaintenancePage";
 import { useAlert } from "./hooks/useAlert";
+import { Button } from "./components/Button";
 
 const getDefaultPageForRole = (currentRole) => {
   if (currentRole === "citizen") return "requests";
@@ -70,6 +71,8 @@ function AppContent() {
     return saved ? JSON.parse(saved) : [];
   });
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [isFlowOngoing, setIsFlowOngoing] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState(null);
   const [userProfile, setUserProfile] = useState(() => {
     const saved = localStorage.getItem("userProfile");
     return saved ? JSON.parse(saved) : { name: "", email: "" };
@@ -118,7 +121,7 @@ function AppContent() {
     navigate(`/dci-access/${landingPage}`);
   };
 
-  const handleLogout = () => {
+  const performLogout = () => {
     setView("login");
     setRole(null);
     setPage("dashboard");
@@ -128,12 +131,28 @@ function AppContent() {
     navigate("/dci-access");
   };
 
+  const handleLogout = () => {
+    if (isFlowOngoing) {
+      setPendingNavigation({ type: "logout" });
+      return;
+    }
+    performLogout();
+  };
+
   const handleNavigate = (p, request) => {
+    if (isFlowOngoing) {
+      setPendingNavigation({ type: "navigate", page: p, request });
+      return;
+    }
     setPage(p);
     setSelectedRequest(request || null);
   };
 
   const handleMyProfile = () => {
+    if (isFlowOngoing) {
+      setPendingNavigation({ type: "profile" });
+      return;
+    }
     setPage("profile");
   };
 
@@ -246,6 +265,7 @@ function AppContent() {
             onSaveRequest={handleClearanceRequestSave}
             onComplete={handleClearanceRequestComplete}
             onCancel={() => setPage("requests")}
+            onOngoingChange={setIsFlowOngoing}
           />
         );
       case "new-transaction-credits":
@@ -326,6 +346,43 @@ function AppContent() {
           }}
           onCancel={() => setView("login")}
         />
+      )}
+
+      {pendingNavigation && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl max-w-sm w-full p-6 text-center">
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Unsaved Changes</h3>
+            <p className="text-gray-600 mb-6 text-sm">
+              You have an ongoing transaction. Are you sure you want to navigate away? Unsaved progress will be lost.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Button
+                variant="outline"
+                onClick={() => setPendingNavigation(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => {
+                  const target = pendingNavigation;
+                  setPendingNavigation(null);
+                  setIsFlowOngoing(false);
+                  if (target.type === "navigate") {
+                    setPage(target.page);
+                    setSelectedRequest(target.request || null);
+                  } else if (target.type === "profile") {
+                    setPage("profile");
+                  } else if (target.type === "logout") {
+                    performLogout();
+                  }
+                }}
+              >
+                Discard & Proceed
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
