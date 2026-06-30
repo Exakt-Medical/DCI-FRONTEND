@@ -264,7 +264,7 @@ export const useCitizenPayment = ({
   // ── Poll for HPG Verification ──────────────────────────────────────────────
 
   useEffect(() => {
-    const isHpgStep = step === 4;
+    const isHpgStep = step === 5;
     if (!isHpgStep || hpgVerified) return;
 
     let intervalId;

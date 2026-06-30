@@ -35,6 +35,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useRequest } from "../../context/RequestContext";
 import { fetchMyRequests } from "../../services/certificateRequestService";
 import { CreateTicketModal } from "../Tickets/CreateTicketModal";
+import { DataMismatchModal } from "./components/DataMismatchModal";
 import { ticketService } from "../../services/ticketService";
 import { voucherInventoryService } from "../../services/voucherInventoryService";
 
@@ -58,6 +59,7 @@ export const CitizenClearanceRequestFlow = () => {
   const { error: showError, success: showSuccessAlert } = useAlert();
   const { role } = useAuth();
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+  const [isDataMismatchModalOpen, setIsDataMismatchModalOpen] = useState(false);
   const {
     voucherInventory,
     setVoucherInventory,
@@ -221,6 +223,19 @@ export const CitizenClearanceRequestFlow = () => {
   );
   const [validationErrors, setValidationErrors] = useState({});
 
+  const [transactionVerified, setTransactionVerified] = useState(
+    Boolean(selectedRequest?.verificationId)
+  );
+  const [vvsOwnerName, setVvsOwnerName] = useState(
+    selectedRequest?.vvsOwnerName || ""
+  );
+  const [vvsVehicleDetails, setVvsVehicleDetails] = useState(
+    selectedRequest?.vvsVehicleDetails || null
+  );
+  const [verificationId, setVerificationId] = useState(
+    selectedRequest?.verificationId || ""
+  );
+
   useEffect(() => {
     if (selectedRequest) {
       if (selectedRequest.id && !id) setId(selectedRequest.id);
@@ -242,6 +257,12 @@ export const CitizenClearanceRequestFlow = () => {
       if (selectedRequest.paymentDone) setPaymentDone(true);
       if (selectedRequest.hpgVerified || selectedRequest.status === "HPG_VERIFIED") setHpgVerified(true);
       if (selectedRequest.certificateNo) setCertificateNo(selectedRequest.certificateNo);
+      if (selectedRequest.verificationId) {
+        setTransactionVerified(true);
+        setVerificationId(selectedRequest.verificationId);
+      }
+      if (selectedRequest.vvsOwnerName) setVvsOwnerName(selectedRequest.vvsOwnerName);
+      if (selectedRequest.vvsVehicleDetails) setVvsVehicleDetails(selectedRequest.vvsVehicleDetails);
       if (selectedRequest.mvcMecValidationState) setCitizenValidationState(selectedRequest.mvcMecValidationState);
       if (selectedRequest.mvcMecValidationMessage) setCitizenValidationMessage(selectedRequest.mvcMecValidationMessage);
       if (selectedRequest.mvcData) setMvcData(selectedRequest.mvcData);
@@ -369,7 +390,7 @@ export const CitizenClearanceRequestFlow = () => {
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
       await saveCitizenRequest({
-        currentStep: 6,
+        currentStep: 7,
         status: "MVC_MEC_VALIDATED",
         mvcData,
         mecData,
@@ -380,7 +401,7 @@ export const CitizenClearanceRequestFlow = () => {
       setCitizenValidationState(VALIDATION_STATE.PASSED);
       setCitizenValidationMessage("Validated by DCI portal.");
       setRequestStatus("MVC_MEC_VALIDATED");
-      setStep(6);
+      setStep(7);
     } catch (error) {
       const errMsg = error?.response?.data?.error || error?.message || "An error occurred during DCI validation.";
       setCitizenValidationState(VALIDATION_STATE.FAILED);
@@ -388,7 +409,7 @@ export const CitizenClearanceRequestFlow = () => {
       setRequestStatus("MVC_MEC_VALIDATION_PENDING");
 
       await saveCitizenRequest({
-        currentStep: 5,
+        currentStep: 6,
         status: "MVC_MEC_VALIDATION_PENDING",
         mvcData,
         mecData,
@@ -416,9 +437,9 @@ export const CitizenClearanceRequestFlow = () => {
     setTimeout(() => {
       setIsIssuingCertificate(false);
       setRequestStatus("CERTIFICATE_ISSUED");
-      setStep(6);
+      setStep(7);
       saveCitizenRequest({
-        currentStep: 6,
+        currentStep: 7,
         status: "CERTIFICATE_ISSUED",
         certificateNo: "", // Let backend generate a unique certificate number
         clearanceReferenceNo: "",
@@ -533,24 +554,29 @@ export const CitizenClearanceRequestFlow = () => {
       return;
     }
 
-    if (hasMismatch) {
-      await showError("Validation Failed", "OR and CR details must match to proceed.");
-      return;
-    }
-
     setIsVerifyingDocuments(true);
     try {
-      // 1. Save the input values in or_cr_requests with status "Unverified"
       await saveCitizenRequest({
-        currentStep: 2,
-        status: "Unverified",
+        currentStep: 3,
+        status: "OR_CR_UPLOADED",
         orCr,
         crCr,
         orNumber,
         crNumber,
       });
+      setRequestStatus("OR_CR_UPLOADED");
+      setStep(3);
+    } catch (error) {
+      const errMsg = error?.message || "Failed to save OR/CR details.";
+      await showError("Save Failed", errMsg);
+    } finally {
+      setIsVerifyingDocuments(false);
+    }
+  };
 
-      // 2. Call the VVS /verify endpoint to verify details
+  const handleGenerateTransactionCode = async () => {
+    setIsVerifyingDocuments(true);
+    try {
       const verificationPayload = {
         mvFileNumber: (crCr.mvFileNumber || orCr.mvFileNumber || "").trim().toUpperCase(),
         plateNumber: (crCr.plateNumber || orCr.plateNumber || "").trim().toUpperCase(),
@@ -565,67 +591,25 @@ export const CitizenClearanceRequestFlow = () => {
         throw new Error(vvsData.failureReason || "No matching verified vehicle record found in VVS system.");
       }
 
-      let assignedVoucherCode = voucherCode;
-      let assignedVoucherId = null;
+      setTransactionVerified(true);
+      setVerificationId(vvsData.verificationId || "");
+      
+      const ownerName = [vvsData.ownerFirstName, vvsData.ownerMiddleName, vvsData.ownerLastName].filter(Boolean).join(" ") || vvsData.ownerName || "Unknown Owner";
+      setVvsOwnerName(ownerName);
+      setVvsVehicleDetails(vvsData);
 
-
-
-      // 3. Save with status "DOCUMENTS_VERIFIED" to compare/match details
       await saveCitizenRequest({
-        currentStep: 3,
+        currentStep: 4,
         status: "DOCUMENTS_VERIFIED",
         verificationId: vvsData.verificationId || "",
-        voucherCode: assignedVoucherCode,
-        voucherId: assignedVoucherId,
-        orCr,
-        crCr,
-        orNumber,
-        crNumber,
+        vvsOwnerName: ownerName,
+        vvsVehicleDetails: vvsData,
       });
 
-      showSuccessAlert("OR/CR Verified", "Vehicle details verified successfully.");
-
-      setStep(3);
-      setRequestStatus("DOCUMENTS_VERIFIED");
+      showSuccessAlert("Verification Complete", "Transaction code issued successfully.");
     } catch (error) {
-      const errMsg = error?.response?.data?.failureReason || error?.response?.data?.error || error?.message || "Input details do not match data in VVS system.";
-      
-      let nextStatus = "Unverified";
-      if (errMsg.includes("mismatch") || errMsg.includes("do not match")) {
-        nextStatus = "vehicle unmatch";
-      }
-      
-      setRequestStatus(nextStatus);
-
-      // Parse mismatched fields from error message to mark them red
-      const newErrors = {};
-      if (errMsg.includes("Engine Number")) newErrors.engineNumber = true;
-      if (errMsg.includes("Chassis Number")) newErrors.chassisNumber = true;
-      if (errMsg.includes("Plate Number")) newErrors.plateNumber = true;
-      if (errMsg.includes("MV File Number")) newErrors.mvFileNumber = true;
-      if (errMsg.includes("Color")) newErrors.color = true;
-      if (errMsg.includes("Make")) newErrors.make = true;
-      if (errMsg.includes("Series")) newErrors.series = true;
-      if (errMsg.includes("Year Model")) newErrors.yearModel = true;
-      if (errMsg.includes("Classification")) newErrors.classification = true;
-      if (errMsg.includes("Owner Name")) newErrors.ownerName = true;
-      setValidationErrors(newErrors);
-
-      try {
-        await saveCitizenRequest({
-          currentStep: 2,
-          status: nextStatus,
-          orCr,
-          crCr,
-          orNumber,
-          crNumber,
-        });
-      } catch (saveErr) {
-        console.error("Failed to save unverified status:", saveErr);
-      }
-
-      await loadAllRequests();
-      await showError("Vehicle Verification Failed", errMsg);
+      const errMsg = error?.response?.data?.failureReason || error?.response?.data?.error || error?.message || "Verification failed.";
+      await showError("Verification Failed", errMsg);
     } finally {
       setIsVerifyingDocuments(false);
     }
@@ -712,11 +696,50 @@ export const CitizenClearanceRequestFlow = () => {
     };
 
     const created = await ticketService.create(payload);
-    await showSuccessAlert(
-      "Ticket Submitted",
-      `Your support ticket has been successfully submitted. Reference Number: ${referenceNumber}`
-    );
+    if (created) {
+      showSuccessAlert(
+        "Ticket Submitted",
+        `Your support ticket has been successfully submitted. Reference Number: ${referenceNumber}`
+      );
+      setIsTicketModalOpen(false);
+    }
     return created;
+  };
+
+  const handleDataMismatchSubmit = async ({ crAttachment, attachmentFile }) => {
+    const pad = (n) => String(n).padStart(4, "0");
+    const now = new Date();
+    const datePart = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}`;
+    const randPart = pad(Math.floor(Math.random() * 9000) + 1000);
+    const referenceNumber = `REF-${datePart}-${randPart}`;
+
+    const payload = {
+      referenceNumber,
+      requestedBy: role || "Citizen",
+      type: "Data Mismatch",
+      status: "PENDING",
+      address: crAttachment,
+      name: role || "Citizen",
+      processedBy: null,
+      dateRequested: new Date().toISOString(),
+      dateUpdated: new Date().toISOString(),
+      escalated: "NO",
+      roleBased: role?.toUpperCase() ?? null,
+      plateNo: orCr.plateNumber ?? null,
+      mvFileNo: crCr.mvFileNumber ?? null,
+      make: orCr.make ?? null,
+      series: orCr.series ?? null,
+      engineNo: orCr.engineNumber ?? null,
+      chassisNo: crCr.chassisNumber ?? null,
+    };
+
+    try {
+      await ticketService.create(payload);
+      showSuccessAlert("Ticket Submitted", `Data Mismatch ticket ${referenceNumber} has been created.`);
+      setIsDataMismatchModalOpen(false);
+    } catch (error) {
+      showError("Submission Failed", "There was an error creating your ticket.");
+    }
   };
 
   const canNext = () => {
@@ -728,16 +751,15 @@ export const CitizenClearanceRequestFlow = () => {
       return Boolean(orOk && crOk && !hasMismatch);
     }
 
-
-
     if (step === 3) return Boolean(paymentDone && voucherAssigned);
-    if (step === 4) return Boolean(hpgVerified);
-    if (step === 5) return isDocumentComplete(mvcData) && isDocumentComplete(mecData);
+    if (step === 4) return Boolean(transactionVerified);
+    if (step === 5) return Boolean(hpgVerified);
+    if (step === 6) return isDocumentComplete(mvcData) && isDocumentComplete(mecData);
     return false;
   };
 
   const nextStep = async () => {
-    if (step >= maxStep || !canNext()) return;
+    if (!canNext()) return;
 
     if (step === 1) {
       await handleProceedFromStep1();
@@ -749,7 +771,13 @@ export const CitizenClearanceRequestFlow = () => {
       return;
     }
 
-    if (step === 5) {
+    if (step === 4) {
+      // Allow proceeding to step 5 (HPG) if transaction is verified
+      setStep(5);
+      return;
+    }
+
+    if (step === 6) {
       await validateCitizenMvcMecStep();
       return;
     }
@@ -1034,7 +1062,65 @@ export const CitizenClearanceRequestFlow = () => {
             </Card>
           )}
 
-          {step === 4 && (            <Card className="p-5">
+          {step === 4 && (
+            <Card className="p-5">
+              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
+                <FileText size={18} className="text-[#0059b5]" />
+                <h3 className="text-base font-bold text-gray-900">
+                  Verify Vehicle
+                </h3>
+              </div>
+              <div className="space-y-4">
+                {!transactionVerified ? (
+                  <div className="text-center p-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                    <p className="text-sm text-gray-600 mb-4">
+                      Click below to verify your vehicle details against the VVS system.
+                    </p>
+                    <Button onClick={handleGenerateTransactionCode} disabled={isVerifyingDocuments}>
+                      {isVerifyingDocuments ? "Verifying..." : "Verify Vehicle"}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-6 space-y-6">
+                    <div className="text-center">
+                      <CheckCircle className="w-12 h-12 text-green-500 mx-auto" />
+                      <p className="font-bold text-green-700 text-lg mt-2">Vehicle Verified</p>
+                    </div>
+                    
+                    <div className="space-y-3 mt-4">
+                      <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Owner Details</h4>
+                      <div className="bg-white border border-green-100 rounded-lg p-4 shadow-sm">
+                        <p className="text-xs text-gray-500 mb-1">Owner Name</p>
+                        <p className="font-semibold text-gray-900">{vvsOwnerName.replace(/(?!^)[A-Za-z](?!$)/g, "*")}</p>
+                      </div>
+                      
+                      <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider pt-2">Vehicle Details</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {[
+                          { label: "Engine Number", value: vvsVehicleDetails?.engineNumber || crCr.engineNumber },
+                          { label: "Chassis Number", value: vvsVehicleDetails?.chassisNumber || crCr.chassisNumber },
+                          { label: "MV File Number", value: vvsVehicleDetails?.mvFileNo || crCr.mvFileNumber },
+                          { label: "Plate Number", value: vvsVehicleDetails?.plateNumber || crCr.plateNumber },
+                          { label: "Color", value: vvsVehicleDetails?.color || crCr.color },
+                          { label: "Make", value: vvsVehicleDetails?.make || crCr.make },
+                          { label: "Series", value: vvsVehicleDetails?.series || crCr.series },
+                          { label: "Year Model", value: vvsVehicleDetails?.yearModel || crCr.yearModel },
+                          { label: "Classification", value: vvsVehicleDetails?.classification || crCr.classification },
+                        ].map((detail, idx) => (
+                          <div key={idx} className="bg-white border border-green-100 rounded-lg p-3 shadow-sm overflow-hidden">
+                            <p className="text-[11px] text-gray-500 mb-1 uppercase tracking-wider truncate">{detail.label}</p>
+                            <p className="text-sm font-semibold text-gray-900 truncate" title={detail.value || "N/A"}>{detail.value || "N/A"}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {step === 5 && (            <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <FileText size={18} className="text-[#0059b5]" />
                 <h3 className="text-base font-bold text-gray-900">
@@ -1089,7 +1175,7 @@ export const CitizenClearanceRequestFlow = () => {
             </Card>
           )}
 
-          {step === 5 && (            <div className="space-y-4">
+          {step === 6 && (            <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <MvcMecUploadCard
                   title="MVCC"
@@ -1235,7 +1321,7 @@ export const CitizenClearanceRequestFlow = () => {
             </div>
           )}
 
-          {step >= 6 && (            <Card className="p-5">
+          {step === 7 && (            <Card className="p-5">
               <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                 <FileText size={18} className="text-[#0059b5]" />
                 <h3 className="text-base font-bold text-gray-900">
@@ -1299,10 +1385,10 @@ export const CitizenClearanceRequestFlow = () => {
               )}
               <Button
                 variant="ghost"
-                onClick={() => setIsTicketModalOpen(true)}
+                onClick={() => step === 4 ? setIsDataMismatchModalOpen(true) : setIsTicketModalOpen(true)}
                 className="text-gray-500 hover:text-gray-700 font-medium"
               >
-                Report an Issue
+                {step === 4 ? "Report Data Mismatch" : "Report an Issue"}
               </Button>
             </div>
             {step < flowSteps.length ? (
@@ -1315,7 +1401,7 @@ export const CitizenClearanceRequestFlow = () => {
                     {crPreview && getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS)}</p>}
                   </div>
                 )}
-                {!canNext() && step === 5 && (mvcPreview || mecPreview) && (
+                {!canNext() && step === 6 && (mvcPreview || mecPreview) && (
                   <div className="text-[11px] text-red-600 space-y-0.5 font-medium text-right mr-2">
                     {mvcPreview && getMissingFieldsText(mvcData, "MVCC") && <p>• {getMissingFieldsText(mvcData, "MVCC")}</p>}
                     {mecPreview && getMissingFieldsText(mecData, "MEC") && <p>• {getMissingFieldsText(mecData, "MEC")}</p>}
@@ -1336,6 +1422,34 @@ export const CitizenClearanceRequestFlow = () => {
         onSubmit={handleCreateTicket}
         prefilledData={getTicketPrefilledData()}
       />
+      {isDataMismatchModalOpen && (
+        <DataMismatchModal
+          vehicleData={vvsVehicleDetails ? {
+            mv_file_number: vvsVehicleDetails.mvFileNo || vvsVehicleDetails.mvFileNumber || "",
+            plate_number: vvsVehicleDetails.plateNumber || "",
+            engine_number: vvsVehicleDetails.engineNumber || "",
+            chassis_number: vvsVehicleDetails.chassisNumber || "",
+            make: vvsVehicleDetails.make || "",
+            series: vvsVehicleDetails.series || "",
+            color: vvsVehicleDetails.color || "",
+            denomination: vvsVehicleDetails.denomination || "",
+            year_model: vvsVehicleDetails.yearModel || "",
+            classification: vvsVehicleDetails.classification || ""
+          } : {}}
+          ownerData={vvsVehicleDetails ? {
+            firstName: vvsVehicleDetails.ownerFirstName || "",
+            lastName: vvsVehicleDetails.ownerLastName || "",
+            middleName: vvsVehicleDetails.ownerMiddleName || "",
+            address: vvsVehicleDetails.ownerAddress || "",
+            contactNo: "",
+            email: "",
+            tin: ""
+          } : {}}
+          onSubmit={handleDataMismatchSubmit}
+          onClose={() => setIsDataMismatchModalOpen(false)}
+          isSubmitting={false}
+        />
+      )}
     </div>
   );
 }
