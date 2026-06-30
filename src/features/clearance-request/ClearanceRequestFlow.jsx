@@ -1685,39 +1685,46 @@ export const ClearanceRequestFlow = ({
               )}
 
               <Card className="mt-4 p-4 border border-blue-100 bg-blue-50/40">
-                <div className="flex items-center justify-between gap-3 mb-3">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">Bulk Queue Staging</p>
-                    <p className="text-xs text-gray-600">Upload OR/CR then add each transaction to queue.</p>
+                                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">Bulk Queue Staging</p>
+                      <p className="text-xs text-gray-600">Upload OR/CR then add each transaction to queue.</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="text-sm font-medium text-gray-700 bg-white px-3 py-1.5 rounded-lg border border-blue-200 shadow-sm flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                        Credits Remaining: <span className="font-bold text-[#0059b5] text-base">{Math.max(0, availableCreditsCount - certificationQueue.length)}</span>
+                      </div>
+                      <Button
+                        onClick={handleAddToQueue}
+                        disabled={
+                          (availableCreditsCount - certificationQueue.length <= 0) ||
+                          (vehicleOption === "new"
+                            ? !orCr.engineNumber || !orCr.chassisNumber
+                            : !orNumber ||
+                              !crNumber ||
+                              !orCr.mvFileNumber ||
+                              !crCr.mvFileNumber ||
+                              vehicleMismatch)
+                        }
+                      >
+                        Add To Queue
+                      </Button>
+                    </div>
                   </div>
-                  <Button
-                    onClick={handleAddToQueue}
-                    disabled={
-                      vehicleOption === "new"
-                        ? !orCr.engineNumber || !orCr.chassisNumber
-                        : !orNumber ||
-                          !crNumber ||
-                          !orCr.mvFileNumber ||
-                          !crCr.mvFileNumber ||
-                          vehicleMismatch
-                    }
-                  >
-                    Add To Queue
-                  </Button>
-                </div>
 
-                {certificationQueue.length > availableCreditsCount && (
-                  <div className="mb-4 p-3 bg-amber-50 text-amber-800 text-sm rounded-lg border border-amber-200 flex items-start gap-2">
-                    <span className="font-bold whitespace-nowrap">Warning:</span>
-                    <span>You don't have enough credits. You have {availableCreditsCount} available, please buy more credits to continue.</span>
-                  </div>
-                )}
+                  {(availableCreditsCount - certificationQueue.length <= 0) && (
+                    <div className="mb-4 p-3 bg-amber-50 text-amber-800 text-sm rounded-lg border border-amber-200 flex items-start gap-2">
+                      <span className="font-bold whitespace-nowrap">Notice:</span>
+                      <span>You don't have enough credits to add another transaction to the queue. Please finish this request then purchase more credits.</span>
+                    </div>
+                  )}
 
-                {certificationQueue.length === 0 ? (
-                  <p className="text-sm text-gray-500">No staged entries yet.</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
+                  {certificationQueue.length === 0 ? (
+                    <p className="text-sm text-gray-500">No staged entries yet.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b border-blue-100 text-left">
                           <th className="pb-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">Request ID</th>
@@ -2663,3 +2670,4 @@ export const ClearanceRequestFlow = ({
     </div>
   );
 };
+
