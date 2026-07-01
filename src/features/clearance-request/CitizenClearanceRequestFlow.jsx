@@ -1020,9 +1020,7 @@ export const CitizenClearanceRequestFlow = () => {
                 <div className="flex items-center gap-3">
                   {!canNext() && step === 2 && (orPreview || crPreview) && (
                     <div className="text-[11px] text-red-600 space-y-0.5 font-medium text-right mr-2">
-                      {orPreview && (!orNumber || orNumber === "Extracting...") && <p>• Missing OR Number</p>}
                       {orPreview && getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(orCr, "OR", OR_EXPECTED_FIELDS)}</p>}
-                      {crPreview && (!crNumber || crNumber === "Extracting...") && <p>• Missing CR Number</p>}
                       {crPreview && getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS)}</p>}
                     </div>
                   )}
