@@ -170,6 +170,8 @@ export const AgentClearanceRequestFlow = () => {
   const [transactionVerified, setTransactionVerified] = useState(
     Boolean(selectedRequest?.verificationId),
   );
+  const [verificationFailed, setVerificationFailed] = useState(false);
+  const [verificationError, setVerificationError] = useState("");
   const [vvsOwnerName, setVvsOwnerName] = useState(selectedRequest?.vvsOwnerName || "");
   const [vvsVehicleDetails, setVvsVehicleDetails] = useState(
     selectedRequest?.vvsVehicleDetails || null,
@@ -506,12 +508,13 @@ export const AgentClearanceRequestFlow = () => {
         showSuccessAlert("Verification Complete", "Transaction code issued successfully.");
       }
     } catch (error) {
+      setVerificationFailed(true);
       const errMsg =
         error?.response?.data?.failureReason ||
         error?.response?.data?.error ||
         error?.message ||
         "Verification failed.";
-      await showError("Verification Failed", errMsg);
+      setVerificationError(errMsg);
     } finally {
       setIsVerifyingDocuments(false);
     }
@@ -808,32 +811,87 @@ export const AgentClearanceRequestFlow = () => {
                       <Button onClick={handleVerifyVehicle} disabled={isVerifyingDocuments}>
                         {isVerifyingDocuments ? "Verifying..." : "Verify Vehicle"}
                       </Button>
+                      {verificationFailed && (
+                        <div className="mt-6">
+                          <div className="bg-red-50 text-red-700 text-sm p-4 rounded-lg border border-red-200 mb-4 w-full">
+                            <p className="font-semibold mb-1">Verification Failed</p>
+                            <p>{verificationError}</p>
+                          </div>
+                          <div className="flex justify-end">
+                            <Button
+                              variant="secondary"
+                              onClick={() => setIsTicketModalOpen(true)}
+                              className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-solid border-2"
+                            >
+                              Report an Issue
+                            </Button>
+                          </div>  
+                        </div>
+                      )}
                     </div>
                   ) : (
-                    <div className="bg-green-50 border border-green-200 rounded-xl p-6 space-y-6">
-                      <div className="text-center">
-                        <CheckCircle className="w-12 h-12 text-green-500 mx-auto" />
-                        <p className="font-bold text-green-700 text-lg mt-2">Vehicle Verified</p>
+                    <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+                      <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-200">
+                        <div className="w-8 h-8 rounded-full border-2 border-green-500 flex items-center justify-center bg-green-50">
+                          <CheckCircle className="text-green-500 w-5 h-5" />
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-900">LTO Verification Successful</h3>
                       </div>
-                      <div className="space-y-3 mt-4">
-                        <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Owner Details</h4>
-                        <div className="bg-white border border-green-100 rounded-lg p-4 shadow-sm">
-                          <p className="text-xs text-gray-500 mb-1">Owner Name</p>
-                          <p className="font-semibold text-gray-900">
-                            {vvsOwnerName.replace(/(?!^)[A-Za-z](?!$)/g, "*")}
-                          </p>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-y-8 gap-x-6">
+                        <div>
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Make</p>
+                          <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.make || crCr.make || "N/A"}</p>
                         </div>
-                        <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider pt-2">Vehicle Details</h4>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                          {vehicleDetails.map((detail, idx) => (
-                            <div key={idx} className="bg-white border border-green-100 rounded-lg p-3 shadow-sm overflow-hidden">
-                              <p className="text-[11px] text-gray-500 mb-1 uppercase tracking-wider truncate">{detail.label}</p>
-                              <p className="text-sm font-semibold text-gray-900 truncate" title={detail.value || "N/A"}>
-                                {detail.value || "N/A"}
-                              </p>
-                            </div>
-                          ))}
+                        <div>
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Series</p>
+                          <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.series || crCr.series || "N/A"}</p>
                         </div>
+                        <div>
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Year Model</p>
+                          <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.yearModel || crCr.yearModel || "N/A"}</p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Color</p>
+                          <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.color || crCr.color || "N/A"}</p>
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Owner</p>
+                          <p className="text-sm font-semibold text-gray-900 uppercase">{vvsOwnerName.replace(/(?!^)[A-Za-z](?!$)/g, "*")}</p>
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Classification</p>
+                          <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.classification || crCr.classification || "N/A"}</p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Vehicle Type</p>
+                          <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.denomination || crCr.vehicleType || "N/A"}</p>
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Engine Number</p>
+                          <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.engineNumber || crCr.engineNumber || "N/A"}</p>
+                        </div>
+                        <div>
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Chassis No.</p>
+                          <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.chassisNumber || crCr.chassisNumber || "N/A"}</p>
+                        </div>
+                        
+                        <div>
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Plate Number</p>
+                          <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.plateNumber || crCr.plateNumber || "N/A"}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-8 flex justify-end">
+                        <Button
+                          variant="secondary"
+                          onClick={() => setIsDataMismatchModalOpen(true)}
+                          className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-solid border-2"
+                        >
+                          Report Data Mismatch
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -971,13 +1029,15 @@ export const AgentClearanceRequestFlow = () => {
                     </Button>
                   )
                 )}
-                <Button
-                  variant="ghost"
-                  onClick={() => step === 3 ? setIsDataMismatchModalOpen(true) : setIsTicketModalOpen(true)}
-                  className="text-gray-500 hover:text-gray-700 font-medium"
-                >
-                  {step === 3 ? "Report Data Mismatch" : "Report an Issue"}
-                </Button>
+                {step !== 2 && step !== 3 && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => setIsTicketModalOpen(true)}
+                    className="text-gray-500 hover:text-gray-700 font-medium"
+                  >
+                    Report an Issue
+                  </Button>
+                )}
               </div>
               {step < flowSteps.length && (
                 <div className="flex items-center gap-3">
