@@ -28,16 +28,12 @@ export const AdminLayout = () => {
     citizen: [
       { id: "requests", label: "My Requests", icon: FileText, section: "REQUESTS", disabled: false },
       { id: "new-clearance-request", label: "Request Certificate", icon: CreditCard, section: "REQUESTS", disabled: false },
-      { id: "tickets", label: "Tickets", icon: Ticket, section: "SUPPORT", disabled: false },
-
     ],
     agent_fixer: [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, section: "MAIN", disabled: false },
       { id: "requests", label: "My Requests / Queue", icon: FileText, section: "REQUESTS", disabled: false },
       { id: "new-voucher-request", label: "Voucher", icon: CreditCard, section: "REQUESTS", disabled: false },
       { id: "new-clearance-request", label: "Request for Certification", icon: Shield, section: "REQUESTS", disabled: false },
-      { id: "tickets", label: "Tickets", icon: Ticket, section: "SUPPORT", disabled: false },
-
     ],
     hpg: [
       { id: "verification", label: "Verify Vehicle", icon: Shield, section: "VERIFICATION", disabled: false },
