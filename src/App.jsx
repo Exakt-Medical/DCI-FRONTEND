@@ -82,7 +82,7 @@ function App() {
           <Route path="/dci-access/verification" element={<ProtectedRoute allowedRoles={["hpg"]}><HpgVerifyPage /></ProtectedRoute>} />
           <Route path="/dci-access/certificate-lookup" element={<ProtectedRoute allowedRoles={["lto"]}><LtoLookupPage /></ProtectedRoute>} />
           
-          <Route path="/dci-access/tickets" element={<ProtectedRoute allowedRoles={["admin", "hpg", "lto", "agent", "citizen", "agent_fixer"]}><TicketPage /></ProtectedRoute>} />
+          <Route path="/dci-access/tickets" element={<ProtectedRoute allowedRoles={["admin", "hpg", "lto"]}><TicketPage /></ProtectedRoute>} />
           
           <Route path="/dci-access/accounts" element={<ProtectedRoute allowedRoles={["admin"]}><AccountPage /></ProtectedRoute>} />
           <Route path="/dci-access/transactions" element={<ProtectedRoute allowedRoles={["admin"]}><TransactionLogsPage /></ProtectedRoute>} />
