@@ -11,17 +11,8 @@ import { OCR_STATUS } from "../../../hooks/useOcrForm";
 export const emptyVehicle = {
   plateNumber: "",
   mvFileNumber: "",
-  classification: "",
-  vehicleType: "",
-  fuelType: "",
   engineNumber: "",
   chassisNumber: "",
-  make: "",
-  series: "",
-  yearModel: "",
-  color: "",
-  ownerName: "",
-  ownerAddress: "",
 };
 
 export const emptyMvc = {
@@ -63,13 +54,6 @@ export const makeCertificateNo = (index = 0) =>
 export const OR_EXPECTED_FIELDS = [
   "plateNumber",
   "mvFileNumber",
-  "classification",
-  "vehicleType",
-  "fuelType",
-  "yearModel",
-  "color",
-  "ownerName",
-  "ownerAddress",
 ];
 
 export const CR_EXPECTED_FIELDS = [
@@ -77,12 +61,6 @@ export const CR_EXPECTED_FIELDS = [
   "mvFileNumber",
   "engineNumber",
   "chassisNumber",
-  "make",
-  "series",
-  "yearModel",
-  "color",
-  "ownerName",
-  "ownerAddress",
 ];
 
 // ── Vehicle field merging ────────────────────────────────────────────────────
@@ -90,7 +68,8 @@ export const CR_EXPECTED_FIELDS = [
 /** Shallow-merges `next` fields into `current`, uppercasing non-blank strings. */
 export const mergeVehicleFields = (current = {}, next = {}) => {
   const merged = { ...current };
-  Object.entries(next).forEach(([key, value]) => {
+  Object.keys(current).forEach((key) => {
+    const value = next[key];
     if (typeof value === "string" && value.trim()) {
       merged[key] = value.trim().toUpperCase();
     }

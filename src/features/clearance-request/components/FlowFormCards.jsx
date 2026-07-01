@@ -6,25 +6,14 @@ import { cn } from "../../../utils/cn";
 
 const OR_FIELD_CONFIG = [
   { key: "plateNumber", label: "Plate Number", required: true },
-  { key: "mvFileNumber", label: "MV File Number" },
-  { key: "classification", label: "Classification" },
-  { key: "vehicleType", label: "Vehicle Type" },
-  { key: "fuelType", label: "Fuel Type" },
-  { key: "yearModel", label: "Year Model" },
-  { key: "color", label: "Color" },
-  { key: "ownerName", label: "Owner Name", required: true },
+  { key: "mvFileNumber", label: "MV File Number", required: true },
 ];
 
 const CR_FIELD_CONFIG = [
   { key: "plateNumber", label: "Plate Number", required: true },
-  { key: "mvFileNumber", label: "MV File Number" },
-  { key: "engineNumber", label: "Engine Number" },
-  { key: "chassisNumber", label: "Chassis Number" },
-  { key: "make", label: "Make" },
-  { key: "series", label: "Series" },
-  { key: "yearModel", label: "Year Model" },
-  { key: "color", label: "Color" },
-  { key: "ownerName", label: "Owner Name", required: true },
+  { key: "mvFileNumber", label: "MV File Number", required: true },
+  { key: "engineNumber", label: "Engine Number", required: true },
+  { key: "chassisNumber", label: "Chassis Number", required: true },
 ];
 
 export const VehicleFields = ({ values, onChange, fieldSet = "cr", errors = {} }) => (
@@ -40,24 +29,9 @@ export const VehicleFields = ({ values, onChange, fieldSet = "cr", errors = {} }
         error={errors[field.key]}
       />
     ))}
-    <div className="flex flex-col gap-1.5">
-      <label className={cn("text-xs font-semibold text-gray-600 uppercase tracking-wider", errors.ownerAddress && "text-red-500")}>
-        Owner Address
-        <span className="text-red-500 ml-1">*</span>
-      </label>
-      <textarea
-        value={values.ownerAddress}
-        onChange={(e) => onChange("ownerAddress", e.target.value.toUpperCase())}
-        placeholder="Auto-extracted"
-        rows={3}
-        className={cn(
-          "w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all",
-          errors.ownerAddress && "border-red-500 ring-2 ring-red-100 focus:border-red-500 focus:ring-red-100"
-        )}
-      />
-    </div>
   </div>
 );
+
 
 export const VehicleDocumentUploadCard = ({
   title,
@@ -65,11 +39,6 @@ export const VehicleDocumentUploadCard = ({
   onFile,
   preview,
   uploadHint,
-  numberLabel,
-  numberValue,
-  onNumberChange,
-  numberPlaceholder,
-  extraInputs,
   vehicleLabel,
   vehicleValues,
   vehicleFieldSet,
@@ -92,19 +61,6 @@ export const VehicleDocumentUploadCard = ({
       OCR accepts PDF and image uploads for automatic field extraction.
     </p>
     <div className="mt-4 space-y-3">
-      <Input
-        label={numberLabel}
-        value={numberValue}
-        onChange={(e) => {
-          if (onNumberChange) {
-            onNumberChange({ target: { value: e.target.value.toUpperCase() } });
-          }
-        }}
-        placeholder={numberPlaceholder}
-        required={true}
-        error={errors[vehicleFieldSet === "or" ? "orNumber" : "crNumber"]}
-      />
-      {extraInputs}
       <div className="pt-2 border-t border-gray-200">
         <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
           {vehicleLabel}
@@ -119,6 +75,7 @@ export const VehicleDocumentUploadCard = ({
     </div>
   </Card>
 );
+
 
 export const MvcMecUploadCard = ({
   title,

@@ -34,8 +34,6 @@ export const useOrCrOcr = ({
   setMecData,
   setAgentMvcData,
   setAgentMecData,
-  setOrNumber,
-  setCrNumber,
   setOrPreview,
   setCrPreview,
   setMvcPreview,
@@ -80,17 +78,11 @@ export const useOrCrOcr = ({
     }
 
     const runId = nextOcrVersion("or");
-    const previousState = { orNumber: null, orCr };
+    const previousState = { orCr };
     setOcrState("or", { status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
-
-    setOrNumber("Extracting...");
     setOrCr({
       plateNumber: "Extracting...", mvFileNumber: "Extracting...",
-      classification: "Extracting...", vehicleType: "Extracting...",
-      fuelType: "Extracting...", engineNumber: "Extracting...",
-      chassisNumber: "Extracting...", make: "Extracting...",
-      series: "Extracting...", yearModel: "Extracting...",
-      color: "Extracting...", ownerName: "Extracting...", ownerAddress: "Extracting...",
+      engineNumber: "Extracting...", chassisNumber: "Extracting...",
     });
 
     try {
@@ -98,12 +90,10 @@ export const useOrCrOcr = ({
       if (!isCurrentOcrVersion("or", runId)) return;
 
       const parsed = result.fields || {};
-      setOrNumber(parsed.orNumber || "");
       setOrCr(mergeVehicleFields(orCr, parsed.vehicle || {}));
       setOcrState("or", { status: OCR_STATUS.SUCCESS, confidence: result.confidence || 0, error: "" });
     } catch (error) {
       if (!isCurrentOcrVersion("or", runId)) return;
-      setOrNumber("");
       setOrCr(previousState.orCr || emptyVehicle);
       setOcrState("or", { status: OCR_STATUS.ERROR, confidence: 0, error: error?.message || "Unable to extract OR details." });
     }
@@ -120,17 +110,11 @@ export const useOrCrOcr = ({
     }
 
     const runId = nextOcrVersion("cr");
-    const previousState = { crNumber: null, crCr };
+    const previousState = { crCr };
     setOcrState("cr", { status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
-
-    setCrNumber("Extracting...");
     setCrCr({
       plateNumber: "Extracting...", mvFileNumber: "Extracting...",
-      classification: "Extracting...", vehicleType: "Extracting...",
-      fuelType: "Extracting...", engineNumber: "Extracting...",
-      chassisNumber: "Extracting...", make: "Extracting...",
-      series: "Extracting...", yearModel: "Extracting...",
-      color: "Extracting...", ownerName: "Extracting...", ownerAddress: "Extracting...",
+      engineNumber: "Extracting...", chassisNumber: "Extracting...",
     });
 
     try {
@@ -138,12 +122,10 @@ export const useOrCrOcr = ({
       if (!isCurrentOcrVersion("cr", runId)) return;
 
       const parsed = result.fields || {};
-      setCrNumber(parsed.crNumber || "");
       setCrCr(mergeVehicleFields(crCr, parsed.vehicle || {}));
       setOcrState("cr", { status: OCR_STATUS.SUCCESS, confidence: result.confidence || 0, error: "" });
     } catch (error) {
       if (!isCurrentOcrVersion("cr", runId)) return;
-      setCrNumber("");
       setCrCr(previousState.crCr || emptyVehicle);
       setOcrState("cr", { status: OCR_STATUS.ERROR, confidence: 0, error: error?.message || "Unable to extract CR details." });
     }

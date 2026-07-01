@@ -37,6 +37,7 @@ import {
   CR_EXPECTED_FIELDS,
   isDocumentComplete,
   getMissingFieldsText,
+  mergeVehicleFields,
 } from "./utils/clearanceRequestUtils";
 import { useOrCrOcr } from "./hooks/useOrCrOcr";
 import { useCitizenPayment } from "./hooks/useCitizenPayment";
@@ -136,12 +137,10 @@ export const CitizenClearanceRequestFlow = () => {
   );
 
   const [orPreview, setOrPreview] = useState(selectedRequest?.orPreview || null);
-  const [orNumber, setOrNumber] = useState(selectedRequest?.orNumber || "");
-  const [orCr, setOrCr] = useState(() => selectedRequest?.orCr || emptyVehicle);
+  const [orCr, setOrCr] = useState(() => mergeVehicleFields(emptyVehicle, selectedRequest?.orCr || {}));
 
   const [crPreview, setCrPreview] = useState(selectedRequest?.crPreview || null);
-  const [crNumber, setCrNumber] = useState(selectedRequest?.crNumber || "");
-  const [crCr, setCrCr] = useState(() => selectedRequest?.crCr || emptyVehicle);
+  const [crCr, setCrCr] = useState(() => mergeVehicleFields(emptyVehicle, selectedRequest?.crCr || {}));
 
   const [isVerifyingDocuments, setIsVerifyingDocuments] = useState(false);
   const [paymentDone, setPaymentDone] = useState(Boolean(selectedRequest?.paymentDone));
@@ -196,10 +195,8 @@ export const CitizenClearanceRequestFlow = () => {
     }
     if (selectedRequest.status) setRequestStatus(selectedRequest.status);
     if (selectedRequest.vehicleOption) setVehicleOption(selectedRequest.vehicleOption);
-    if (selectedRequest.orNumber) setOrNumber(selectedRequest.orNumber);
-    if (selectedRequest.orCr) setOrCr(selectedRequest.orCr);
-    if (selectedRequest.crNumber) setCrNumber(selectedRequest.crNumber);
-    if (selectedRequest.crCr) setCrCr(selectedRequest.crCr);
+    if (selectedRequest.orCr) setOrCr(mergeVehicleFields(emptyVehicle, selectedRequest.orCr));
+    if (selectedRequest.crCr) setCrCr(mergeVehicleFields(emptyVehicle, selectedRequest.crCr));
     if (selectedRequest.voucherCode || selectedRequest.voucherReferenceNo) {
       setVoucherCode(selectedRequest.voucherCode || selectedRequest.voucherReferenceNo);
       setVoucherAssigned(true);
@@ -219,15 +216,31 @@ export const CitizenClearanceRequestFlow = () => {
     if (selectedRequest.mecData) setMecData(selectedRequest.mecData);
   }, [selectedRequest, maxStep, id]);
 
+  // Poll for HPG verification status when on step 4
+  useEffect(() => {
+    let interval;
+    if (step === 4 && !hpgVerified && id) {
+      interval = setInterval(async () => {
+        try {
+          const requests = await fetchMyRequests();
+          const currentReq = requests.find((r) => String(r.id) === String(id));
+          if (currentReq && (currentReq.hpgVerified || currentReq.status === "HPG_VERIFIED")) {
+            setHpgVerified(true);
+            setRequestStatus(currentReq.status);
+          }
+        } catch (e) {
+          console.error("Polling error:", e);
+        }
+      }, 5000); // Poll every 5 seconds
+    }
+    return () => clearInterval(interval);
+  }, [step, hpgVerified, id]);
+
   // Compute OR/CR field mismatches for display
   const mismatches = (() => {
     const fields = [
       ["plateNumber", "Plate Number"],
-      ["yearModel", "Year Model"],
-      ["color", "Color"],
       ["mvFileNumber", "MV File Number"],
-      ["ownerName", "Owner Name"],
-      ["ownerAddress", "Owner Address"],
     ];
     return fields
       .filter(([f]) => orCr[f] && crCr[f] && orCr[f] !== crCr[f])
@@ -253,7 +266,6 @@ export const CitizenClearanceRequestFlow = () => {
   } = useOrCrOcr({
     orCr, crCr, mvcData, mecData,
     setOrCr, setCrCr, setMvcData, setMecData,
-    setOrNumber, setCrNumber,
     setOrPreview, setCrPreview, setMvcPreview, setMecPreview,
     setMvcFileName, setMecFileName,
     setValidationErrors,
@@ -286,8 +298,6 @@ export const CitizenClearanceRequestFlow = () => {
       certificateNo,
       clearanceReferenceNo: certificateNo,
       clearanceStatus: certificateNo ? "CERTIFICATE_ISSUED" : selectedRequest?.clearanceStatus || "",
-      orNumber: !isExtracting(orNumber) ? orNumber : selectedRequest?.orNumber || "",
-      crNumber: !isExtracting(crNumber) ? crNumber : selectedRequest?.crNumber || "",
       verificationId: selectedRequest?.verificationId || "",
       ...(hasData(orCr) && { orCr }),
       ...(hasData(crCr) && { crCr }),
@@ -414,16 +424,14 @@ export const CitizenClearanceRequestFlow = () => {
     const newErrors = {};
     let hasEmpty = false;
 
-    [...OR_EXPECTED_FIELDS, "orNumber"].forEach((field) => {
-      const val = field === "orNumber" ? orNumber : orCr[field];
-      if (!val || val.trim() === "" || val === "Extracting...") {
+    OR_EXPECTED_FIELDS.forEach((field) => {
+      if (!orCr[field] || orCr[field].trim() === "" || orCr[field] === "Extracting...") {
         newErrors[field] = true;
         hasEmpty = true;
       }
     });
-    [...CR_EXPECTED_FIELDS, "crNumber"].forEach((field) => {
-      const val = field === "crNumber" ? crNumber : crCr[field];
-      if (!val || val.trim() === "" || val === "Extracting...") {
+    CR_EXPECTED_FIELDS.forEach((field) => {
+      if (!crCr[field] || crCr[field].trim() === "" || crCr[field] === "Extracting...") {
         newErrors[field] = true;
         hasEmpty = true;
       }
@@ -442,8 +450,6 @@ export const CitizenClearanceRequestFlow = () => {
         status: "OR_CR_UPLOADED",
         orCr,
         crCr,
-        orNumber,
-        crNumber,
       });
       setRequestStatus("OR_CR_UPLOADED");
       setStep(3);
@@ -603,9 +609,7 @@ export const CitizenClearanceRequestFlow = () => {
   const canNext = () => {
     if (step === 1) return Boolean(vehicleOption);
     if (step === 2) {
-      const orOk = isDocumentComplete(orCr, OR_EXPECTED_FIELDS) && orNumber && orNumber !== "Extracting...";
-      const crOk = isDocumentComplete(crCr, CR_EXPECTED_FIELDS) && crNumber && crNumber !== "Extracting...";
-      return Boolean(orOk && crOk && !hasMismatch);
+      return Boolean(isDocumentComplete(orCr, OR_EXPECTED_FIELDS) && isDocumentComplete(crCr, CR_EXPECTED_FIELDS) && !hasMismatch);
     }
     if (step === 3) return Boolean(paymentDone && voucherAssigned);
     if (step === 4) return Boolean(transactionVerified);
@@ -636,8 +640,6 @@ export const CitizenClearanceRequestFlow = () => {
       plateNumber: orCr.plateNumber || crCr.plateNumber || "",
       orCr,
       crCr,
-      orNumber,
-      crNumber,
       dateCreated,
       currentStep: 6,
       status: "CERTIFICATE_ISSUED",
@@ -753,14 +755,6 @@ export const CitizenClearanceRequestFlow = () => {
                     onFile={handleOrUpload}
                     preview={orPreview}
                     uploadHint={formatOcrHint(ocrUploadState.or)}
-                    numberLabel="OR Number"
-                    numberValue={orNumber}
-                    onNumberChange={(e) => {
-                      setOrNumber(e.target.value);
-                      setValidationErrors((prev) => ({ ...prev, orNumber: false }));
-                    }}
-                    numberPlaceholder="Auto-extracted from OR"
-                    extraInputs={[]}
                     vehicleLabel="Vehicle Details (from OR)"
                     vehicleValues={orCr}
                     vehicleFieldSet="or"
@@ -773,13 +767,6 @@ export const CitizenClearanceRequestFlow = () => {
                     onFile={handleCrUpload}
                     preview={crPreview}
                     uploadHint={formatOcrHint(ocrUploadState.cr)}
-                    numberLabel="CR Number"
-                    numberValue={crNumber}
-                    onNumberChange={(e) => {
-                      setCrNumber(e.target.value);
-                      setValidationErrors((prev) => ({ ...prev, crNumber: false }));
-                    }}
-                    numberPlaceholder="Auto-extracted from CR"
                     vehicleLabel="Vehicle Details (from CR)"
                     vehicleValues={crCr}
                     vehicleFieldSet="cr"
