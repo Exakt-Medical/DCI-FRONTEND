@@ -491,20 +491,7 @@ export const AgentClearanceRequestFlow = () => {
 
   const handleProceedFromStep1 = async () => {
     if (!vehicleOption) return;
-    setIsVerifyingDocuments(true);
-    try {
-      await saveCitizenRequest({
-        currentStep: 2,
-        vehicleOption,
-        status: "DRAFT",
-      });
-      setStep(2);
-    } catch (error) {
-      const errMsg = error?.response?.data?.error || error?.message || "Failed to proceed to next step.";
-      await showError("Error Saving Option", errMsg);
-    } finally {
-      setIsVerifyingDocuments(false);
-    }
+    setStep(2);
   };
 
   const handleVerifyStep2 = async () => {
