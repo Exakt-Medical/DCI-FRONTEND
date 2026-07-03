@@ -854,15 +854,6 @@ export const CitizenClearanceRequestFlow = () => {
                             <p className="font-semibold mb-1">Verification Failed</p>
                             <p>{verificationError}</p>
                           </div>
-                          <div className="flex justify-end">
-                            <Button
-                            variant="secondary"
-                            onClick={() => setIsTicketModalOpen(true)}
-                            className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-solid border-2"
-                            >
-                              Report an Issue
-                            </Button>
-                          </div>
                         </div>
                       )}
                     </div>
@@ -1066,7 +1057,7 @@ export const CitizenClearanceRequestFlow = () => {
                     </Button>
                   )
                 )}
-                {step !== 2 && step !== 4 && (
+                {step === 4 && verificationFailed && (
                   <Button
                     variant="ghost"
                     onClick={() => setIsTicketModalOpen(true)}

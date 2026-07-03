@@ -30,7 +30,6 @@ export const AdminLayout = () => {
       { id: "new-clearance-request", label: "Request Certificate", icon: CreditCard, section: "REQUESTS", disabled: false },
     ],
     agent_fixer: [
-      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, section: "MAIN", disabled: false },
       { id: "requests", label: "My Requests / Queue", icon: FileText, section: "REQUESTS", disabled: false },
       { id: "new-voucher-request", label: "Voucher", icon: CreditCard, section: "REQUESTS", disabled: false },
       { id: "new-clearance-request", label: "Request for Certification", icon: Shield, section: "REQUESTS", disabled: false },
