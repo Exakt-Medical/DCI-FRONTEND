@@ -14,6 +14,7 @@ import {
   Eye,
   AlertTriangle,
   X,
+  Car,
 } from "lucide-react";
 import { CITIZEN_STEPS, VALIDATION_STATE } from "../../constants/clearanceRequestConfig";
 import {
@@ -147,6 +148,9 @@ export const CitizenClearanceRequestFlow = () => {
   const [vehicleOption, setVehicleOption] = useState(
     () => selectedRequest?.vehicleOption || "EXISTING",
   );
+  const [transactionType, setTransactionType] = useState(
+    () => selectedRequest?.transactionType || "Transfer of Ownership",
+  );
 
   const [orPreview, setOrPreview] = useState(selectedRequest?.orPreview || null);
   const [orCr, setOrCr] = useState(() => mergeVehicleFields(emptyVehicle, selectedRequest?.orCr || {}));
@@ -215,6 +219,7 @@ export const CitizenClearanceRequestFlow = () => {
     }
     if (selectedRequest.status) setRequestStatus(selectedRequest.status);
     if (selectedRequest.vehicleOption) setVehicleOption(selectedRequest.vehicleOption);
+    if (selectedRequest.transactionType) setTransactionType(selectedRequest.transactionType);
     if (selectedRequest.orCr) setOrCr(mergeVehicleFields(emptyVehicle, selectedRequest.orCr));
     if (selectedRequest.crCr) setCrCr(mergeVehicleFields(emptyVehicle, selectedRequest.crCr));
     if (selectedRequest.voucherCode || selectedRequest.voucherReferenceNo) {
@@ -306,6 +311,7 @@ export const CitizenClearanceRequestFlow = () => {
       status: requestStatus,
       role,
       vehicleOption,
+      transactionType,
       plateNumber: orCr.plateNumber || crCr.plateNumber || selectedRequest?.plateNumber || "",
       voucherCode,
       voucherReferenceNo: voucherCode,
@@ -779,31 +785,65 @@ export const CitizenClearanceRequestFlow = () => {
           {/* Step content */}
           <div className="bg-white rounded-b-xl shadow-lg p-6">
             {step === 1 && (
-              <div className="space-y-6">
-                <div className="text-center max-w-md mx-auto mb-8">
-                  <h3 className="text-lg font-bold text-gray-900">Vehicle Clearance</h3>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Please confirm you are applying for an existing vehicle clearance.
+              <div className="space-y-8">
+                <div className="text-center max-w-md mx-auto">
+                  <h3 className="text-xl font-bold text-[#001b3b]">Vehicle Option</h3>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Please select if you are requesting a clearance certificate for a new or an existing vehicle.
                   </p>
                 </div>
+                
                 <div className="flex justify-center max-w-3xl mx-auto">
                   <div
                     onClick={() => setVehicleOption("EXISTING")}
-                    className={`cursor-pointer rounded-xl border-2 p-6 transition-all duration-200 flex flex-col items-center text-center gap-4 max-w-sm w-full ${
+                    className={`cursor-pointer rounded-xl border-2 p-8 transition-all duration-200 flex flex-col items-center text-center gap-4 max-w-md w-full ${
                       vehicleOption === "EXISTING"
-                        ? "border-[#0059b5] bg-blue-50/50 shadow-md ring-1 ring-[#0059b5]/20"
+                        ? "border-[#0059b5] bg-[#f8fbff] shadow-sm ring-1 ring-[#0059b5]/20"
                         : "border-gray-200 hover:border-gray-300 hover:bg-gray-50/50"
                     }`}
                   >
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${vehicleOption === "EXISTING" ? "bg-[#0059b5] text-white" : "bg-gray-100 text-gray-500"}`}>
-                      <CheckCircle className="w-6 h-6" />
+                    <div className={`w-14 h-14 rounded-full flex items-center justify-center ${vehicleOption === "EXISTING" ? "bg-[#0059b5] text-white" : "bg-gray-100 text-gray-500"}`}>
+                      <Car className="w-7 h-7" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-gray-900">Existing Vehicle</h4>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Clearance for an existing vehicle with active records in the VVS system.
+                      <h4 className="font-bold text-gray-900 text-lg">Existing Vehicle</h4>
+                      <p className="text-sm text-gray-500 mt-1">
+                        For vehicles that are already registered.
                       </p>
                     </div>
+                  </div>
+                </div>
+
+                <div className="max-w-3xl mx-auto">
+                  <h3 className="text-lg font-bold text-[#001b3b] text-center mb-6">Select Transaction Type</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {[
+                      "Transfer of Ownership",
+                      "Change Color / Body Design",
+                      "Change Engine/Motor",
+                      "Change Chassis/VIN/Frame",
+                      "Permit to Assemble",
+                      "Record Check"
+                    ].map((type) => (
+                      <label
+                        key={type}
+                        className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-all ${
+                          transactionType === type
+                            ? "border-[#0059b5] bg-[#f8fbff] text-[#0059b5]"
+                            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="transactionType"
+                          value={type}
+                          checked={transactionType === type}
+                          onChange={(e) => setTransactionType(e.target.value)}
+                          className="w-4 h-4 text-[#0059b5] focus:ring-[#0059b5] border-gray-300"
+                        />
+                        <span className="text-sm font-medium">{type}</span>
+                      </label>
+                    ))}
                   </div>
                 </div>
               </div>
