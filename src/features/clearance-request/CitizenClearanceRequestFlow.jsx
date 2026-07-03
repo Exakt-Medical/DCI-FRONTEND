@@ -105,10 +105,20 @@ export const CitizenClearanceRequestFlow = () => {
   const [id, setId] = useState(() => selectedRequest?.id || idFromQuery || "");
   const [step, setStep] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    const queryStep = Number(params.get("step"));
-    if (queryStep > 0) return Math.min(queryStep, maxStep);
     const txnId = params.get("transaction_id") || params.get("transactionId");
     if (txnId) return 3;
+
+    if (selectedRequest?.status) {
+      const status = selectedRequest.status;
+      if (status === "VOUCHER_ISSUED") return 4;
+      if (status === "DOCUMENTS_VERIFIED") return 4;
+      if (status === "HPG_VERIFIED") return 6;
+      if (status === "MVC_MEC_VALIDATED" || status === "CERTIFICATE_ISSUED") return 7;
+    }
+
+    const queryStep = Number(params.get("step"));
+    if (queryStep > 0) return Math.min(queryStep, maxStep);
+
     const storedStep = selectedRequest?.currentStep || 1;
     return Math.min(storedStep, maxStep);
   });
@@ -192,7 +202,13 @@ export const CitizenClearanceRequestFlow = () => {
     if (!selectedRequest) return;
     if (selectedRequest.id && !id) setId(selectedRequest.id);
     if (selectedRequest.currentStep && !hasSyncedStep.current) {
-      setStep(Math.min(selectedRequest.currentStep, maxStep));
+      let derivedStep = selectedRequest.currentStep;
+      if (selectedRequest.status === "VOUCHER_ISSUED") derivedStep = 4;
+      else if (selectedRequest.status === "DOCUMENTS_VERIFIED") derivedStep = 4;
+      else if (selectedRequest.status === "HPG_VERIFIED") derivedStep = 6;
+      else if (selectedRequest.status === "MVC_MEC_VALIDATED" || selectedRequest.status === "CERTIFICATE_ISSUED") derivedStep = 7;
+      
+      setStep(Math.min(derivedStep, maxStep));
       hasSyncedStep.current = true;
     }
     if (selectedRequest.status) setRequestStatus(selectedRequest.status);
@@ -218,10 +234,10 @@ export const CitizenClearanceRequestFlow = () => {
     if (selectedRequest.mecData) setMecData(selectedRequest.mecData);
   }, [selectedRequest, maxStep, id]);
 
-  // Poll for HPG verification status when on step 4
+  // Poll for HPG verification status when on step 5
   useEffect(() => {
     let interval;
-    if (step === 4 && !hpgVerified && id) {
+    if (step === 5 && !hpgVerified && id) {
       interval = setInterval(async () => {
         try {
           const requests = await fetchMyRequests();
@@ -498,6 +514,7 @@ export const CitizenClearanceRequestFlow = () => {
         vvsOwnerName: ownerName,
         vvsVehicleDetails: vvsData,
       });
+      setRequestStatus("DOCUMENTS_VERIFIED");
 
       showSuccessAlert("Verification Complete", "Transaction code issued successfully.");
     } catch (error) {
@@ -1051,7 +1068,7 @@ export const CitizenClearanceRequestFlow = () => {
                     <X size={16} /> Cancel
                   </Button>
                 ) : (
-                  step > 1 && (
+                  step > 1 && !(step === 3 && paymentDone) && step !== 4 && step !== 5 && (
                     <Button variant="ghost" onClick={prevStep}>
                       <ChevronLeft size={16} /> Back
                     </Button>

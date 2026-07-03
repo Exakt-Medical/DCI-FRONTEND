@@ -127,7 +127,7 @@ export const useCitizenPayment = ({
   useEffect(() => {
     if (!paymentTransactionId) return;
     if (handledPaymentTransactionRef.current === paymentTransactionId) return;
-    if (paymentDone || step >= 3) return;
+    if (paymentDone || step > 3) return;
 
     handledPaymentTransactionRef.current = paymentTransactionId;
     let active = true;

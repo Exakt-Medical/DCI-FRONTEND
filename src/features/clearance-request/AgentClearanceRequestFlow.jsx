@@ -100,8 +100,18 @@ export const AgentClearanceRequestFlow = () => {
   const [id, setId] = useState(() => selectedRequest?.id || idFromQuery || "");
   const [step, setStep] = useState(() => {
     const params = new URLSearchParams(window.location.search);
+    
+    if (selectedRequest?.status) {
+      const status = selectedRequest.status;
+      if (status === "VOUCHER_ISSUED") return 3;
+      if (status === "DOCUMENTS_VERIFIED") return 3;
+      if (status === "HPG_VERIFIED") return 5;
+      if (status === "MVC_MEC_VALIDATED" || status === "CERTIFICATE_ISSUED") return 6;
+    }
+
     const queryStep = Number(params.get("step"));
     if (queryStep > 0) return Math.min(queryStep, maxStep);
+
     const storedStep = selectedRequest?.currentStep || 1;
     return Math.min(storedStep, maxStep);
   });
@@ -185,7 +195,13 @@ export const AgentClearanceRequestFlow = () => {
     if (!selectedRequest) return;
     if (selectedRequest.id && !id) setId(selectedRequest.id);
     if (selectedRequest.currentStep && !hasSyncedStep.current) {
-      setStep(Math.min(selectedRequest.currentStep, maxStep));
+      let derivedStep = selectedRequest.currentStep;
+      if (selectedRequest.status === "VOUCHER_ISSUED") derivedStep = 3;
+      else if (selectedRequest.status === "DOCUMENTS_VERIFIED") derivedStep = 3;
+      else if (selectedRequest.status === "HPG_VERIFIED") derivedStep = 5;
+      else if (selectedRequest.status === "MVC_MEC_VALIDATED" || selectedRequest.status === "CERTIFICATE_ISSUED") derivedStep = 6;
+
+      setStep(Math.min(derivedStep, maxStep));
       hasSyncedStep.current = true;
     }
     if (selectedRequest.status) setRequestStatus(selectedRequest.status);
@@ -499,6 +515,7 @@ export const AgentClearanceRequestFlow = () => {
         voucherCode: assignedVoucherCode,
         voucherId: assignedVoucherId,
       });
+      setRequestStatus("DOCUMENTS_VERIFIED");
 
       if (assignedVoucherCode && !voucherAssigned) {
         setVoucherCode(assignedVoucherCode);
@@ -1014,7 +1031,7 @@ export const AgentClearanceRequestFlow = () => {
                     <X size={16} /> Cancel
                   </Button>
                 ) : (
-                  step > 1 && (
+                  step > 1 && step !== 3 && step !== 4 && (
                     <Button variant="ghost" onClick={prevStep}>
                       <ChevronLeft size={16} /> Back
                     </Button>
