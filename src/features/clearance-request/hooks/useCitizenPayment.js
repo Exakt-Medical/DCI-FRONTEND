@@ -101,7 +101,7 @@ export const useCitizenPayment = ({
       if (!paymentLink) throw new Error("Payment gateway link was not returned.");
 
       saveCitizenRequest({
-        currentStep: 2,
+        currentStep: step,
         status: "PAYMENT_PENDING",
         paymentDone: false,
         tlpeOrderId: payload.order_id || payload.orderId || null,
@@ -174,7 +174,7 @@ export const useCitizenPayment = ({
 
         setRequestStatus("PAYMENT_FAILED");
         saveCitizenRequest({
-          currentStep: 2,
+          currentStep: step,
           status: "PAYMENT_FAILED",
           paymentDone: false,
           tlpeTransactionId: paymentTransactionId,

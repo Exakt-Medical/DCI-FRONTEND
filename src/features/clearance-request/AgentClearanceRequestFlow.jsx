@@ -107,7 +107,7 @@ export const AgentClearanceRequestFlow = () => {
     if (selectedRequest?.status) {
       const status = selectedRequest.status;
       if (status === "VOUCHER_ISSUED") return 3;
-      if (status === "DOCUMENTS_VERIFIED") return 3;
+      if (status === "DOCUMENTS_VERIFIED" || status === "VERIFICATION_FAILED") return 3;
       if (status === "HPG_VERIFIED") return 5;
       if (status === "MVC_MEC_VALIDATED" || status === "CERTIFICATE_ISSUED") return 6;
     }
@@ -186,8 +186,12 @@ export const AgentClearanceRequestFlow = () => {
   const [transactionVerified, setTransactionVerified] = useState(
     Boolean(selectedRequest?.verificationId),
   );
-  const [verificationFailed, setVerificationFailed] = useState(false);
-  const [verificationError, setVerificationError] = useState("");
+  const [verificationFailed, setVerificationFailed] = useState(
+    () => selectedRequest?.status === "VERIFICATION_FAILED"
+  );
+  const [verificationError, setVerificationError] = useState(
+    () => selectedRequest?.status === "VERIFICATION_FAILED" ? "Verification failed." : ""
+  );
   const [vvsOwnerName, setVvsOwnerName] = useState(selectedRequest?.vvsOwnerName || "");
   const [vvsVehicleDetails, setVvsVehicleDetails] = useState(
     selectedRequest?.vvsVehicleDetails || null,
@@ -203,7 +207,7 @@ export const AgentClearanceRequestFlow = () => {
     if (selectedRequest.currentStep && !hasSyncedStep.current) {
       let derivedStep = selectedRequest.currentStep;
       if (selectedRequest.status === "VOUCHER_ISSUED") derivedStep = 3;
-      else if (selectedRequest.status === "DOCUMENTS_VERIFIED") derivedStep = 3;
+      else if (selectedRequest.status === "DOCUMENTS_VERIFIED" || selectedRequest.status === "VERIFICATION_FAILED") derivedStep = 3;
       else if (selectedRequest.status === "HPG_VERIFIED") derivedStep = 5;
       else if (selectedRequest.status === "MVC_MEC_VALIDATED" || selectedRequest.status === "CERTIFICATE_ISSUED") derivedStep = 6;
 
@@ -225,6 +229,10 @@ export const AgentClearanceRequestFlow = () => {
     if (selectedRequest.verificationId) {
       setTransactionVerified(true);
       setVerificationId(selectedRequest.verificationId);
+    }
+    if (selectedRequest.status === "VERIFICATION_FAILED") {
+      setVerificationFailed(true);
+      setVerificationError("No matching vehicle record found in VVS for the provided identifiers.");
     }
     if (selectedRequest.vvsOwnerName) setVvsOwnerName(selectedRequest.vvsOwnerName);
     if (selectedRequest.vvsVehicleDetails) setVvsVehicleDetails(selectedRequest.vvsVehicleDetails);
@@ -583,10 +591,31 @@ export const AgentClearanceRequestFlow = () => {
         error?.message ||
         "Verification failed.";
       setVerificationError(errMsg);
+
+      try {
+        await saveCitizenRequest({
+          currentStep: 3,
+          status: "VERIFICATION_FAILED",
+        });
+        setRequestStatus("VERIFICATION_FAILED");
+      } catch (saveError) {
+        console.error("Failed to save verification failed status", saveError);
+      }
     } finally {
       setIsVerifyingDocuments(false);
     }
   };
+
+  const hasTriggeredVerification = useRef(false);
+  useEffect(() => {
+    if (id && !selectedRequest) return;
+    if (requestStatus === "VERIFICATION_FAILED" || selectedRequest?.status === "VERIFICATION_FAILED") return;
+
+    if (step === 3 && !transactionVerified && !isVerifyingDocuments && !hasTriggeredVerification.current && !verificationFailed) {
+      hasTriggeredVerification.current = true;
+      handleVerifyVehicle();
+    }
+  }, [step, transactionVerified, isVerifyingDocuments, verificationFailed, id, selectedRequest, requestStatus]);
 
   const getTicketPrefilledData = () => {
     const vehicleInfo = {
@@ -905,18 +934,20 @@ export const AgentClearanceRequestFlow = () => {
                 <div className="space-y-4">
                   {!transactionVerified ? (
                     <div className="text-center p-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                      <p className="text-sm text-gray-600 mb-4">
-                        Click below to verify your vehicle details against the VVS system.
-                      </p>
-                      <Button onClick={handleVerifyVehicle} disabled={isVerifyingDocuments}>
-                        {isVerifyingDocuments ? "Verifying..." : "Verify Vehicle"}
-                      </Button>
-                      {verificationFailed && (
-                        <div className="mt-6">
-                          <div className="bg-red-50 text-red-700 text-sm p-4 rounded-lg border border-red-200 mb-4 w-full">
-                            <p className="font-semibold mb-1">Verification Failed</p>
-                            <p>{verificationError}</p>
-                          </div>
+                      {isVerifyingDocuments ? (
+                        <div className="flex flex-col items-center justify-center">
+                          <Spinner size="md" />
+                          <p className="text-sm text-gray-600 mt-4">Verifying vehicle details against the VVS system...</p>
+                        </div>
+                      ) : verificationFailed ? (
+                        <div className="bg-red-50 text-red-700 text-sm p-4 rounded-lg border border-red-200 w-full">
+                          <p className="font-semibold mb-1">Verification Failed</p>
+                          <p>{verificationError}</p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center">
+                          <Spinner size="md" />
+                          <p className="text-sm text-gray-600 mt-4">Preparing verification...</p>
                         </div>
                       )}
                     </div>
