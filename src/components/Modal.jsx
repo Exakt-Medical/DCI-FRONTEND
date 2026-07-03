@@ -6,6 +6,7 @@ export const Modal = ({
   title,
   children,
   size = "md",
+  hideHeader = false,
 }) => {
   if (!isOpen) return null;
 
@@ -29,18 +30,20 @@ export const Modal = ({
           sizes[size]
         )}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h3 className="text-base font-bold text-gray-800">
-            {title}
-          </h3>
+        {!hideHeader && (
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <h3 className="text-base font-bold text-gray-800">
+              {title}
+            </h3>
 
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-700 transition-colors text-xl leading-none"
-          >
-            ×
-          </button>
-        </div>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-700 transition-colors text-xl leading-none"
+            >
+              ×
+            </button>
+          </div>
+        )}
 
         <div className="overflow-y-auto max-h-[80vh]">
           {children}

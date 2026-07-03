@@ -172,6 +172,7 @@ export const useVoucherInventory = ({
         throw new Error("Payment gateway link was not returned.");
       }
 
+      window.bypassBeforeUnload = true;
       window.location.href = paymentLink;
     } catch (error) {
       console.error("[Agent Voucher] Payment setup failed:", error);

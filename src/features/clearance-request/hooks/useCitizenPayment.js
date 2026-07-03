@@ -109,6 +109,7 @@ export const useCitizenPayment = ({
         paymentLink,
       });
 
+      window.bypassBeforeUnload = true;
       window.location.assign(paymentLink);
     } catch (error) {
       console.error("[Clearance] TLPE payment initialization failed", {

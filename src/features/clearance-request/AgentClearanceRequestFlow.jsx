@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Card } from "../../components/Card";
+import { Modal } from "../../components/Modal";
 import { Button } from "../../components/Button";
 import { Spinner } from "../../components/Spinner";
 import DCI_LOGO from "../../assets/DCI-LOGO.png";
@@ -57,6 +58,7 @@ export const AgentClearanceRequestFlow = () => {
   const { role } = useAuth();
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
   const [isDataMismatchModalOpen, setIsDataMismatchModalOpen] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const {
     handleRequestSave: onSaveRequest,
     handleClearanceRequestComplete: onComplete,
@@ -83,6 +85,8 @@ export const AgentClearanceRequestFlow = () => {
 
   const location = useLocation();
   const navigate = useNavigate();
+  const [pendingNavigationPath, setPendingNavigationPath] = useState(null);
+  const [showNavigationWarningModal, setShowNavigationWarningModal] = useState(false);
   const searchParams = useMemo(
     () => new URLSearchParams(location.search),
     [location.search],
@@ -1189,6 +1193,75 @@ export const AgentClearanceRequestFlow = () => {
           onClose={() => setIsDataMismatchModalOpen(false)}
           isSubmitting={false}
         />
+      )}
+      {showConfirmModal && (
+        <Modal
+          isOpen={showConfirmModal}
+          onClose={() => setShowConfirmModal(false)}
+          size="sm"
+          hideHeader
+        >
+          <div className="p-8 text-center space-y-5">
+            <h3 className="text-2xl font-bold text-gray-900">Are you sure?</h3>
+            <p className="text-gray-500 text-lg leading-relaxed max-w-[340px] mx-auto">
+              Please confirm that all uploaded data is accurate and final for this transaction.
+            </p>
+            <div className="flex justify-center gap-4 pt-3">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="px-8 py-2.5 rounded-2xl border-2 border-[#0059b5] text-[#0059b5] font-semibold hover:bg-blue-50/50 transition-colors min-w-[120px]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmNext}
+                className="px-8 py-2.5 rounded-2xl bg-[#0059b5] text-white font-semibold hover:bg-[#004bb0] transition-colors shadow-lg shadow-blue-500/10 min-w-[120px]"
+              >
+                Proceed
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+      {showNavigationWarningModal && (
+        <Modal
+          isOpen={showNavigationWarningModal}
+          onClose={() => {
+            setShowNavigationWarningModal(false);
+            setPendingNavigationPath(null);
+          }}
+          size="sm"
+          hideHeader
+        >
+          <div className="p-8 text-center space-y-5">
+            <h3 className="text-2xl font-bold text-gray-900">Unsaved Changes</h3>
+            <p className="text-gray-500 text-lg leading-relaxed max-w-[340px] mx-auto">
+              You have an ongoing transaction. Are you sure you want to navigate away? Unsaved progress will be lost.
+            </p>
+            <div className="flex justify-center gap-4 pt-3">
+              <button
+                onClick={() => {
+                  setShowNavigationWarningModal(false);
+                  setPendingNavigationPath(null);
+                }}
+                className="px-8 py-2.5 rounded-2xl border-2 border-[#0059b5] text-[#0059b5] font-semibold hover:bg-blue-50/50 transition-colors min-w-[120px]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowNavigationWarningModal(false);
+                  const path = pendingNavigationPath;
+                  setPendingNavigationPath(null);
+                  navigate(path);
+                }}
+                className="px-8 py-2.5 rounded-2xl bg-red-50 border border-red-200 text-red-600 font-semibold hover:bg-red-100/80 transition-colors min-w-[160px]"
+              >
+                Discard & Proceed
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

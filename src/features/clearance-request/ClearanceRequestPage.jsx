@@ -19,7 +19,7 @@ export const ClearanceRequestPage = () => {
             Clearance Requests
           </h1>
           <p className="text-sm text-gray-500">
-            View and manage your MVC/MEC and clearance requests
+            View and manage your vehicle clearance requests
           </p>
         </div>
         <Button onClick={() => navigate("/dci-access/new-clearance-request")}>
@@ -41,7 +41,7 @@ export const ClearanceRequestPage = () => {
           <div className="text-center py-12 text-gray-400">
             <FileText size={32} className="mx-auto mb-2 opacity-50" />
             <p className="text-sm">No clearance requests yet</p>
-            <p className="text-xs mt-1">Complete a voucher request first, then proceed to clearance</p>
+            <p className="text-xs mt-1">Complete a transaction code payment first, then proceed to clearance</p>
           </div>
         ) : (
           <>
@@ -55,7 +55,7 @@ export const ClearanceRequestPage = () => {
                   <tr className="border-b border-gray-200 text-left">
                     <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Reference No.</th>
                     <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Plate Number</th>
-                    <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Voucher Code</th>
+                    <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Transaction Code</th>
                     <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Status</th>
                     <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Date Created</th>
                     <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Actions</th>

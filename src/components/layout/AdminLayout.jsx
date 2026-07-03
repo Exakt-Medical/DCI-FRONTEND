@@ -31,7 +31,7 @@ export const AdminLayout = () => {
     ],
     agent_fixer: [
       { id: "requests", label: "My Requests / Queue", icon: FileText, section: "REQUESTS", disabled: false },
-      { id: "new-voucher-request", label: "Voucher", icon: CreditCard, section: "REQUESTS", disabled: false },
+      { id: "new-voucher-request", label: "Transaction Code", icon: CreditCard, section: "REQUESTS", disabled: false },
       { id: "new-clearance-request", label: "Request for Certification", icon: Shield, section: "REQUESTS", disabled: false },
     ],
     hpg: [
@@ -56,7 +56,7 @@ export const AdminLayout = () => {
 
   const userInfo = {
     citizen: { label: "Citizen", initial: "C", color: "bg-primary-500" },
-    agent_fixer: { label: "Agent/Fixer", initial: "AF", color: "bg-primary-500" },
+    agent_fixer: { label: "Agent", initial: "AF", color: "bg-primary-500" },
     hpg: { label: "HPG Officer", initial: "HPG", color: "bg-blue-600" },
     lto: { label: "LTO Officer", initial: "LTO", color: "bg-green-600" },
     admin: { label: "Admin", initial: "A", color: "bg-red-600" },
