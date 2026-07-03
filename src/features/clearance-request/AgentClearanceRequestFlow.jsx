@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  Eye,
   AlertTriangle,
   X,
 } from "lucide-react";
@@ -20,6 +21,7 @@ import {
 } from "./components/FlowFormCards";
 import { formatOcrHint } from "../../hooks/useOcrForm";
 import { generateClearanceCertificatePDF } from "./utils/generateClearanceCertificatePDF";
+import { generateDciCodeSlipPDF } from "./utils/generateDciCodeSlipPDF";
 import { verificationService } from "../../services/verificationService";
 import { useAlert } from "../../hooks/useAlert";
 import { useAuth } from "../../context/AuthContext";
@@ -369,21 +371,15 @@ export const AgentClearanceRequestFlow = () => {
     }
   };
 
-  // Auto-issue certificate once MVC/MEC is validated
-  useEffect(() => {
-    if (
-      citizenValidationState !== VALIDATION_STATE.PASSED &&
-      requestStatus !== "MVC_MEC_VALIDATED"
-    ) return;
+  const handleDciVerification = () => {
     if (certificateNo || isIssuingCertificate || !voucherAssigned) return;
 
     setIsIssuingCertificate(true);
     setTimeout(() => {
       setIsIssuingCertificate(false);
       setRequestStatus("CERTIFICATE_ISSUED");
-      setStep(6);
       saveCitizenRequest({
-        currentStep: 6,
+        currentStep: 5,
         status: "CERTIFICATE_ISSUED",
         certificateNo: "", // backend generates the number
         clearanceReferenceNo: "",
@@ -394,7 +390,7 @@ export const AgentClearanceRequestFlow = () => {
         voucherReferenceNo: voucherCode,
       });
     }, 1500);
-  }, [certificateNo, citizenValidationState, isIssuingCertificate, voucherAssigned, voucherCode, requestStatus]);
+  };
 
   const handleDownload = async () => {
     if (!certificateNo) return;
@@ -414,6 +410,55 @@ export const AgentClearanceRequestFlow = () => {
       mecData,
     });
     doc.save(filename);
+  };
+
+  const handlePreview = async () => {
+    if (!certificateNo) return;
+    try {
+      const { doc } = await generateClearanceCertificatePDF({
+        id,
+        certificateNo,
+        clearanceReferenceNo: certificateNo,
+        plateNumber: orCr.plateNumber || crCr.plateNumber || selectedRequest?.plateNumber || "",
+        voucherCode,
+        voucherReferenceNo: voucherCode,
+        dateCreated,
+        status: requestStatus,
+        clearanceStatus: "CERTIFICATE_ISSUED",
+        orCr,
+        crCr,
+        mvcData,
+        mecData,
+      });
+      const pdfUrl = doc.output("bloburl");
+      window.open(pdfUrl, "_blank");
+    } catch (err) {
+      console.error("Failed to generate PDF preview:", err);
+      showError("Error", "Failed to preview certificate.");
+    }
+  };
+
+  const handlePreviewCodeSlip = async () => {
+    try {
+      if (!voucherCode) return;
+      const { doc } = await generateDciCodeSlipPDF({ voucherCode });
+      const pdfUrl = doc.output("bloburl");
+      window.open(pdfUrl, "_blank");
+    } catch (err) {
+      console.error("Failed to generate PDF preview:", err);
+      showError("Error", "Failed to preview code slip.");
+    }
+  };
+
+  const handleDownloadCodeSlip = async () => {
+    try {
+      if (!voucherCode) return;
+      const { doc, filename } = await generateDciCodeSlipPDF({ voucherCode });
+      doc.save(filename);
+    } catch (err) {
+      console.error("Failed to download PDF:", err);
+      showError("Error", "Failed to download code slip.");
+    }
   };
 
   const handleVerifyStep2 = async () => {
@@ -640,7 +685,6 @@ export const AgentClearanceRequestFlow = () => {
     }
     if (step === 3) return Boolean(transactionVerified);
     if (step === 4) return Boolean(hpgVerified);
-    if (step === 5) return isDocumentComplete(mvcData) && isDocumentComplete(mecData);
     return false;
   };
 
@@ -649,7 +693,6 @@ export const AgentClearanceRequestFlow = () => {
     if (step === 1) { setStep(2); return; }
     if (step === 2) { await handleVerifyStep2(); return; }
     if (step === 3) { setStep(4); return; }
-    if (step === 5) { await validateMvcMecStep(); return; }
     setStep((prev) => prev + 1);
   };
 
@@ -945,6 +988,16 @@ export const AgentClearanceRequestFlow = () => {
                         Copy
                       </Button>
                     </div>
+                    
+                    <div className="mt-4 flex justify-center gap-3">
+                      <Button onClick={handlePreviewCodeSlip} variant="outline" size="sm" className="flex items-center gap-1.5">
+                        <Eye size={14} /> Preview Slip
+                      </Button>
+                      <Button onClick={handleDownloadCodeSlip} variant="outline" size="sm" className="flex items-center gap-1.5">
+                        <Download size={14} /> Download Slip
+                      </Button>
+                    </div>
+                    
                     <p className="text-xs text-gray-400 mt-3 animate-pulse">Waiting for HPG officer verification...</p>
                   </div>
                 )}
@@ -952,42 +1005,6 @@ export const AgentClearanceRequestFlow = () => {
             )}
 
             {step === 5 && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <MvcMecUploadCard
-                    title="MVCC"
-                    uploadLabel="Upload Motor Vehicle Clearance Certificate"
-                    onFile={handleMvcUpload}
-                    preview={mvcPreview}
-                    uploadHint={formatOcrHint(ocrUploadState.mvc)}
-                    fields={[
-                      { key: "mvc-mvcNo", label: "MVCC Number", value: mvcData.mvcNo || "", onChange: (e) => setMvcData((p) => ({ ...p, mvcNo: e.target.value })), placeholder: "Auto-extracted from MVCC" },
-                      { key: "mvc-issueDate", label: "Issue Date", value: mvcData.issueDate || "", onChange: (e) => setMvcData((p) => ({ ...p, issueDate: e.target.value })), placeholder: "Auto-extracted from MVCC" },
-                      { key: "mvc-engineNo", label: "Engine Number", value: mvcData.engineNo, onChange: (e) => setMvcData((p) => ({ ...p, engineNo: e.target.value })), placeholder: "Auto-extracted from MVCC" },
-                      { key: "mvc-chassisNo", label: "Chassis Number", value: mvcData.chassisNo, onChange: (e) => setMvcData((p) => ({ ...p, chassisNo: e.target.value })), placeholder: "Auto-extracted from MVCC" },
-                      { key: "mvc-plateNo", label: "Plate Number", value: mvcData.plateNo, onChange: (e) => setMvcData((p) => ({ ...p, plateNo: e.target.value })), placeholder: "Auto-extracted from MVCC" },
-                      { key: "mvc-mvFileNo", label: "MV File Number", value: mvcData.mvFileNo || mvcData.mvFileNumber || "", onChange: (e) => setMvcData((p) => ({ ...p, mvFileNo: e.target.value })), placeholder: "Auto-extracted from MVCC" },
-                      { key: "mvc-color", label: "Color", value: mvcData.color, onChange: (e) => setMvcData((p) => ({ ...p, color: e.target.value })), placeholder: "Auto-extracted from MVCC" },
-                    ]}
-                  />
-                  <MvcMecUploadCard
-                    title="MEC"
-                    uploadLabel="Upload Motor Vehicle Emission Certificate"
-                    onFile={handleMecUpload}
-                    preview={mecPreview}
-                    uploadHint={formatOcrHint(ocrUploadState.mec)}
-                    fields={[
-                      { key: "mec-engineNo", label: "Engine Number", value: mecData.engineNoStencilled, onChange: (e) => setMecData((p) => ({ ...p, engineNoStencilled: e.target.value })), placeholder: "Auto-extracted from MEC" },
-                      { key: "mec-chassisNo", label: "Chassis Number", value: mecData.chassisNoStencilled, onChange: (e) => setMecData((p) => ({ ...p, chassisNoStencilled: e.target.value })), placeholder: "Auto-extracted from MEC" },
-                      { key: "mec-plateNo", label: "Plate Number", value: mecData.plateNo, onChange: (e) => setMecData((p) => ({ ...p, plateNo: e.target.value })), placeholder: "Auto-extracted from MEC" },
-                      { key: "mec-color", label: "Color", value: mecData.color, onChange: (e) => setMecData((p) => ({ ...p, color: e.target.value })), placeholder: "Auto-extracted from MEC" },
-                    ]}
-                  />
-                </div>
-              </div>
-            )}
-
-            {step === 6 && (
               <Card className="p-5">
                 <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                   <FileText size={18} className="text-[#0059b5]" />
@@ -1005,19 +1022,22 @@ export const AgentClearanceRequestFlow = () => {
                     <p className="text-sm font-mono font-bold text-gray-900 mt-2">{certificateNo}</p>
                     <p className="text-xs text-gray-500 mt-1">Plate: {orCr.plateNumber}</p>
                     <div className="mt-4 flex justify-center gap-3">
-                      <Button onClick={handleDownload} variant="outline">
-                        <Download size={16} /> Download
+                      <Button onClick={handlePreview} variant="outline" className="flex items-center gap-1.5">
+                        <Eye size={16} /> Preview
                       </Button>
-                      <Button onClick={finishCitizen}>
-                        <CheckCircle size={16} /> Complete
+                      <Button onClick={handleDownload} variant="outline" className="flex items-center gap-1.5">
+                        <Download size={16} /> Download
                       </Button>
                     </div>
                   </div>
                 ) : (
                   <div className="text-center py-6">
-                    <p className="text-sm text-gray-500 mb-4">
-                      Certificate issuance starts automatically after successful MVC/MEC validation.
+                    <p className="text-sm text-gray-500 mb-6">
+                      Click the button below to verify vehicle records with the DCI portal and trigger clearance certificate generation.
                     </p>
+                    <Button onClick={handleDciVerification} disabled={isIssuingCertificate} className="mx-auto">
+                      Verify DCI Record
+                    </Button>
                   </div>
                 )}
               </Card>
@@ -1047,12 +1067,18 @@ export const AgentClearanceRequestFlow = () => {
                   </Button>
                 )}
               </div>
-              {step < flowSteps.length && (
+              {step < flowSteps.length ? (
                 <div className="flex items-center gap-3">
                   <Button onClick={nextStep} disabled={!canNext() || isVerifyingDocuments}>
                     {isVerifyingDocuments ? "Verifying..." : "Next"} <ChevronRight size={16} />
                   </Button>
                 </div>
+              ) : (
+                certificateNo && (
+                  <Button onClick={finishCitizen} className="flex items-center gap-1.5">
+                    <CheckCircle size={16} /> Complete
+                  </Button>
+                )
               )}
             </div>
           </div>

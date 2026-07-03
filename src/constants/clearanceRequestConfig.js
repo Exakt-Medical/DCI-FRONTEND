@@ -32,7 +32,6 @@ export const CITIZEN_STEPS = [
   "Pay",
   "Verify Vehicle",
   "Go To HPG",
-  "Upload MVCC/MEC",
   "Issue Certificate",
 ];
 
@@ -41,7 +40,6 @@ export const AGENT_STEPS = [
   "Upload OR/CR",
   "Verify Vehicle",
   "HPG Portal",
-  "Upload MVCC/MEC",
   "Issue Certificate",
 ];
 
