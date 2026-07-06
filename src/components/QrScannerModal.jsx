@@ -97,7 +97,7 @@ export const QrScannerModal = ({ isOpen, onClose, onScan }) => {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Scan Voucher QR"
+      title="Scan Transaction Code QR"
       size="md"
     >
       <div className="p-5 space-y-4">

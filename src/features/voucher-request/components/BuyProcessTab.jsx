@@ -20,7 +20,7 @@ export const BuyProcessTab = ({
       <Card className="p-5 space-y-4">
         <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
           <ShoppingCart size={18} className="text-[#0059b5]" />
-          <h3 className="text-base font-bold text-gray-900">Buy Voucher</h3>
+          <h3 className="text-base font-bold text-gray-900">Buy Transaction Credits</h3>
         </div>
 
         <div className="flex items-center gap-2.5">
@@ -46,7 +46,7 @@ export const BuyProcessTab = ({
         <p className="text-sm text-blue-900 mt-3">Unit Price: PHP {UNIT_PRICE.toFixed(2)}</p>
         <p className="text-sm text-blue-900">Quantity: {safeQuantity}</p>
         <p className="text-3xl font-black text-blue-900 mt-4">PHP {total.toFixed(2)}</p>
-        <p className="text-xs text-blue-700 mt-2">Purchased vouchers are added to Inventory as AVAILABLE.</p>
+        <p className="text-xs text-blue-700 mt-2">Purchased transaction credits are added to Inventory as AVAILABLE.</p>
       </Card>
 
       {lastBatch && (
