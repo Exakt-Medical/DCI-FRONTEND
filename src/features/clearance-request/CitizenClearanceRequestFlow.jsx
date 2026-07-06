@@ -273,6 +273,31 @@ export const CitizenClearanceRequestFlow = () => {
     return () => clearInterval(interval);
   }, [step, hpgVerified, id]);
 
+  // Poll for DCI verification status when on step 6
+  useEffect(() => {
+    let interval;
+    if (step === 6 && requestStatus !== "CERTIFICATE_ISSUED" && !certificateNo && id) {
+      interval = setInterval(async () => {
+        try {
+          const requests = await fetchMyRequests();
+          const currentReq = requests.find((r) => String(r.id) === String(id));
+          if (currentReq) {
+            if (currentReq.status === "CERTIFICATE_ISSUED") {
+              setRequestStatus("CERTIFICATE_ISSUED");
+              if (currentReq.certificateNo) setCertificateNo(currentReq.certificateNo);
+            } else if (currentReq.status === "MVC_MEC_VALIDATED") {
+              setRequestStatus("MVC_MEC_VALIDATED");
+              handleDciVerification();
+            }
+          }
+        } catch (e) {
+          console.error("Polling error:", e);
+        }
+      }, 5000); // Poll every 5 seconds
+    }
+    return () => clearInterval(interval);
+  }, [step, requestStatus, certificateNo, id]);
+
   useEffect(() => {
     const handleBeforeUnload = (e) => {
       if (window.bypassBeforeUnload) return;
@@ -644,14 +669,14 @@ export const CitizenClearanceRequestFlow = () => {
 
   const hasTriggeredVerification = useRef(false);
   useEffect(() => {
-    if (id && !selectedRequest) return;
+    if (id && !selectedRequest && !orCr?.plateNumber && !crCr?.plateNumber) return;
     if (requestStatus === "VERIFICATION_FAILED" || selectedRequest?.status === "VERIFICATION_FAILED") return;
 
     if (step === 4 && !transactionVerified && !isVerifyingDocuments && !hasTriggeredVerification.current && !verificationFailed) {
       hasTriggeredVerification.current = true;
       handleVerifyVehicle();
     }
-  }, [step, transactionVerified, isVerifyingDocuments, verificationFailed, id, selectedRequest, requestStatus]);
+  }, [step, transactionVerified, isVerifyingDocuments, verificationFailed, id, selectedRequest, requestStatus, orCr, crCr]);
 
   const getTicketPrefilledData = () => {
     const vehicleInfo = {
@@ -1147,10 +1172,10 @@ export const CitizenClearanceRequestFlow = () => {
                   <FileText size={18} className="text-[#0059b5]" />
                   <h3 className="text-base font-bold text-gray-900">Issue Certificate</h3>
                 </div>
-                {isIssuingCertificate ? (
+                {isIssuingCertificate || requestStatus !== "CERTIFICATE_ISSUED" && !certificateNo ? (
                   <div className="text-center py-8">
                     <Spinner size="lg" />
-                    <p className="text-sm text-gray-500 mt-4">DCI portal is issuing certificate...</p>
+                    <p className="text-sm text-gray-500 mt-4">Waiting for DCI Validation and Certificate Issuance...</p>
                   </div>
                 ) : certificateNo ? (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
@@ -1168,14 +1193,7 @@ export const CitizenClearanceRequestFlow = () => {
                     </div>
                   </div>
                 ) : (
-                  <div className="text-center py-6">
-                    <p className="text-sm text-gray-500 mb-6">
-                      Click the button below to verify vehicle records with the DCI portal and trigger clearance certificate generation.
-                    </p>
-                    <Button onClick={handleDciVerification} disabled={isIssuingCertificate} className="mx-auto">
-                      Verify DCI Record
-                    </Button>
-                  </div>
+                  null
                 )}
               </Card>
             )}
