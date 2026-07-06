@@ -160,7 +160,9 @@ export const generateDciCodeSlipPDF = async (row = {}) => {
   doc.setFont("helvetica", "italic");
   doc.setFontSize(7);
   doc.setTextColor(140, 140, 140);
-  doc.text("This certifies that the information contained in this transaction has been validated against the official records of the Land Transportation Office (LTO).", pageWidth / 2, 95, { align: "center" });
+  const footerText = "This certifies that the information contained in this transaction has been validated against the official records of the Land Transportation Office (LTO).";
+  const splitFooter = doc.splitTextToSize(footerText, pageWidth - 24);
+  doc.text(splitFooter, pageWidth / 2, 93, { align: "center" });
 
   const filename = `DCI_Transaction_Slip_${safeFileSegment(transactionCode)}.pdf`;
 
