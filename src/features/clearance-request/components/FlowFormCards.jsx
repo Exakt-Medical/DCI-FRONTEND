@@ -84,6 +84,7 @@ export const MvcMecUploadCard = ({
   preview,
   fields,
   uploadHint,
+  vehicleLabel,
 }) => (
   <Card className="p-5 border border-gray-200">
     <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
@@ -101,20 +102,29 @@ export const MvcMecUploadCard = ({
       OCR accepts PDF and image uploads for automatic field extraction.
     </p>
     <div className="mt-4 space-y-3">
-      {fields.map((field) => (
-        <Input
-          key={field.key}
-          label={field.label}
-          value={field.value}
-          onChange={(e) => {
-            if (field.onChange) {
-              field.onChange({ target: { value: e.target.value.toUpperCase() } });
-            }
-          }}
-          placeholder={field.placeholder}
-          required={true}
-        />
-      ))}
+      <div className="pt-2 border-t border-gray-200">
+        {vehicleLabel && (
+          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            {vehicleLabel}
+          </p>
+        )}
+        <div className="space-y-3">
+          {fields.map((field) => (
+            <Input
+              key={field.key}
+              label={field.label}
+              value={field.value}
+              onChange={(e) => {
+                if (field.onChange) {
+                  field.onChange({ target: { name: field.key, value: e.target.value.toUpperCase() } });
+                }
+              }}
+              placeholder={field.placeholder || "Auto-extracted"}
+              required={true}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   </Card>
 );

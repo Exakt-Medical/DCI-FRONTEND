@@ -1,0 +1,366 @@
+import { useState } from "react";
+import { Card } from "../../components/Card";
+import { Button } from "../../components/Button";
+import { Input } from "../../components/Input";
+import { Spinner } from "../../components/Spinner";
+import { Shield, Search, CheckCircle, Car, User, ScanLine, FileText, Upload } from "lucide-react";
+import { QrScannerModal } from "../../components/QrScannerModal";
+import { FileUpload } from "../../components/FileUpload";
+import api from "../../services/api";
+import { useOcrForm, formatOcrHint, OCR_STATUS } from "../../hooks/useOcrForm";
+import { MvcMecUploadCard } from "../clearance-request/components/FlowFormCards";
+import { evaluateMvcMecValidation } from "../clearance-request/utils/clearanceRequestUtils";
+
+export const DciVerifyPage = () => {
+  const [voucherCode, setVoucherCode] = useState("");
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [verified, setVerified] = useState(false);
+  const [vehicleData, setVehicleData] = useState(null);
+  const [error, setError] = useState("");
+  const [markedVerified, setMarkedVerified] = useState(false);
+  
+  const [activeTab, setActiveTab] = useState("vehicle");
+
+  const {
+    formData,
+    ocrError,
+    doc1File: mvccFile,
+    doc2File: mecFile,
+    handleMvccUpload,
+    handleMecUpload,
+    handleInputChange,
+    resetForm,
+    doc1Uploaded,
+    doc2Uploaded,
+    doc1State,
+    doc2State,
+  } = useOcrForm("mvcc");
+
+  const isMvccComplete =
+    mvccFile &&
+    formData.mvccControlNo &&
+    formData.mvccDateIssued &&
+    formData.engineNo &&
+    formData.chassisNo &&
+    formData.plateNo &&
+    formData.color;
+
+  const isMecComplete =
+    mecFile &&
+    formData.mecEngineNo &&
+    formData.mecChassisNo &&
+    formData.mecPlateNo &&
+    formData.mecColor;
+
+  const isDocumentsComplete = isMvccComplete && isMecComplete;
+
+  const handleQrScan = (scannedVoucherCode) => {
+    setVoucherCode(scannedVoucherCode);
+    setError("");
+    setVerified(false);
+    setVehicleData(null);
+    setMarkedVerified(false);
+    setMarkedVerified(false);
+    resetForm();
+    setActiveTab("vehicle");
+    setIsScannerOpen(false);
+  };
+
+  const handleVerify = () => {
+    if (!voucherCode.trim()) {
+      setError("Please enter a voucher code");
+      return;
+    }
+    setIsVerifying(true);
+    setError("");
+    setVerified(false);
+    setVehicleData(null);
+    setMarkedVerified(false);
+    setMarkedVerified(false);
+    resetForm();
+
+    api.get(`/certificate-requests/by-voucher/${voucherCode.trim()}`)
+      .then((res) => {
+        const data = res.data;
+        setVehicleData({ ...(data.vehicleData || {}), verificationStatus: data.status });
+        setVerified(true);
+        setError("");
+        
+        if (data.status === "MVC_MEC_VALIDATED" || data.status === "CERTIFICATE_ISSUED") {
+          setMarkedVerified(true);
+        }
+      })
+      .catch((err) => {
+        const msg = err.response?.data?.error || "Voucher not found or invalid";
+        setError(msg);
+        setVehicleData(null);
+        setVerified(false);
+      })
+      .finally(() => {
+        setIsVerifying(false);
+      });
+  };
+
+  const handleMarkVerified = () => {
+    setIsVerifying(true);
+    const mvcPayload = {
+      mvcNo: formData.mvccControlNo,
+      issueDate: formData.mvccDateIssued,
+      mvFileNo: formData.mvFileNo,
+      engineNo: formData.engineNo, // Note: engineNo and chassisNo are shared in formData, this might cause issues if they differ but we'll use them directly
+      chassisNo: formData.chassisNo,
+      plateNo: formData.plateNo,
+      color: formData.color,
+    };
+    
+    const mecPayload = {
+      engineNoStencilled: formData.engineNo, // Shared in formData
+      chassisNoStencilled: formData.chassisNo, // Shared in formData
+      plateNo: formData.plateNo,
+      color: formData.color,
+    };
+
+    const validation = evaluateMvcMecValidation(mvcPayload, mecPayload, vehicleData);
+    if (!validation.valid) {
+      setError(validation.reason);
+      setIsVerifying(false);
+      return;
+    }
+
+    const payload = new FormData();
+    if (mvccFile) payload.append("mvcc", mvccFile);
+    if (mecFile) payload.append("mec", mecFile);
+    payload.append("mvcData", JSON.stringify(mvcPayload));
+    payload.append("mecData", JSON.stringify(mecPayload));
+    const headers = { "Content-Type": "multipart/form-data" };
+
+    api.post(`/certificate-requests/by-voucher/${voucherCode.trim()}/verify`, payload, { headers })
+      .then(() => {
+        setMarkedVerified(true);
+      })
+      .catch((err) => {
+        const msg = err.response?.data?.error || "Failed to mark as verified";
+        setError(msg);
+      })
+      .finally(() => {
+        setIsVerifying(false);
+      });
+  };
+
+  const handleReset = () => {
+    setVoucherCode("");
+    setVerified(false);
+    setVehicleData(null);
+    setError("");
+    setMarkedVerified(false);
+    resetForm();
+    setActiveTab("vehicle");
+  };
+
+  return (
+    <div className="max-w-6xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">
+          DCI Verification
+        </h1>
+        <p className="text-sm text-gray-500">
+          Verify vehicles using voucher codes for DCI clearance
+        </p>
+      </div>
+
+      <Card className="p-5 mb-5">
+        <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
+          <Shield size={18} className="text-[#0059b5]" />
+          <h3 className="text-base font-bold text-gray-900">
+            Voucher Lookup
+          </h3>
+        </div>
+
+        <div className="flex gap-3 items-end">
+          <div className="flex-1">
+            <Input
+              label="Voucher Code"
+              value={voucherCode}
+              onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
+              placeholder="Enter voucher code (e.g., VCH-XXXXXX)"
+              onKeyDown={(e) => e.key === "Enter" && handleVerify()}
+            />
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => setIsScannerOpen(true)}
+            disabled={isVerifying}
+          >
+            <ScanLine size={16} />
+            Scan QR
+          </Button>
+          <Button
+            onClick={handleVerify}
+            disabled={isVerifying || !voucherCode.trim()}
+          >
+            {isVerifying ? <Spinner size="sm" /> : <Search size={16} />}
+            {isVerifying ? "Verifying..." : "Verify"}
+          </Button>
+        </div>
+
+        {error && (
+          <p className="text-xs text-red-500 mt-2">{error}</p>
+        )}
+      </Card>
+
+      {verified && vehicleData && (
+        <>
+          <Card className="p-5 mb-5">
+            <div className="flex border-b border-gray-200 mb-5">
+              <button
+                className={`pb-3 px-4 text-sm font-semibold transition-colors relative ${
+                  activeTab === "vehicle" ? "text-primary-600" : "text-gray-500 hover:text-gray-700"
+                }`}
+                onClick={() => setActiveTab("vehicle")}
+              >
+                <div className="flex items-center gap-2">
+                  <Car size={16} />
+                  Vehicle Details
+                </div>
+                {activeTab === "vehicle" && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 rounded-t-full" />
+                )}
+              </button>
+              
+              <button
+                className={`pb-3 px-4 text-sm font-semibold transition-colors relative ${
+                  activeTab === "documents" ? "text-primary-600" : "text-gray-500 hover:text-gray-700"
+                }`}
+                onClick={() => setActiveTab("documents")}
+              >
+                <div className="flex items-center gap-2">
+                  <Upload size={16} />
+                  <span>Document Upload</span>
+                  {!isDocumentsComplete && !markedVerified && (
+                    <span className="flex h-2 w-2 relative ml-1">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" title="Action Required"></span>
+                    </span>
+                  )}
+                </div>
+                {activeTab === "documents" && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 rounded-t-full" />
+                )}
+              </button>
+
+            </div>
+
+            {activeTab === "vehicle" && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <label className="text-xs text-gray-500 block mb-1">Plate Number</label>
+                  <p className="text-sm font-medium text-gray-900">{vehicleData.plateNumber}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <label className="text-xs text-gray-500 block mb-1">MV File Number</label>
+                  <p className="text-sm font-medium text-gray-900">{vehicleData.mvFileNumber}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <label className="text-xs text-gray-500 block mb-1">Engine Number</label>
+                  <p className="text-sm font-medium text-gray-900">{vehicleData.engineNumber}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <label className="text-xs text-gray-500 block mb-1">Chassis Number</label>
+                  <p className="text-sm font-medium text-gray-900">{vehicleData.chassisNumber}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <label className="text-xs text-gray-500 block mb-1">Make</label>
+                  <p className="text-sm font-medium text-gray-900">{vehicleData.make}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <label className="text-xs text-gray-500 block mb-1">Series</label>
+                  <p className="text-sm font-medium text-gray-900">{vehicleData.series}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <label className="text-xs text-gray-500 block mb-1">Year Model</label>
+                  <p className="text-sm font-medium text-gray-900">{vehicleData.yearModel}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <label className="text-xs text-gray-500 block mb-1">Color</label>
+                  <p className="text-sm font-medium text-gray-900">{vehicleData.color}</p>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <label className="text-xs text-gray-500 block mb-1">Owner Name</label>
+                  <p className="text-sm font-medium text-gray-900">{vehicleData.ownerName}</p>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "documents" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <MvcMecUploadCard
+                  title="MVCC (Motor Vehicle Clearance Certificate)"
+                  uploadLabel="Upload MVCC"
+                  onFile={handleMvccUpload}
+                  preview={doc1Uploaded ? URL.createObjectURL(mvccFile) : null}
+                  vehicleLabel="Vehicle Details (from MVCC)"
+                  fields={[
+                    { key: "mvccControlNo", label: "MVCC Number", value: formData.mvccControlNo || "", onChange: (e) => handleInputChange({ target: { name: "mvccControlNo", value: e.target.value } }) },
+                    { key: "mvccDateIssued", label: "Issue Date", value: formData.mvccDateIssued || "", onChange: (e) => handleInputChange({ target: { name: "mvccDateIssued", value: e.target.value } }) },
+                    { key: "mvFileNo", label: "MV File Number", value: formData.mvFileNo || "", onChange: (e) => handleInputChange({ target: { name: "mvFileNo", value: e.target.value } }) },
+                    { key: "engineNo", label: "Engine Number", value: formData.engineNo || "", onChange: (e) => handleInputChange({ target: { name: "engineNo", value: e.target.value } }) },
+                    { key: "chassisNo", label: "Chassis Number", value: formData.chassisNo || "", onChange: (e) => handleInputChange({ target: { name: "chassisNo", value: e.target.value } }) },
+                    { key: "plateNo", label: "Plate Number", value: formData.plateNo || "", onChange: (e) => handleInputChange({ target: { name: "plateNo", value: e.target.value } }) },
+                    { key: "color", label: "Color", value: formData.color || "", onChange: (e) => handleInputChange({ target: { name: "color", value: e.target.value } }) },
+                  ]}
+                  uploadHint={formatOcrHint(doc1State)}
+                />
+                <MvcMecUploadCard
+                  title="MEC (Macro Etching Certificate)"
+                  uploadLabel="Upload MEC"
+                  onFile={handleMecUpload}
+                  preview={doc2Uploaded ? URL.createObjectURL(mecFile) : null}
+                  vehicleLabel="Vehicle Details (from MEC)"
+                  fields={[
+                    { key: "mecEngineNo", label: "Engine Number", value: formData.mecEngineNo || "", onChange: (e) => handleInputChange({ target: { name: "mecEngineNo", value: e.target.value } }) },
+                    { key: "mecChassisNo", label: "Chassis Number", value: formData.mecChassisNo || "", onChange: (e) => handleInputChange({ target: { name: "mecChassisNo", value: e.target.value } }) },
+                    { key: "mecPlateNo", label: "Plate Number", value: formData.mecPlateNo || "", onChange: (e) => handleInputChange({ target: { name: "mecPlateNo", value: e.target.value } }) },
+                    { key: "mecColor", label: "Color", value: formData.mecColor || "", onChange: (e) => handleInputChange({ target: { name: "mecColor", value: e.target.value } }) },
+                  ]}
+                  uploadHint={formatOcrHint(doc2State)}
+                />
+              </div>
+            )}
+
+          </Card>
+
+          <div className="flex justify-between gap-3">
+            <Button variant="secondary" onClick={handleReset}>
+              Clear
+            </Button>
+            {markedVerified ? (
+              <div className="flex items-center gap-2 text-green-600 bg-green-50 px-4 py-2 rounded-xl">
+                <CheckCircle size={16} />
+                <span className="text-sm font-semibold">Marked as Verified</span>
+              </div>
+            ) : (
+              <div className="flex flex-col items-end">
+                <Button onClick={handleMarkVerified} disabled={!isDocumentsComplete}>
+                  <CheckCircle size={16} />
+                  Mark as Verified
+                </Button>
+                {!isDocumentsComplete && (
+                  <p className="text-xs text-red-500 mt-2 text-right">
+                    Please upload MVCC and MEC and fill all fields.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      <QrScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScan={handleQrScan}
+      />
+    </div>
+  );
+};

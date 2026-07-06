@@ -35,11 +35,11 @@ export const AdminLayout = () => {
       { id: "new-clearance-request", label: "Request for Certification", icon: Shield, section: "REQUESTS", disabled: false },
     ],
     hpg: [
-      { id: "verification", label: "Verify Vehicle", icon: Shield, section: "VERIFICATION", disabled: false },
+      { id: "hpg-verification", label: "HPG Verification", icon: Shield, section: "VERIFICATION", disabled: false },
       { id: "tickets", label: "Tickets", icon: Ticket, section: "SUPPORT", disabled: false },
     ],
-    lto: [
-      { id: "certificate-lookup", label: "Cert Lookup", icon: Search, section: "CERTIFICATE", disabled: false },
+    dci: [
+      { id: "dci-verification", label: "DCI Verification", icon: Search, section: "VERIFICATION", disabled: false },
       { id: "tickets", label: "Tickets", icon: Ticket, section: "SUPPORT", disabled: false },
     ],
     admin: [
@@ -58,7 +58,7 @@ export const AdminLayout = () => {
     citizen: { label: "Citizen", initial: "C", color: "bg-primary-500" },
     agent_fixer: { label: "Agent", initial: "AF", color: "bg-primary-500" },
     hpg: { label: "HPG Officer", initial: "HPG", color: "bg-blue-600" },
-    lto: { label: "LTO Officer", initial: "LTO", color: "bg-green-600" },
+    dci: { label: "DCI Officer", initial: "DCI", color: "bg-green-600" },
     admin: { label: "Admin", initial: "A", color: "bg-red-600" },
   };
 

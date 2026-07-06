@@ -11,7 +11,7 @@ export const UserTableRow = ({
   voucherCount = user.assignedVouchers ?? 0,
 }) => {
   const getBranchSubtitle = () => {
-    if (user.role === "ADMIN" || user.role === "HPG" || user.role === "LTO") {
+    if (user.role === "ADMIN" || user.role === "HPG" || user.role === "DCI") {
       return "—";
     }
     if (user.role === "AGENT_FIXER") {

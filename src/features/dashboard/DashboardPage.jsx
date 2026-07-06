@@ -18,7 +18,7 @@ const welcomeMessages = {
   citizen: "Welcome, Citizen! File a clearance request for your vehicle.",
   agent_fixer: "Welcome, Agent! Manage clearance requests for your clients.",
   hpg: "Welcome, HPG! Verify vehicles and manage tickets.",
-  lto: "Welcome, LTO! Look up certificates and manage tickets.",
+  dci: "Welcome, DCI! Look up certificates and manage tickets.",
   admin: "Welcome, Admin! Manage the DCI Clearance system.",
 };
 

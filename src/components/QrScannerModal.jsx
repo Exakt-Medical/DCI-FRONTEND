@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import QrScanner from "qr-scanner";
 import { AlertCircle, Camera } from "lucide-react";
-import { Modal } from "../../components/Modal";
-import { Button } from "../../components/Button";
+import { Modal } from "./Modal";
+import { Button } from "./Button";
 
-export const HpgQrScannerModal = ({ isOpen, onClose, onScan }) => {
+export const QrScannerModal = ({ isOpen, onClose, onScan }) => {
   const videoRef = useRef(null);
   const scannerRef = useRef(null);
   const hasScannedRef = useRef(false);

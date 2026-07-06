@@ -228,6 +228,8 @@ export async function extractClearanceDocumentData(file, documentType) {
         fields: {
           engineNoStencilled: (fields.engineNoStencilled || fields.engineNo || "").toUpperCase(),
           chassisNoStencilled: (fields.chassisNoStencilled || fields.chassisNo || "").toUpperCase(),
+          plateNo: (fields.plateNo || "").toUpperCase(),
+          color: (fields.color || "").toUpperCase(),
           hpgTechnician: (fields.hpgTechnician || fields.examinedBy || "").toUpperCase(),
         },
         extraction,
@@ -255,6 +257,8 @@ export function useOcrForm(type = "mvcc") {
   const [ocrError, setOcrError] = useState("");
   const [doc1Extraction, setDoc1Extraction] = useState(null);
   const [doc2Extraction, setDoc2Extraction] = useState(null);
+  const [doc1State, setDoc1State] = useState({ status: OCR_STATUS.IDLE, confidence: 0, error: "" });
+  const [doc2State, setDoc2State] = useState({ status: OCR_STATUS.IDLE, confidence: 0, error: "" });
 
   const seq1 = useRef(0);
   const seq2 = useRef(0);
@@ -284,6 +288,10 @@ export function useOcrForm(type = "mvcc") {
     ltoBranch: "",
     crNumber: "",
     crDate: "",
+    mecEngineNo: "",
+    mecChassisNo: "",
+    mecPlateNo: "",
+    mecColor: "",
   });
 
   const handleInputChange = (e) => {
@@ -310,6 +318,7 @@ export function useOcrForm(type = "mvcc") {
     setDoc1Extraction(null);
     setOcrError("");
     setIsProcessingDoc1(true);
+    setDoc1State({ status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
     try {
       const { fields, extraction } = await runLocalOcr(file);
       if (seq !== seq1.current) return;
@@ -352,11 +361,32 @@ export function useOcrForm(type = "mvcc") {
       }
       setDoc1Extraction(extraction);
       setDoc1Uploaded(true);
+      
+      let confidence = 0;
+      if (isMvcc) {
+        confidence = averageConfidence([
+          extraction.mvccControlNo?.confidence,
+          extraction.mvrrNumber?.confidence,
+          extraction.date?.confidence,
+          extraction.plateNo?.confidence,
+          extraction.ownerName?.confidence,
+        ]);
+      } else {
+        confidence = averageConfidence([
+          extraction.plateNo?.confidence,
+          extraction.ownerName?.confidence,
+          extraction.address?.confidence,
+          extraction.orNumber?.confidence,
+          extraction.date?.confidence,
+        ]);
+      }
+      setDoc1State({ status: OCR_STATUS.SUCCESS, confidence, error: "" });
     } catch (error) {
       if (seq !== seq1.current) return;
       const label = isMvcc ? "MVCC" : "OR";
       const msg = error?.message || String(error);
       setOcrError(`${label} OCR failed: ${msg}`);
+      setDoc1State({ status: OCR_STATUS.ERROR, confidence: 0, error: msg });
       console.error(`${label} OCR failed:`, error);
     } finally {
       if (seq === seq1.current) setIsProcessingDoc1(false);
@@ -370,25 +400,36 @@ export function useOcrForm(type = "mvcc") {
     setDoc2Extraction(null);
     setOcrError("");
     setIsProcessingDoc2(true);
+    setDoc2State({ status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
     try {
       const { fields, extraction } = await runLocalOcr(file);
       if (seq !== seq2.current) return;
       if (isMvcc) {
         setFormData((prev) => ({
           ...prev,
-          engineNo: (fields.engineNo || prev.engineNo).toUpperCase(),
-          chassisNo: (fields.chassisNo || prev.chassisNo).toUpperCase(),
+          mecEngineNo: (fields.engineNoStencilled || fields.engineNo || "").toUpperCase(),
+          mecChassisNo: (fields.chassisNoStencilled || fields.chassisNo || "").toUpperCase(),
+          mecPlateNo: (fields.plateNo || "").toUpperCase(),
+          mecColor: (fields.color || "").toUpperCase(),
           hpgTechnician: (
             fields.hpgTechnician || prev.hpgTechnician
           ).toUpperCase(),
         }));
         setDoc2Extraction(extraction);
-        const hasData = !!(fields.engineNo || fields.chassisNo);
+        const hasData = !!(fields.engineNo || fields.chassisNo || fields.engineNoStencilled || fields.chassisNoStencilled);
         setDoc2Uploaded(hasData);
-        if (!hasData)
-          setOcrError(
-            "MEC OCR could not extract engine or chassis number. Please try a clearer image.",
-          );
+        if (!hasData) {
+          const msg = "MEC OCR could not extract engine or chassis number. Please try a clearer image.";
+          setOcrError(msg);
+          setDoc2State({ status: OCR_STATUS.ERROR, confidence: 0, error: msg });
+        } else {
+          const confidence = averageConfidence([
+            extraction.engineNoStencilled?.confidence || extraction.engineNo?.confidence,
+            extraction.chassisNoStencilled?.confidence || extraction.chassisNo?.confidence,
+            extraction.hpgTechnician?.confidence || extraction.examinedBy?.confidence,
+          ]);
+          setDoc2State({ status: OCR_STATUS.SUCCESS, confidence, error: "" });
+        }
       } else {
         setFormData((prev) => ({
           ...prev,
@@ -415,16 +456,26 @@ export function useOcrForm(type = "mvcc") {
           fields.plateNo
         );
         setDoc2Uploaded(hasData);
-        if (!hasData)
-          setOcrError(
-            "CR OCR could not extract data. Please try a clearer image.",
-          );
+        if (!hasData) {
+          const msg = "CR OCR could not extract data. Please try a clearer image.";
+          setOcrError(msg);
+          setDoc2State({ status: OCR_STATUS.ERROR, confidence: 0, error: msg });
+        } else {
+          const confidence = averageConfidence([
+            extraction.plateNo?.confidence,
+            extraction.engineNo?.confidence,
+            extraction.chassisNo?.confidence,
+            extraction.crNumber?.confidence,
+          ]);
+          setDoc2State({ status: OCR_STATUS.SUCCESS, confidence, error: "" });
+        }
       }
     } catch (error) {
       if (seq !== seq2.current) return;
       const label = isMvcc ? "MEC" : "CR";
       const msg = error?.message || String(error);
       setOcrError(`${label} OCR failed: ${msg}`);
+      setDoc2State({ status: OCR_STATUS.ERROR, confidence: 0, error: msg });
       console.error(`${label} OCR failed:`, error);
     } finally {
       if (seq === seq2.current) setIsProcessingDoc2(false);
@@ -436,6 +487,7 @@ export function useOcrForm(type = "mvcc") {
     setDoc1File(null);
     setDoc1Uploaded(false);
     setDoc1Extraction(null);
+    setDoc1State({ status: OCR_STATUS.IDLE, confidence: 0, error: "" });
     setIsProcessingDoc1(false);
     setOcrError("");
     const cleared = isMvcc
@@ -468,6 +520,7 @@ export function useOcrForm(type = "mvcc") {
     setDoc2File(null);
     setDoc2Uploaded(false);
     setDoc2Extraction(null);
+    setDoc2State({ status: OCR_STATUS.IDLE, confidence: 0, error: "" });
     setIsProcessingDoc2(false);
     setOcrError("");
     const cleared = isMvcc
@@ -575,6 +628,10 @@ export function useOcrForm(type = "mvcc") {
       ltoBranch: "",
       crNumber: "",
       crDate: "",
+      mecEngineNo: "",
+      mecChassisNo: "",
+      mecPlateNo: "",
+      mecColor: "",
     });
     setDoc1File(null);
     setDoc2File(null);
@@ -582,6 +639,8 @@ export function useOcrForm(type = "mvcc") {
     setDoc2Uploaded(false);
     setDoc1Extraction(null);
     setDoc2Extraction(null);
+    setDoc1State({ status: OCR_STATUS.IDLE, confidence: 0, error: "" });
+    setDoc2State({ status: OCR_STATUS.IDLE, confidence: 0, error: "" });
     setOcrError("");
   };
 
@@ -602,6 +661,8 @@ export function useOcrForm(type = "mvcc") {
     doc2Uploaded,
     isProcessingDoc1,
     isProcessingDoc2,
+    doc1State,
+    doc2State,
     handleDoc1Upload,
     handleDoc2Upload,
     handleMvccUpload: handleDoc1Upload,

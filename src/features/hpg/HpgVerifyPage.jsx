@@ -4,7 +4,7 @@ import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
 import { Spinner } from "../../components/Spinner";
 import { Shield, Search, CheckCircle, Car, User, ScanLine } from "lucide-react";
-import { HpgQrScannerModal } from "./HpgQrScannerModal";
+import { QrScannerModal } from "../../components/QrScannerModal";
 import api from "../../services/api";
 
 export const HpgVerifyPage = () => {
@@ -252,7 +252,7 @@ export const HpgVerifyPage = () => {
         </>
       )}
 
-      <HpgQrScannerModal
+      <QrScannerModal
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
         onScan={handleQrScan}

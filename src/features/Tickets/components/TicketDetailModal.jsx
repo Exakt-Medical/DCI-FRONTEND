@@ -309,7 +309,7 @@ export const TicketDetailModal = ({
   const isMismatch = currentTicket.type === "Data Mismatch";
   const isVehicleNotFound = currentTicket.type === "Vehicle Not Found";
   const isLTOType = isMismatch || isVehicleNotFound;
-  const isEscalated = currentTicket.roleBased === "LTO";
+  const isEscalated = currentTicket.roleBased === "DCI";
 
   const copy = async (key, text) => {
     await navigator.clipboard.writeText(text);
@@ -493,7 +493,7 @@ export const TicketDetailModal = ({
     try {
       const updated = await ticketService.update(
         currentTicket.id,
-        buildPayload({ roleBased: "LTO", escalated: "YES" }),
+        buildPayload({ roleBased: "DCI", escalated: "YES" }),
       );
       setCurrentTicket(updated);
       onTicketUpdated?.(updated);

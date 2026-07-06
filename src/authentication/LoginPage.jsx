@@ -268,7 +268,7 @@ export const LoginPage = () => {
                       hpg / hpg123
                     </div>
                     <div className="bg-gray-50 rounded px-2 py-1 text-gray-500 text-center font-mono">
-                      lto / lto123
+                      dci / dci123
                     </div>
                   </div>
                 )}

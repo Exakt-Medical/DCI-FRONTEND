@@ -132,10 +132,10 @@ export const evaluateMvcMecValidation = (
   const originalColor   = norm(verifiedVehicle.color);
   const originalStatus  = norm(verifiedVehicle.verificationStatus);
 
-  if (originalStatus !== "VERIFIED" && originalStatus !== "COMPLETED") {
+  if (originalStatus !== "VERIFIED" && originalStatus !== "COMPLETED" && originalStatus !== "HPG_VERIFIED") {
     return {
       valid: false,
-      reason: `DCI validation failed: Verification status is "${originalStatus || "UNKNOWN"}". It must be VERIFIED to proceed.`,
+      reason: `DCI validation failed: Verification status is "${originalStatus || "UNKNOWN"}". It must be HPG_VERIFIED to proceed.`,
     };
   }
 

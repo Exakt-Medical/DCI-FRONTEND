@@ -19,7 +19,7 @@ import { CitizenClearanceRequestFlow } from "./features/clearance-request/Citize
 import { AgentClearanceRequestFlow } from "./features/clearance-request/AgentClearanceRequestFlow";
 import { AgentClearanceRequestPage } from "./features/clearance-request/AgentClearanceRequestPage";
 import { HpgVerifyPage } from "./features/hpg/HpgVerifyPage";
-import { LtoLookupPage } from "./features/lto/LtoLookupPage";
+import { DciVerifyPage } from "./features/dci/DciVerifyPage";
 import { ProfilePage } from "./features/Profile/ProfilePage";
 import { TicketPage } from "./features/Tickets/TicketPage";
 import { TransactionLogsPage } from "./features/TransactionLogs/TransactionLogsPage";
@@ -36,8 +36,8 @@ const LoginRedirect = () => {
   if (!isAuthenticated) return <LoginPage />;
   const landingMap = {
     citizen: "/dci-access/requests",
-    hpg: "/dci-access/verification",
-    lto: "/dci-access/certificate-lookup",
+    hpg: "/dci-access/hpg-verification",
+    dci: "/dci-access/dci-verification",
   };
   const dest = landingMap[(role || "").toLowerCase()] || "/dci-access/dashboard";
   return <Navigate to={dest} replace />;
@@ -79,10 +79,10 @@ function App() {
           <Route path="/dci-access/new-clearance-request" element={<ProtectedRoute allowedRoles={AGENT_ROLES}>{isAgent(role) ? <AgentClearanceRequestFlow role={role} /> : <CitizenClearanceRequestFlow role={role} />}</ProtectedRoute>} />
           <Route path="/dci-access/new-certificate-request" element={<ProtectedRoute allowedRoles={AGENT_ROLES}>{isAgent(role) ? <AgentClearanceRequestFlow role={role} /> : <CitizenClearanceRequestFlow role={role} />}</ProtectedRoute>} />
           
-          <Route path="/dci-access/verification" element={<ProtectedRoute allowedRoles={["hpg"]}><HpgVerifyPage /></ProtectedRoute>} />
-          <Route path="/dci-access/certificate-lookup" element={<ProtectedRoute allowedRoles={["lto"]}><LtoLookupPage /></ProtectedRoute>} />
+          <Route path="/dci-access/hpg-verification" element={<ProtectedRoute allowedRoles={["hpg"]}><HpgVerifyPage /></ProtectedRoute>} />
+          <Route path="/dci-access/dci-verification" element={<ProtectedRoute allowedRoles={["dci"]}><DciVerifyPage /></ProtectedRoute>} />
           
-          <Route path="/dci-access/tickets" element={<ProtectedRoute allowedRoles={["admin", "hpg", "lto"]}><TicketPage /></ProtectedRoute>} />
+          <Route path="/dci-access/tickets" element={<ProtectedRoute allowedRoles={["admin", "hpg", "dci"]}><TicketPage /></ProtectedRoute>} />
           
           <Route path="/dci-access/accounts" element={<ProtectedRoute allowedRoles={["admin"]}><AccountPage /></ProtectedRoute>} />
           <Route path="/dci-access/transactions" element={<ProtectedRoute allowedRoles={["admin"]}><TransactionLogsPage /></ProtectedRoute>} />

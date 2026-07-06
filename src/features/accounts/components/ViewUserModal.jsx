@@ -11,7 +11,7 @@ export const ViewUserModal = ({ isOpen, onClose, user }) => {
   };
 
   const getCompanyBranch = () => {
-    if (user.role === "ADMIN" || user.role === "HPG" || user.role === "LTO") {
+    if (user.role === "ADMIN" || user.role === "HPG" || user.role === "DCI") {
       return "Not assigned";
     }
     if (user.role === "AGENT_FIXER") {

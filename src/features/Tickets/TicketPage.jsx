@@ -26,7 +26,7 @@ export const TicketPage = () => {
   const { role: authRole } = useAuth();
   const userRole = (authRole || localStorage.getItem("role") || "").toLowerCase();
   const isAdmin = userRole === "admin";
-  const isLTO = userRole === "lto";
+  const isDCI = userRole === "dci";
   const isHPG = userRole === "hpg";
   const isViewer = userRole === "viewer";
   const [showFilters, setShowFilters] = useState(false);
@@ -52,8 +52,8 @@ export const TicketPage = () => {
         setTickets(data);
       } else if (isHPG) {
         setTickets(data.filter((t) => (t.roleBased || "").toUpperCase() === "HPG"));
-      } else if (isLTO) {
-        setTickets(data.filter((t) => (t.roleBased || "").toUpperCase() === "LTO"));
+      } else if (isDCI) {
+        setTickets(data.filter((t) => (t.roleBased || "").toUpperCase() === "DCI"));
       } else {
         setTickets(data);
       }
@@ -62,7 +62,7 @@ export const TicketPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, isHPG, isLTO]);
+  }, [isAdmin, isHPG, isDCI]);
 
   useEffect(() => {
     fetchTickets();
@@ -315,7 +315,7 @@ export const TicketPage = () => {
             </p>
           </div>
 
-          {!isLTO && !isViewer && (
+          {!isDCI && !isViewer && (
             <button
               onClick={() => setIsCreateModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors"
@@ -418,7 +418,7 @@ export const TicketPage = () => {
       />
 
       {/* Create Modal — hidden for Viewer */}
-      {!isLTO && !isViewer && (
+      {!isDCI && !isViewer && (
         <CreateTicketModal
           isOpen={isCreateModalOpen}
           onClose={() => setIsCreateModalOpen(false)}
