@@ -308,6 +308,45 @@ export const AgentClearanceRequestFlow = () => {
     return () => clearInterval(interval);
   }, [step, requestStatus, certificateNo, id]);
 
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (window.bypassBeforeUnload) return;
+      if (step >= 2 && step !== 4 && !certificateNo) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+
+    const handleLinkClick = (e) => {
+      if (step >= 2 && step !== 4 && !certificateNo) {
+        const anchor = e.target.closest("a");
+        if (anchor) {
+          const targetHref = anchor.getAttribute("href");
+          const currentPath = window.location.pathname;
+          if (
+            targetHref &&
+            targetHref !== currentPath &&
+            !targetHref.startsWith("#") &&
+            !targetHref.startsWith("javascript:")
+          ) {
+            e.preventDefault();
+            e.stopPropagation();
+            setPendingNavigationPath(targetHref);
+            setShowNavigationWarningModal(true);
+          }
+        }
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("click", handleLinkClick, true);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("click", handleLinkClick, true);
+    };
+  }, [step, certificateNo]);
+
   // Compute OR/CR field mismatches for display
   const mismatches = (() => {
     const fields = [
@@ -1096,31 +1135,17 @@ export const AgentClearanceRequestFlow = () => {
                     <p className="font-bold text-green-700 text-lg">HPG Verified</p>
                     <p className="text-sm text-gray-600 mt-1">Your vehicle has been successfully verified by HPG.</p>
                     <p className="text-xs text-gray-400 mt-2">
-                      Voucher Code: <span className="font-mono font-semibold">{voucherCode}</span>
+                      Transaction Code: <span className="font-mono font-semibold">{voucherCode}</span>
                     </p>
                   </div>
                 ) : (
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
-                    <p className="font-bold text-amber-700 text-lg">Verify your voucher code to HPG</p>
-                    <p className="text-sm text-gray-600 mt-2 max-w-md mx-auto">
-                      Please present your voucher code to the HPG officer for physical inspection and verification.
-                    </p>
+                    <p className="font-bold text-amber-700 text-lg">Please present your transaction to HPG/LTO.</p>
                     <div className="mt-4 inline-flex items-center gap-3 bg-white border border-amber-300 rounded-lg px-4 py-2 shadow-sm">
                       <div className="text-left">
-                        <span className="text-xs text-gray-500 block">VOUCHER CODE</span>
+                        <span className="text-xs text-gray-500 block text-center">TRANSACTION CODE</span>
                         <span className="text-base font-mono font-bold text-gray-900 tracking-wider">{voucherCode}</span>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => {
-                          navigator.clipboard.writeText(voucherCode);
-                          showSuccessAlert("Copied", "Voucher code copied to clipboard!");
-                        }}
-                        className="ml-2 py-1 px-3 text-xs"
-                      >
-                        Copy
-                      </Button>
                     </div>
                     
                     <div className="mt-4 flex justify-center gap-3">
