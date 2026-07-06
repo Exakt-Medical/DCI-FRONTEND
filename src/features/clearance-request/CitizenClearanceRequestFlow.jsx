@@ -669,7 +669,8 @@ export const CitizenClearanceRequestFlow = () => {
 
   const hasTriggeredVerification = useRef(false);
   useEffect(() => {
-    if (id && !selectedRequest && !orCr?.plateNumber && !crCr?.plateNumber) return;
+    const hasData = (orCr?.mvFileNumber || crCr?.mvFileNumber) || (orCr?.plateNumber || crCr?.plateNumber);
+    if (id && !selectedRequest && !hasData) return;
     if (requestStatus === "VERIFICATION_FAILED" || selectedRequest?.status === "VERIFICATION_FAILED") return;
 
     if (step === 4 && !transactionVerified && !isVerifyingDocuments && !hasTriggeredVerification.current && !verificationFailed) {
