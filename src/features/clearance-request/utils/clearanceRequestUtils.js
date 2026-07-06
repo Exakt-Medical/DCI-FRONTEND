@@ -71,7 +71,11 @@ export const mergeVehicleFields = (current = {}, next = {}) => {
   Object.keys(current).forEach((key) => {
     const value = next[key];
     if (typeof value === "string" && value.trim()) {
-      merged[key] = value.trim().toUpperCase();
+      let val = value.trim().toUpperCase();
+      if (key === "mvFileNumber" && val.length > 15) {
+        val = val.slice(0, 15);
+      }
+      merged[key] = val;
     }
   });
   return merged;

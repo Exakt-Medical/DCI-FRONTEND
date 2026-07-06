@@ -36,6 +36,7 @@ const LoginRedirect = () => {
   if (!isAuthenticated) return <LoginPage />;
   const landingMap = {
     citizen: "/dci-access/requests",
+    agent_fixer: "/dci-access/requests",
     hpg: "/dci-access/verification",
     lto: "/dci-access/certificate-lookup",
   };

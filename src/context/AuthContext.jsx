@@ -67,7 +67,7 @@ export function AuthProvider({ children }) {
 
   const getDefaultPageForRole = (currentRole) => {
     const role = (currentRole || "").toLowerCase();
-    if (role === "citizen") return "requests";
+    if (role === "citizen" || role === "agent" || role === "agent_fixer") return "requests";
     if (role === "hpg") return "verification";
     if (role === "lto") return "certificate-lookup";
     // admin, agent_fixer, agent, and any other roles → dashboard
