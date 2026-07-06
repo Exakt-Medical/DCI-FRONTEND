@@ -160,7 +160,7 @@ export const generateDciCodeSlipPDF = async (row = {}) => {
   doc.setFont("helvetica", "italic");
   doc.setFontSize(7);
   doc.setTextColor(140, 140, 140);
-  doc.text("This is an official system-generated transaction slip.", pageWidth / 2, 95, { align: "center" });
+  doc.text("This certifies that the information contained in this transaction has been validated against the official records of the Land Transportation Office (LTO).", pageWidth / 2, 95, { align: "center" });
 
   const filename = `DCI_Transaction_Slip_${safeFileSegment(transactionCode)}.pdf`;
 

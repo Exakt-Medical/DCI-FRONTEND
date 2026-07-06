@@ -10,6 +10,7 @@ export const Input = ({
   icon,
   className,
   error,
+  ...props
 }) => (
   <div className={cn("flex flex-col gap-1.5", className)}>
     {label && (
@@ -39,6 +40,7 @@ export const Input = ({
           "transition-all",
           icon && "pl-9"
         )}
+        {...props}
       />
     </div>
   </div>

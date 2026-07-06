@@ -246,7 +246,17 @@ export const VoucherRequestFlow = () => {
   const VehicleFields = ({ values, onChange }) => (
     <div className="space-y-3">
       <Input label="Plate Number" value={values.plateNumber} onChange={(e) => onChange("plateNumber", e.target.value)} placeholder="Auto-extracted" required />
-      <Input label="MV File Number" value={values.mvFileNumber} onChange={(e) => onChange("mvFileNumber", e.target.value)} placeholder="Auto-extracted" />
+      <Input
+        label="MV File Number"
+        value={values.mvFileNumber}
+        onChange={(e) => {
+          let val = e.target.value;
+          if (val.length > 15) val = val.slice(0, 15);
+          onChange("mvFileNumber", val);
+        }}
+        placeholder="Auto-extracted"
+        maxLength={15}
+      />
       <Input label="Engine Number" value={values.engineNumber} onChange={(e) => onChange("engineNumber", e.target.value)} placeholder="Auto-extracted" />
       <Input label="Chassis Number" value={values.chassisNumber} onChange={(e) => onChange("chassisNumber", e.target.value)} placeholder="Auto-extracted" />
       <Input label="Make" value={values.make} onChange={(e) => onChange("make", e.target.value)} placeholder="Auto-extracted" />

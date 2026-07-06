@@ -70,7 +70,7 @@ const StatusBadge = ({ done }) => (
     ) : (
       <>
         <Clock size={14} className="text-amber-600 shrink-0" />
-        <span className="text-amber-700">Pending</span>
+        <span className="text-amber-700">For Uploading of HPG Clearance</span>
       </>
     )}
   </div>

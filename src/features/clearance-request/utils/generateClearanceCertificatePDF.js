@@ -328,7 +328,7 @@ export const generateClearanceCertificatePDF = async (row = {}) => {
   doc.setFont("helvetica", "italic");
   doc.setFontSize(8);
   doc.setTextColor(100, 100, 100);
-  const footerText = "This is a system-generated document.";
+  const footerText = "This certifies that the information contained in this transaction has been validated against the official records of the Land Transportation Office (LTO).";
   doc.text(footerText, pageWidth / 2, 280, { align: "center" });
 
   const filename = `Clearance_Certificate_${safeFileSegment(authNo)}.pdf`;

@@ -23,10 +23,17 @@ export const VehicleFields = ({ values, onChange, fieldSet = "cr", errors = {} }
         key={field.key}
         label={field.label}
         value={values[field.key] || ""}
-        onChange={(e) => onChange(field.key, e.target.value.toUpperCase())}
+        onChange={(e) => {
+          let val = e.target.value;
+          if (field.key === "mvFileNumber" && val.length > 15) {
+            val = val.slice(0, 15);
+          }
+          onChange(field.key, val.toUpperCase());
+        }}
         placeholder="Auto-extracted"
         required={true}
         error={errors[field.key]}
+        maxLength={field.key === "mvFileNumber" ? 15 : undefined}
       />
     ))}
   </div>
