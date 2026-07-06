@@ -308,6 +308,45 @@ export const AgentClearanceRequestFlow = () => {
     return () => clearInterval(interval);
   }, [step, requestStatus, certificateNo, id]);
 
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (window.bypassBeforeUnload) return;
+      if (step >= 2 && step !== 4 && !certificateNo) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+
+    const handleLinkClick = (e) => {
+      if (step >= 2 && step !== 4 && !certificateNo) {
+        const anchor = e.target.closest("a");
+        if (anchor) {
+          const targetHref = anchor.getAttribute("href");
+          const currentPath = window.location.pathname;
+          if (
+            targetHref &&
+            targetHref !== currentPath &&
+            !targetHref.startsWith("#") &&
+            !targetHref.startsWith("javascript:")
+          ) {
+            e.preventDefault();
+            e.stopPropagation();
+            setPendingNavigationPath(targetHref);
+            setShowNavigationWarningModal(true);
+          }
+        }
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("click", handleLinkClick, true);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("click", handleLinkClick, true);
+    };
+  }, [step, certificateNo]);
+
   // Compute OR/CR field mismatches for display
   const mismatches = (() => {
     const fields = [
