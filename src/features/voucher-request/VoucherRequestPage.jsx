@@ -31,7 +31,7 @@ export const VoucherRequestPage = () => {
         </div>
         <Button onClick={() => navigate("/dci-access/new-voucher-request")}>
           <Plus size={16} />
-          New Voucher Request
+          Transaction Credits
         </Button>
       </div>
 

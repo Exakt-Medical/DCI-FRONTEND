@@ -36,6 +36,7 @@ const LoginRedirect = () => {
   if (!isAuthenticated) return <LoginPage />;
   const landingMap = {
     citizen: "/dci-access/requests",
+    agent_fixer: "/dci-access/requests",
     hpg: "/dci-access/hpg-verification",
     dci: "/dci-access/dci-verification",
   };
@@ -73,7 +74,7 @@ function App() {
           <Route path="/dci-access/profile" element={<ProfilePage role={role} />} />
           
           <Route path="/dci-access/voucher-requests" element={<ProtectedRoute allowedRoles={AGENT_ROLES}>{isAgent(role) ? <AgentVoucherRequestPage /> : <VoucherRequestPage />}</ProtectedRoute>} />
-          <Route path="/dci-access/new-voucher-request" element={<ProtectedRoute allowedRoles={AGENT_ROLES}>{isAgent(role) ? <AgentBuyVoucherPage /> : <VoucherRequestFlow role={role} />}</ProtectedRoute>} />
+          <Route path="/dci-access/new-transaction-credits" element={<ProtectedRoute allowedRoles={AGENT_ROLES}>{isAgent(role) ? <AgentBuyVoucherPage /> : <VoucherRequestFlow role={role} />}</ProtectedRoute>} />
           
           <Route path="/dci-access/clearance-requests" element={<ProtectedRoute allowedRoles={AGENT_ROLES}>{isAgent(role) ? <AgentClearanceRequestPage /> : <ClearanceRequestPage />}</ProtectedRoute>} />
           <Route path="/dci-access/new-clearance-request" element={<ProtectedRoute allowedRoles={AGENT_ROLES}>{isAgent(role) ? <AgentClearanceRequestFlow role={role} /> : <CitizenClearanceRequestFlow role={role} />}</ProtectedRoute>} />
