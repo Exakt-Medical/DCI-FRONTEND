@@ -128,6 +128,7 @@ export const MvcMecUploadCard = ({
               }}
               placeholder={field.placeholder || "Auto-extracted"}
               required={true}
+              error={field.error}
             />
           ))}
         </div>

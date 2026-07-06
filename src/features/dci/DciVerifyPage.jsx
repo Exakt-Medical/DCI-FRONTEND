@@ -10,6 +10,7 @@ import api from "../../services/api";
 import { useOcrForm, formatOcrHint, OCR_STATUS } from "../../hooks/useOcrForm";
 import { MvcMecUploadCard } from "../clearance-request/components/FlowFormCards";
 import { evaluateMvcMecValidation } from "../clearance-request/utils/clearanceRequestUtils";
+import { useAlert } from "../../hooks/useAlert";
 
 export const DciVerifyPage = () => {
   const [voucherCode, setVoucherCode] = useState("");
@@ -18,9 +19,11 @@ export const DciVerifyPage = () => {
   const [verified, setVerified] = useState(false);
   const [vehicleData, setVehicleData] = useState(null);
   const [error, setError] = useState("");
+  const [validationErrors, setValidationErrors] = useState({});
   const [markedVerified, setMarkedVerified] = useState(false);
   
   const [activeTab, setActiveTab] = useState("vehicle");
+  const { error: showErrorAlert } = useAlert();
 
   const {
     formData,
@@ -30,30 +33,14 @@ export const DciVerifyPage = () => {
     handleMvccUpload,
     handleMecUpload,
     handleInputChange,
+    doc1State,
+    doc2State,
     resetForm,
     doc1Uploaded,
     doc2Uploaded,
-    doc1State,
-    doc2State,
   } = useOcrForm("mvcc");
 
-  const isMvccComplete =
-    mvccFile &&
-    formData.mvccControlNo &&
-    formData.mvccDateIssued &&
-    formData.engineNo &&
-    formData.chassisNo &&
-    formData.plateNo &&
-    formData.color;
-
-  const isMecComplete =
-    mecFile &&
-    formData.mecEngineNo &&
-    formData.mecChassisNo &&
-    formData.mecPlateNo &&
-    formData.mecColor;
-
-  const isDocumentsComplete = isMvccComplete && isMecComplete;
+  const isDocumentsComplete = !!(mvccFile && mecFile);
 
   const handleQrScan = (scannedVoucherCode) => {
     setVoucherCode(scannedVoucherCode);
@@ -61,7 +48,7 @@ export const DciVerifyPage = () => {
     setVerified(false);
     setVehicleData(null);
     setMarkedVerified(false);
-    setMarkedVerified(false);
+    setValidationErrors({});
     resetForm();
     setActiveTab("vehicle");
     setIsScannerOpen(false);
@@ -77,7 +64,7 @@ export const DciVerifyPage = () => {
     setVerified(false);
     setVehicleData(null);
     setMarkedVerified(false);
-    setMarkedVerified(false);
+    setValidationErrors({});
     resetForm();
 
     api.get(`/certificate-requests/by-voucher/${voucherCode.trim()}`)
@@ -104,26 +91,34 @@ export const DciVerifyPage = () => {
 
   const handleMarkVerified = () => {
     setIsVerifying(true);
+    setValidationErrors({});
     const mvcPayload = {
       mvcNo: formData.mvccControlNo,
       issueDate: formData.mvccDateIssued,
       mvFileNo: formData.mvFileNo,
-      engineNo: formData.engineNo, // Note: engineNo and chassisNo are shared in formData, this might cause issues if they differ but we'll use them directly
+      engineNo: formData.engineNo,
       chassisNo: formData.chassisNo,
       plateNo: formData.plateNo,
       color: formData.color,
     };
     
     const mecPayload = {
-      engineNoStencilled: formData.engineNo, // Shared in formData
-      chassisNoStencilled: formData.chassisNo, // Shared in formData
-      plateNo: formData.plateNo,
-      color: formData.color,
+      engineNoStencilled: formData.mecEngineNo,
+      chassisNoStencilled: formData.mecChassisNo,
+      plateNo: formData.mecPlateNo,
+      color: formData.mecColor,
     };
 
     const validation = evaluateMvcMecValidation(mvcPayload, mecPayload, vehicleData);
     if (!validation.valid) {
-      setError(validation.reason);
+      showErrorAlert("Data Mismatch", validation.reason);
+      const errors = {};
+      if (validation.mismatchedFields) {
+        validation.mismatchedFields.forEach(f => {
+          errors[f] = true;
+        });
+      }
+      setValidationErrors(errors);
       setIsVerifying(false);
       return;
     }
@@ -301,13 +296,13 @@ export const DciVerifyPage = () => {
                   preview={doc1Uploaded ? URL.createObjectURL(mvccFile) : null}
                   vehicleLabel="Vehicle Details (from MVCC)"
                   fields={[
-                    { key: "mvccControlNo", label: "MVCC Number", value: formData.mvccControlNo || "", onChange: (e) => handleInputChange({ target: { name: "mvccControlNo", value: e.target.value } }) },
-                    { key: "mvccDateIssued", label: "Issue Date", value: formData.mvccDateIssued || "", onChange: (e) => handleInputChange({ target: { name: "mvccDateIssued", value: e.target.value } }) },
-                    { key: "mvFileNo", label: "MV File Number", value: formData.mvFileNo || "", onChange: (e) => handleInputChange({ target: { name: "mvFileNo", value: e.target.value } }) },
-                    { key: "engineNo", label: "Engine Number", value: formData.engineNo || "", onChange: (e) => handleInputChange({ target: { name: "engineNo", value: e.target.value } }) },
-                    { key: "chassisNo", label: "Chassis Number", value: formData.chassisNo || "", onChange: (e) => handleInputChange({ target: { name: "chassisNo", value: e.target.value } }) },
-                    { key: "plateNo", label: "Plate Number", value: formData.plateNo || "", onChange: (e) => handleInputChange({ target: { name: "plateNo", value: e.target.value } }) },
-                    { key: "color", label: "Color", value: formData.color || "", onChange: (e) => handleInputChange({ target: { name: "color", value: e.target.value } }) },
+                    { key: "mvccControlNo", label: "MVCC Number", value: formData.mvccControlNo || "", error: validationErrors["mvccControlNo"], onChange: (e) => handleInputChange({ target: { name: "mvccControlNo", value: e.target.value } }) },
+                    { key: "mvccDateIssued", label: "Issue Date", value: formData.mvccDateIssued || "", error: validationErrors["mvccDateIssued"], onChange: (e) => handleInputChange({ target: { name: "mvccDateIssued", value: e.target.value } }) },
+                    { key: "mvFileNo", label: "MV File Number", value: formData.mvFileNo || "", error: validationErrors["mvFileNo"], onChange: (e) => handleInputChange({ target: { name: "mvFileNo", value: e.target.value } }) },
+                    { key: "engineNo", label: "Engine Number", value: formData.engineNo || "", error: validationErrors["engineNo"], onChange: (e) => handleInputChange({ target: { name: "engineNo", value: e.target.value } }) },
+                    { key: "chassisNo", label: "Chassis Number", value: formData.chassisNo || "", error: validationErrors["chassisNo"], onChange: (e) => handleInputChange({ target: { name: "chassisNo", value: e.target.value } }) },
+                    { key: "plateNo", label: "Plate Number", value: formData.plateNo || "", error: validationErrors["plateNo"], onChange: (e) => handleInputChange({ target: { name: "plateNo", value: e.target.value } }) },
+                    { key: "color", label: "Color", value: formData.color || "", error: validationErrors["color"], onChange: (e) => handleInputChange({ target: { name: "color", value: e.target.value } }) },
                   ]}
                   uploadHint={formatOcrHint(doc1State)}
                 />
@@ -318,10 +313,10 @@ export const DciVerifyPage = () => {
                   preview={doc2Uploaded ? URL.createObjectURL(mecFile) : null}
                   vehicleLabel="Vehicle Details (from MEC)"
                   fields={[
-                    { key: "mecEngineNo", label: "Engine Number", value: formData.mecEngineNo || "", onChange: (e) => handleInputChange({ target: { name: "mecEngineNo", value: e.target.value } }) },
-                    { key: "mecChassisNo", label: "Chassis Number", value: formData.mecChassisNo || "", onChange: (e) => handleInputChange({ target: { name: "mecChassisNo", value: e.target.value } }) },
-                    { key: "mecPlateNo", label: "Plate Number", value: formData.mecPlateNo || "", onChange: (e) => handleInputChange({ target: { name: "mecPlateNo", value: e.target.value } }) },
-                    { key: "mecColor", label: "Color", value: formData.mecColor || "", onChange: (e) => handleInputChange({ target: { name: "mecColor", value: e.target.value } }) },
+                    { key: "mecEngineNo", label: "Engine Number", value: formData.mecEngineNo || "", error: validationErrors["mecEngineNo"], onChange: (e) => handleInputChange({ target: { name: "mecEngineNo", value: e.target.value } }) },
+                    { key: "mecChassisNo", label: "Chassis Number", value: formData.mecChassisNo || "", error: validationErrors["mecChassisNo"], onChange: (e) => handleInputChange({ target: { name: "mecChassisNo", value: e.target.value } }) },
+                    { key: "mecPlateNo", label: "Plate Number", value: formData.mecPlateNo || "", error: validationErrors["mecPlateNo"], onChange: (e) => handleInputChange({ target: { name: "mecPlateNo", value: e.target.value } }) },
+                    { key: "mecColor", label: "Color", value: formData.mecColor || "", error: validationErrors["mecColor"], onChange: (e) => handleInputChange({ target: { name: "mecColor", value: e.target.value } }) },
                   ]}
                   uploadHint={formatOcrHint(doc2State)}
                 />

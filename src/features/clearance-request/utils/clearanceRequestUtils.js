@@ -155,49 +155,50 @@ export const evaluateMvcMecValidation = (
   const mecPlate   = norm(mecPayload.plateNo || mecPayload.plateNumber);
   const mecColor   = norm(mecPayload.color);
 
+  const mvFileNo = norm(mvcPayload.mvFileNo);
+
   // Presence
-  if (!mvcNo)        return { valid: false, reason: "Missing MVCC Number in MVCC." };
-  if (!mvcIssueDate) return { valid: false, reason: "Missing Issue Date in MVCC." };
-  if (!mvcEngine)    return { valid: false, reason: "Missing Engine Number in MVCC." };
-  if (!mvcChassis)   return { valid: false, reason: "Missing Chassis Number in MVCC." };
-  if (!mvcPlate)     return { valid: false, reason: "Missing Plate Number in MVCC." };
-  if (!mvcColor)     return { valid: false, reason: "Missing Color in MVCC." };
-  if (!mecEngine)    return { valid: false, reason: "Missing Engine Number in MEC." };
-  if (!mecChassis)   return { valid: false, reason: "Missing Chassis Number in MEC." };
-  if (!mecPlate)     return { valid: false, reason: "Missing Plate Number in MEC." };
-  if (!mecColor)     return { valid: false, reason: "Missing Color in MEC." };
+  if (!mvcNo)        return { valid: false, reason: "Missing MVCC Number in MVCC.", mismatchedFields: ["mvccControlNo"] };
+  if (!mvcIssueDate) return { valid: false, reason: "Missing Issue Date in MVCC.", mismatchedFields: ["mvccDateIssued"] };
+  if (!mvcEngine)    return { valid: false, reason: "Missing Engine Number in MVCC.", mismatchedFields: ["engineNo"] };
+  if (!mvcChassis)   return { valid: false, reason: "Missing Chassis Number in MVCC.", mismatchedFields: ["chassisNo"] };
+  if (!mvcPlate && !mvFileNo) return { valid: false, reason: "Missing Plate Number or MV File No in MVCC.", mismatchedFields: ["plateNo", "mvFileNo"] };
+  if (!mvcColor)     return { valid: false, reason: "Missing Color in MVCC.", mismatchedFields: ["color"] };
+  if (!mecEngine)    return { valid: false, reason: "Missing Engine Number in MEC.", mismatchedFields: ["mecEngineNo"] };
+  if (!mecChassis)   return { valid: false, reason: "Missing Chassis Number in MEC.", mismatchedFields: ["mecChassisNo"] };
+  if (!mecPlate && !mvFileNo) return { valid: false, reason: "Missing Plate Number in MEC.", mismatchedFields: ["mecPlateNo"] };
+  if (!mecColor)     return { valid: false, reason: "Missing Color in MEC.", mismatchedFields: ["mecColor"] };
+
+  const mismatchedFields = [];
+  let reason = "";
 
   // Document vs. verified vehicle
   if (originalEngine) {
-    if (mvcEngine !== originalEngine)
-      return { valid: false, reason: `MVCC Engine Number (${mvcEngine}) does not match verified Engine Number (${originalEngine}).` };
-    if (mecEngine !== originalEngine)
-      return { valid: false, reason: `MEC Engine Number (${mecEngine}) does not match verified Engine Number (${originalEngine}).` };
+    if (mvcEngine !== originalEngine) { mismatchedFields.push("engineNo"); if (!reason) reason = `MVCC Engine Number (${mvcEngine}) does not match verified Engine Number (${originalEngine}).`; }
+    if (mecEngine !== originalEngine) { mismatchedFields.push("mecEngineNo"); if (!reason) reason = `MEC Engine Number (${mecEngine}) does not match verified Engine Number (${originalEngine}).`; }
   }
   if (originalChassis) {
-    if (mvcChassis !== originalChassis)
-      return { valid: false, reason: `MVCC Chassis Number (${mvcChassis}) does not match verified Chassis Number (${originalChassis}).` };
-    if (mecChassis !== originalChassis)
-      return { valid: false, reason: `MEC Chassis Number (${mecChassis}) does not match verified Chassis Number (${originalChassis}).` };
+    if (mvcChassis !== originalChassis) { mismatchedFields.push("chassisNo"); if (!reason) reason = `MVCC Chassis Number (${mvcChassis}) does not match verified Chassis Number (${originalChassis}).`; }
+    if (mecChassis !== originalChassis) { mismatchedFields.push("mecChassisNo"); if (!reason) reason = `MEC Chassis Number (${mecChassis}) does not match verified Chassis Number (${originalChassis}).`; }
   }
   if (originalPlate) {
-    if (mvcPlate !== originalPlate)
-      return { valid: false, reason: `MVCC Plate Number (${mvcPlate}) does not match verified Plate Number (${originalPlate}).` };
-    if (mecPlate !== originalPlate)
-      return { valid: false, reason: `MEC Plate Number (${mecPlate}) does not match verified Plate Number (${originalPlate}).` };
+    if (mvcPlate !== originalPlate) { mismatchedFields.push("plateNo"); if (!reason) reason = `MVCC Plate Number (${mvcPlate}) does not match verified Plate Number (${originalPlate}).`; }
+    if (mecPlate !== originalPlate) { mismatchedFields.push("mecPlateNo"); if (!reason) reason = `MEC Plate Number (${mecPlate}) does not match verified Plate Number (${originalPlate}).`; }
   }
   if (originalColor) {
-    if (mvcColor !== originalColor)
-      return { valid: false, reason: `MVCC Color (${mvcColor}) does not match verified Color (${originalColor}).` };
-    if (mecColor !== originalColor)
-      return { valid: false, reason: `MEC Color (${mecColor}) does not match verified Color (${originalColor}).` };
+    if (mvcColor !== originalColor) { mismatchedFields.push("color"); if (!reason) reason = `MVCC Color (${mvcColor}) does not match verified Color (${originalColor}).`; }
+    if (mecColor !== originalColor) { mismatchedFields.push("mecColor"); if (!reason) reason = `MEC Color (${mecColor}) does not match verified Color (${originalColor}).`; }
   }
 
   // MVCC vs MEC consistency
-  if (mvcEngine  !== mecEngine)  return { valid: false, reason: `Engine Numbers do not match: MVCC (${mvcEngine}) vs MEC (${mecEngine}).` };
-  if (mvcChassis !== mecChassis) return { valid: false, reason: `Chassis Numbers do not match: MVCC (${mvcChassis}) vs MEC (${mecChassis}).` };
-  if (mvcPlate   !== mecPlate)   return { valid: false, reason: `Plate Numbers do not match: MVCC (${mvcPlate}) vs MEC (${mecPlate}).` };
-  if (mvcColor   !== mecColor)   return { valid: false, reason: `Colors do not match: MVCC (${mvcColor}) vs MEC (${mecColor}).` };
+  if (mvcEngine  !== mecEngine)  { mismatchedFields.push("engineNo"); mismatchedFields.push("mecEngineNo"); if (!reason) reason = `Engine Numbers do not match: MVCC (${mvcEngine}) vs MEC (${mecEngine}).`; }
+  if (mvcChassis !== mecChassis) { mismatchedFields.push("chassisNo"); mismatchedFields.push("mecChassisNo"); if (!reason) reason = `Chassis Numbers do not match: MVCC (${mvcChassis}) vs MEC (${mecChassis}).`; }
+  if (mvcPlate   !== mecPlate)   { mismatchedFields.push("plateNo"); mismatchedFields.push("mecPlateNo"); if (!reason) reason = `Plate Numbers do not match: MVCC (${mvcPlate}) vs MEC (${mecPlate}).`; }
+  if (mvcColor   !== mecColor)   { mismatchedFields.push("color"); mismatchedFields.push("mecColor"); if (!reason) reason = `Colors do not match: MVCC (${mvcColor}) vs MEC (${mecColor}).`; }
+
+  if (mismatchedFields.length > 0) {
+    return { valid: false, reason, mismatchedFields };
+  }
 
   return { valid: true, reason: "Validated by DCI portal." };
 };
