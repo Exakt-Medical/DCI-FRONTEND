@@ -66,6 +66,7 @@ export const AgentClearanceRequestFlow = () => {
 
   const [availableVoucherRequests, setAvailableVoucherRequests] = useState([]);
   const [isLoadingRequests, setIsLoadingRequests] = useState(true);
+  const [availableVoucherCount, setAvailableVoucherCount] = useState(null);
 
   const loadAllRequests = async () => {
     try {
@@ -81,6 +82,22 @@ export const AgentClearanceRequestFlow = () => {
 
   useEffect(() => {
     loadAllRequests();
+
+    // Fetch available voucher count on mount
+    const fetchVoucherCount = async () => {
+      try {
+        const profile = JSON.parse(localStorage.getItem("userProfile") || "{}");
+        const userId = localStorage.getItem("userId") || profile.id;
+        if (userId) {
+          const inventory = await voucherInventoryService.fetchAgentInventory(userId);
+          const available = inventory.filter(v => v.inventoryStatus === "AVAILABLE" || v.status === "AVAILABLE").length;
+          setAvailableVoucherCount(available);
+        }
+      } catch (err) {
+        console.error("Failed to fetch inventory count", err);
+      }
+    };
+    fetchVoucherCount();
   }, []);
 
   const location = useLocation();
@@ -265,6 +282,31 @@ export const AgentClearanceRequestFlow = () => {
     }
     return () => clearInterval(interval);
   }, [step, hpgVerified, id]);
+
+  // Poll for DCI verification status when on step 5
+  useEffect(() => {
+    let interval;
+    if (step === 5 && requestStatus !== "CERTIFICATE_ISSUED" && !certificateNo && id) {
+      interval = setInterval(async () => {
+        try {
+          const requests = await fetchMyRequests();
+          const currentReq = requests.find((r) => String(r.id) === String(id));
+          if (currentReq) {
+            if (currentReq.status === "CERTIFICATE_ISSUED") {
+              setRequestStatus("CERTIFICATE_ISSUED");
+              if (currentReq.certificateNo) setCertificateNo(currentReq.certificateNo);
+            } else if (currentReq.status === "MVC_MEC_VALIDATED") {
+              setRequestStatus("MVC_MEC_VALIDATED");
+              handleDciVerification();
+            }
+          }
+        } catch (e) {
+          console.error("Polling error:", e);
+        }
+      }, 5000); // Poll every 5 seconds
+    }
+    return () => clearInterval(interval);
+  }, [step, requestStatus, certificateNo, id]);
 
   // Compute OR/CR field mismatches for display
   const mismatches = (() => {
@@ -508,6 +550,22 @@ export const AgentClearanceRequestFlow = () => {
 
     setIsVerifyingDocuments(true);
     try {
+      if (!voucherAssigned) {
+        const profile = JSON.parse(localStorage.getItem("userProfile") || "{}");
+        const userId = localStorage.getItem("userId") || profile.id;
+        const inventory = await voucherInventoryService.fetchAgentInventory(userId);
+        const available = inventory.find(
+          (v) => v.inventoryStatus === "AVAILABLE" || v.status === "AVAILABLE",
+        );
+        if (!available) {
+          await showError(
+            "Insufficient Vouchers",
+            "You have no available vouchers in your inventory. Please purchase more vouchers to proceed."
+          );
+          return;
+        }
+      }
+
       await saveCitizenRequest({
         currentStep: 3,
         status: "OR_CR_UPLOADED",
@@ -612,14 +670,14 @@ export const AgentClearanceRequestFlow = () => {
 
   const hasTriggeredVerification = useRef(false);
   useEffect(() => {
-    if (id && !selectedRequest) return;
+    if (id && !selectedRequest && !orCr?.plateNumber && !crCr?.plateNumber) return;
     if (requestStatus === "VERIFICATION_FAILED" || selectedRequest?.status === "VERIFICATION_FAILED") return;
 
     if (step === 3 && !transactionVerified && !isVerifyingDocuments && !hasTriggeredVerification.current && !verificationFailed) {
       hasTriggeredVerification.current = true;
       handleVerifyVehicle();
     }
-  }, [step, transactionVerified, isVerifyingDocuments, verificationFailed, id, selectedRequest, requestStatus]);
+  }, [step, transactionVerified, isVerifyingDocuments, verificationFailed, id, selectedRequest, requestStatus, orCr, crCr]);
 
   const getTicketPrefilledData = () => {
     const vehicleInfo = {
@@ -1085,10 +1143,10 @@ export const AgentClearanceRequestFlow = () => {
                   <FileText size={18} className="text-[#0059b5]" />
                   <h3 className="text-base font-bold text-gray-900">Issue Certificate</h3>
                 </div>
-                {isIssuingCertificate ? (
+                {isIssuingCertificate || (requestStatus !== "CERTIFICATE_ISSUED" && !certificateNo) ? (
                   <div className="text-center py-8">
                     <Spinner size="lg" />
-                    <p className="text-sm text-gray-500 mt-4">DCI portal is issuing certificate...</p>
+                    <p className="text-sm text-gray-500 mt-4">Waiting for DCI Validation and Certificate Issuance...</p>
                   </div>
                 ) : certificateNo ? (
                   <div className="bg-green-50 border border-green-200 rounded-lg p-6 text-center">
@@ -1105,16 +1163,7 @@ export const AgentClearanceRequestFlow = () => {
                       </Button>
                     </div>
                   </div>
-                ) : (
-                  <div className="text-center py-6">
-                    <p className="text-sm text-gray-500 mb-6">
-                      Click the button below to verify vehicle records with the DCI portal and trigger clearance certificate generation.
-                    </p>
-                    <Button onClick={handleDciVerification} disabled={isIssuingCertificate} className="mx-auto">
-                      Verify DCI Record
-                    </Button>
-                  </div>
-                )}
+                ) : null}
               </Card>
             )}
 
@@ -1144,6 +1193,11 @@ export const AgentClearanceRequestFlow = () => {
               </div>
               {step < flowSteps.length ? (
                 <div className="flex items-center gap-3">
+                  {(step === 1 || step === 2) && availableVoucherCount !== null && (
+                    <span className="text-sm font-medium bg-gray-100 px-3 py-1.5 rounded-lg border border-gray-200">
+                      Credits: <strong className={availableVoucherCount > 0 ? "text-green-600" : "text-red-600"}>{availableVoucherCount}</strong>
+                    </span>
+                  )}
                   <Button onClick={nextStep} disabled={!canNext() || isVerifyingDocuments}>
                     {isVerifyingDocuments ? "Verifying..." : "Next"} <ChevronRight size={16} />
                   </Button>
