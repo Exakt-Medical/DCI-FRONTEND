@@ -10,7 +10,7 @@ import { emptyVehicle } from "./utils/clearanceRequestUtils";
 import { useOrCrOcr } from "./hooks/useOrCrOcr";
 import { useAuth } from "../../context/AuthContext";
 import DCI_LOGO from "../../assets/DCI-LOGO.png";
-import { formatOcrHint } from "../../hooks/useOcrForm";
+import { formatOcrHint, OCR_STATUS } from "../../hooks/useOcrForm";
 import { DataMismatchModal } from "./components/DataMismatchModal";
 import { ticketService } from "../../services/ticketService";
 import { Button } from "../../components/Button";
@@ -567,6 +567,7 @@ export const AgentBulkClearanceRequestFlow = () => {
                     vehicleValues={crCr}
                     vehicleFieldSet="cr"
                     onVehicleChange={updateCrCr}
+                    disabled={ocrUploadState.or.status === OCR_STATUS.IDLE || ocrUploadState.or.status === OCR_STATUS.EXTRACTING}
                   />
                 </div>
                 

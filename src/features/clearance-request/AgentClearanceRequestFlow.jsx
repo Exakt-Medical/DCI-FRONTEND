@@ -23,7 +23,7 @@ import {
   MvcMecUploadCard,
   VehicleDocumentUploadCard,
 } from "./components/FlowFormCards";
-import { formatOcrHint } from "../../hooks/useOcrForm";
+import { formatOcrHint, OCR_STATUS } from "../../hooks/useOcrForm";
 import { generateClearanceCertificatePDF } from "./utils/generateClearanceCertificatePDF";
 import { generateDciCodeSlipPDF } from "./utils/generateDciCodeSlipPDF";
 import { verificationService } from "../../services/verificationService";
@@ -1049,7 +1049,7 @@ export const AgentClearanceRequestFlow = () => {
                     onVehicleChange={updateOrCr}
                     errors={validationErrors}
                   />
-                  <VehicleDocumentUploadCard
+                   <VehicleDocumentUploadCard
                     title="CR"
                     uploadLabel="Upload Certificate of Registration"
                     onFile={handleCrUpload}
@@ -1060,6 +1060,7 @@ export const AgentClearanceRequestFlow = () => {
                     vehicleFieldSet="cr"
                     onVehicleChange={updateCrCr}
                     errors={validationErrors}
+                    disabled={ocrUploadState.or.status === OCR_STATUS.IDLE || ocrUploadState.or.status === OCR_STATUS.EXTRACTING}
                   />
                 </div>
                 {hasMismatch && (
@@ -1105,7 +1106,7 @@ export const AgentClearanceRequestFlow = () => {
                         <div className="w-8 h-8 rounded-full border-2 border-green-500 flex items-center justify-center bg-green-50">
                           <CheckCircle className="text-green-500 w-5 h-5" />
                         </div>
-                        <h3 className="text-lg font-bold text-gray-900">LTO Verification Successful</h3>
+                        <h3 className="text-lg font-bold text-gray-900">LTO Vehicle Found</h3>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-y-8 gap-x-6">

@@ -3,7 +3,7 @@ import { Button } from "../../../components/Button";
 import { Input } from "../../../components/Input";
 import { CreditCard, ShoppingCart } from "lucide-react";
 
-const UNIT_PRICE = 60;
+const UNIT_PRICE = 100;
 
 export const BuyProcessTab = ({
   quantity,

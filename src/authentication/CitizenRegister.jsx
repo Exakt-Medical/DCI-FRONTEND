@@ -5,6 +5,8 @@ import { Spinner } from "../components/Spinner";
 import { useAlert } from "../hooks/useAlert";
 import DciLogo from "../assets/DCI-LOGO.png";
 import { authService } from "../services/authService";
+import { FileUpload } from "../components/FileUpload";
+import { runSharedLocalOcr } from "../hooks/useOcrForm";
 
 export const CitizenRegister = () => {
   const [form, setForm] = useState({
@@ -19,9 +21,74 @@ export const CitizenRegister = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [idFile, setIdFile] = useState(null);
+  const [idPreview, setIdPreview] = useState(null);
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [ocrHint, setOcrHint] = useState("");
+  const [usernameEdited, setUsernameEdited] = useState(false);
+  const [isRegistered, setIsRegistered] = useState(false);
   
   const navigate = useNavigate();
   const { success } = useAlert();
+
+  const suggestUsername = (first, last) => {
+    if (!first && !last) return "";
+    const cleanFirst = first.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+    const cleanLast = last.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+    const initial = cleanFirst.charAt(0) || "";
+    const randomSuffix = Math.floor(100 + Math.random() * 900);
+    return `${initial}${cleanLast}${randomSuffix}`;
+  };
+
+  const handleNameChange = (field, value) => {
+    const updatedForm = { ...form, [field]: value };
+    if (!usernameEdited) {
+      updatedForm.username = suggestUsername(updatedForm.firstName, updatedForm.lastName);
+    }
+    setForm(updatedForm);
+  };
+
+  const handleIdUpload = async (file, preview) => {
+    setIdFile(file);
+    setIdPreview(preview);
+    if (!file) {
+      setOcrHint("");
+      return;
+    }
+    setOcrLoading(true);
+    setOcrHint("Extracting details from ID...");
+    try {
+      const result = await runSharedLocalOcr(file);
+      const upperText = result.normalizedText || "";
+      
+      let firstName = "";
+      let lastName = "";
+      
+      const givenMatch = upperText.match(/(?:GIVEN\s*NAME|FIRST\s*NAME|GIVEN|FIRST)\s*[:\-]?\s*([A-Z\s.,'-]{2,40})/i);
+      if (givenMatch?.[1]) firstName = givenMatch[1].trim();
+      
+      const surnameMatch = upperText.match(/(?:SURNAME|LAST\s*NAME|FAMILY\s*NAME|SUR|LAST)\s*[:\-]?\s*([A-Z\s.,'-]{2,40})/i);
+      if (surnameMatch?.[1]) lastName = surnameMatch[1].trim();
+
+      const updatedForm = { ...form };
+      if (firstName) updatedForm.firstName = firstName;
+      if (lastName) updatedForm.lastName = lastName;
+      
+      if (firstName || lastName) {
+        if (!usernameEdited) {
+          updatedForm.username = suggestUsername(updatedForm.firstName, updatedForm.lastName);
+        }
+        setOcrHint("Details extracted successfully!");
+      } else {
+        setOcrHint("Could not extract name details. Please fill manually.");
+      }
+      setForm(updatedForm);
+    } catch (e) {
+      setOcrHint("OCR extraction failed. Please fill manually.");
+    } finally {
+      setOcrLoading(false);
+    }
+  };
 
   const passwordStrength = (pw) => {
     let score = 0;
@@ -76,8 +143,7 @@ export const CitizenRegister = () => {
         lastName: form.lastName,
         email: form.email,
       });
-      await success("Registration Successful", "You can now login with your credentials.");
-      navigate("/dci-access");
+      setIsRegistered(true);
     } catch (err) {
       const msg = err.response?.data?.error || err.response?.data?.message || "Registration failed. Please try again.";
       setErrors({ form: msg });
@@ -91,6 +157,53 @@ export const CitizenRegister = () => {
   const inputClass = (field) =>
     `w-full bg-white border ${errors[field] ? "border-red-300" : "border-gray-300"} rounded-lg px-4 py-2.5 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all`;
 
+  if (isRegistered) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div className="h-1 bg-primary-500" />
+            <div className="p-8 text-center space-y-6">
+              <div className="inline-flex items-center justify-center mb-2">
+                <img src={DciLogo} alt="DCI Logo" className="h-20 w-auto object-contain" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">DCI Clearance Verification System</h1>
+                <h1 className="text-xl font-bold text-gray-900">Mindanao</h1>
+              </div>
+
+              <div className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Create Citizen Account</div>
+
+              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto">
+                <Mail size={32} />
+              </div>
+
+              <div>
+                <h2 className="text-xl font-bold text-gray-950">Verify Your Email</h2>
+                <p className="text-gray-500 text-sm mt-3 leading-relaxed">
+                  We've sent a verification link to your email address.<br />
+                  Please check your inbox (and spam folder) and click the link to verify your account.
+                </p>
+              </div>
+
+              <button
+                onClick={() => navigate('/dci-access')}
+                className="w-full bg-[#0059b5] hover:bg-[#004bb0] text-white font-semibold py-2.5 rounded-lg transition-all duration-200"
+              >
+                Back to Login
+              </button>
+            </div>
+            <div className="border-t border-gray-100 px-6 py-3 bg-gray-50 text-center">
+              <p className="text-[10px] text-gray-400">
+                © 2026 DCI Clearance Verification System. All rights reserved.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -100,7 +213,7 @@ export const CitizenRegister = () => {
           <div className="p-8">
             <div className="text-center mb-6">
               <div className="inline-flex items-center justify-center mb-4">
-                <img src={DciLogo} alt="DCI Logo" className="h-60 w-auto object-contain" />
+                <img src={DciLogo} alt="DCI Logo" className="h-16 w-auto object-contain" />
               </div>
               <h1 className="text-xl font-bold text-gray-900">DCI Clearance Verification System</h1>
               <h1 className="text-xl font-bold text-gray-900">Mindanao</h1>
@@ -115,19 +228,22 @@ export const CitizenRegister = () => {
             )}
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Username</label>
-                <div className="relative">
-                  <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    value={form.username}
-                    onChange={(e) => setForm({ ...form, username: e.target.value })}
-                    placeholder="Enter username"
-                    className={inputClass("username")}
-                  />
-                </div>
-                {errors.username && <p className="text-xs text-red-500 mt-1">{errors.username}</p>}
+              {/* ID Upload Box for Auto-Fill */}
+              <div className="border border-dashed border-gray-300 rounded-xl p-4 bg-gray-50/50">
+                <FileUpload
+                  label="Upload Valid ID (For Auto-Fill)"
+                  accept="image/*,application/pdf"
+                  onFile={handleIdUpload}
+                  preview={idPreview}
+                  hint={ocrHint}
+                  disabled={ocrLoading}
+                />
+                {ocrLoading && (
+                  <div className="mt-2 flex items-center justify-center gap-2 text-xs text-gray-500">
+                    <Spinner size="xs" />
+                    <span>Extracting fields from ID...</span>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -136,7 +252,7 @@ export const CitizenRegister = () => {
                   <input
                     type="text"
                     value={form.firstName}
-                    onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                    onChange={(e) => handleNameChange("firstName", e.target.value)}
                     placeholder="First name"
                     className={`w-full bg-white border ${errors.firstName ? "border-red-300" : "border-gray-300"} rounded-lg px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all`}
                   />
@@ -147,7 +263,7 @@ export const CitizenRegister = () => {
                   <input
                     type="text"
                     value={form.lastName}
-                    onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                    onChange={(e) => handleNameChange("lastName", e.target.value)}
                     placeholder="Last name"
                     className={`w-full bg-white border ${errors.lastName ? "border-red-300" : "border-gray-300"} rounded-lg px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all`}
                   />
@@ -168,6 +284,24 @@ export const CitizenRegister = () => {
                   />
                 </div>
                 {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Username</label>
+                <div className="relative">
+                  <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={form.username}
+                    onChange={(e) => {
+                      setUsernameEdited(true);
+                      setForm({ ...form, username: e.target.value });
+                    }}
+                    placeholder="Enter username"
+                    className={inputClass("username")}
+                  />
+                </div>
+                {errors.username && <p className="text-xs text-red-500 mt-1">{errors.username}</p>}
               </div>
 
               <div>

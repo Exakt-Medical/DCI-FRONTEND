@@ -24,7 +24,7 @@ import {
   MvcMecUploadCard,
   VehicleDocumentUploadCard,
 } from "./components/FlowFormCards";
-import { formatOcrHint } from "../../hooks/useOcrForm";
+import { formatOcrHint, OCR_STATUS } from "../../hooks/useOcrForm";
 import { generateClearanceCertificatePDF } from "./utils/generateClearanceCertificatePDF";
 import { generateDciCodeSlipPDF } from "./utils/generateDciCodeSlipPDF";
 import { verificationService } from "../../services/verificationService";
@@ -1020,6 +1020,7 @@ export const CitizenClearanceRequestFlow = () => {
                     vehicleFieldSet="cr"
                     onVehicleChange={updateCrCr}
                     errors={validationErrors}
+                    disabled={ocrUploadState.or.status === OCR_STATUS.IDLE || ocrUploadState.or.status === OCR_STATUS.EXTRACTING}
                   />
                 </div>
                 {hasMismatch && (
@@ -1041,7 +1042,7 @@ export const CitizenClearanceRequestFlow = () => {
                 </div>
                 <div className="bg-gray-50 rounded-lg p-5 mb-5 text-center">
                   <p className="text-sm text-gray-500 mb-1">Certificate Request Fee</p>
-                  <p className="text-3xl font-bold text-gray-900">PHP 60.00</p>
+                  <p className="text-3xl font-bold text-gray-900">PHP 100.00</p>
                   <p className="text-xs text-gray-500 mt-1">Single payment covers the whole request.</p>
                 </div>
                 {processingPayment ? (
@@ -1110,7 +1111,7 @@ export const CitizenClearanceRequestFlow = () => {
                         <div className="w-8 h-8 rounded-full border-2 border-green-500 flex items-center justify-center bg-green-50">
                           <CheckCircle className="text-green-500 w-5 h-5" />
                         </div>
-                        <h3 className="text-lg font-bold text-gray-900">LTO Verification Successful</h3>
+                        <h3 className="text-lg font-bold text-gray-900">LTO Vehicle Found</h3>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-y-8 gap-x-6">

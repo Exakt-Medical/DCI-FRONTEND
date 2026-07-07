@@ -57,7 +57,7 @@ export const DciVerifyPage = () => {
   const handleVerify = (codeToVerify) => {
     const code = typeof codeToVerify === "string" ? codeToVerify : voucherCode;
     if (!code.trim()) {
-      setError("Please enter a voucher code");
+      setError("Please enter a transaction code");
       return;
     }
     setIsVerifying(true);
@@ -80,7 +80,7 @@ export const DciVerifyPage = () => {
         }
       })
       .catch((err) => {
-        const msg = err.response?.data?.error || "Voucher not found or invalid";
+        const msg = err.response?.data?.error || "Transaction code not found or invalid";
         setError(msg);
         setVehicleData(null);
         setVerified(false);
@@ -161,7 +161,7 @@ export const DciVerifyPage = () => {
           DCI Verification
         </h1>
         <p className="text-sm text-gray-500">
-          Verify vehicles using voucher codes for DCI clearance
+          Verify vehicles using transaction codes for DCI clearance
         </p>
       </div>
 
@@ -169,17 +169,17 @@ export const DciVerifyPage = () => {
         <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
           <Shield size={18} className="text-[#0059b5]" />
           <h3 className="text-base font-bold text-gray-900">
-            Voucher Lookup
+            Transaction Code Lookup
           </h3>
         </div>
 
         <div className="flex gap-3 items-end">
           <div className="flex-1">
             <Input
-              label="Voucher Code"
+              label="Transaction Code"
               value={voucherCode}
               onChange={(e) => setVoucherCode(e.target.value.toUpperCase())}
-              placeholder="Enter voucher code (e.g., VCH-XXXXXX)"
+              placeholder="Enter transaction code (e.g., VCH-XXXXXX)"
               onKeyDown={(e) => e.key === "Enter" && handleVerify()}
             />
           </div>

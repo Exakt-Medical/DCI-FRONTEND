@@ -51,6 +51,7 @@ export const VehicleDocumentUploadCard = ({
   vehicleFieldSet,
   onVehicleChange,
   errors = {},
+  disabled,
 }) => (
   <Card className="p-5">
     <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
@@ -63,6 +64,7 @@ export const VehicleDocumentUploadCard = ({
       onFile={onFile}
       preview={preview}
       hint={uploadHint}
+      disabled={disabled}
     />
     <p className="mt-2 text-[11px] text-gray-500">
       OCR accepts PDF and image uploads for automatic field extraction.

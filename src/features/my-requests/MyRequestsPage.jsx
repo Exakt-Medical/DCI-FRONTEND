@@ -148,13 +148,13 @@ export const MyRequestsPage = () => {
       },
       {
         id: "voucher",
-        label: "Pending Transaction Code",
+        label: "In Progress Transaction Code",
         value: requests.filter((request) => !voucherDone(request)).length,
         description: "Still waiting on transaction code issuance",
       },
       {
         id: "clearance",
-        label: "Pending Clearance",
+        label: "Awaiting Clearance",
         value: requests.filter((request) => voucherDone(request) && !clearanceDone(request)).length,
         description: "Transaction code done, clearance still in progress",
       },
@@ -180,7 +180,7 @@ export const MyRequestsPage = () => {
           <p className="text-sm text-gray-500">
             {isAgent
               ? "Manage your clients from transaction code issuance to certificate completion"
-              : "Track your request progress and bring pending items to the top"}
+              : "Track your request progress."}
           </p>
         </div>
         <Button onClick={handleCreateRequest}>

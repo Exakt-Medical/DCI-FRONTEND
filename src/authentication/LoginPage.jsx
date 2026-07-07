@@ -27,8 +27,12 @@ export const LoginPage = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [showDemoCredentials, setShowDemoCredentials] = useState(false);
+  const [otpRequired, setOtpRequired] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [emailForOtp, setEmailForOtp] = useState("");
+  const [pendingLoginData, setPendingLoginData] = useState(null);
   
-  const { login, handleLogin } = useAuth();
+  const { login, verifyOtp, handleLogin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -54,7 +58,16 @@ export const LoginPage = () => {
     setLoading(true);
     setError("");
     try {
-      const returnedRole = await login(form.username, form.password);
+      const result = await login(form.username, form.password);
+      
+      if (result.otpRequired) {
+        setOtpRequired(true);
+        setEmailForOtp(result.email || "");
+        setPendingLoginData(result.data);
+        return;
+      }
+
+      const returnedRole = result.role;
       
       if (rememberMe) {
         localStorage.setItem("rememberedUsername", form.username);
@@ -66,7 +79,6 @@ export const LoginPage = () => {
         localStorage.setItem("rememberMe", "false");
       }
 
-      // If they were redirected here from a protected page, send them back there
       if (location.state?.from) {
         handleLogin(returnedRole.toLowerCase(), {});
         navigate(location.state.from);
@@ -76,6 +88,40 @@ export const LoginPage = () => {
       
     } catch (err) {
       const msg = err.message || "Invalid username or password";
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleOtpSubmit = async () => {
+    if (!otpCode.trim()) {
+      setError("Please enter the OTP code.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const returnedRole = await verifyOtp(otpCode, pendingLoginData);
+      
+      if (rememberMe) {
+        localStorage.setItem("rememberedUsername", form.username);
+        localStorage.setItem("rememberedPassword", form.password);
+        localStorage.setItem("rememberMe", "true");
+      } else {
+        localStorage.removeItem("rememberedUsername");
+        localStorage.removeItem("rememberedPassword");
+        localStorage.setItem("rememberMe", "false");
+      }
+
+      if (location.state?.from) {
+        handleLogin(returnedRole.toLowerCase(), {});
+        navigate(location.state.from);
+      } else {
+        handleLogin(returnedRole.toLowerCase(), {});
+      }
+    } catch (err) {
+      const msg = err.message || "Invalid OTP code";
       setError(msg);
     } finally {
       setLoading(false);
@@ -113,7 +159,7 @@ export const LoginPage = () => {
 
               {/* Sign In Title */}
               <h2 className="text-base font-semibold text-gray-800 mb-5">
-                Sign In
+                {otpRequired ? "Verify OTP" : "Sign In"}
               </h2>
 
               {/* Error Message */}
@@ -124,97 +170,154 @@ export const LoginPage = () => {
                 </div>
               )}
 
-              {/* Form Fields */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Username
-                  </label>
-                  <div className="relative">
-                    <User
-                      size={16}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    />
-                    <input
-                      type="text"
-                      value={form.username}
-                      onChange={(e) =>
-                        setForm({ ...form, username: e.target.value })
-                      }
-                      placeholder="Enter username"
-                      className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all"
-                      onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
-                    />
+              {otpRequired ? (
+                <div className="space-y-4">
+                  <p className="text-xs text-gray-500 leading-relaxed">
+                    We've sent a 6-digit one-time password (OTP) code to your registered email address <strong>{emailForOtp}</strong>.<br />
+                    Please use the mock verification code: <strong className="text-primary-600">123456</strong> to complete your login.
+                  </p>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      OTP Code
+                    </label>
+                    <div className="relative">
+                      <Lock
+                        size={16}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                      />
+                      <input
+                        type="text"
+                        maxLength={6}
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                        placeholder="Enter 6-digit OTP"
+                        className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all text-center tracking-[0.25em] font-mono text-base"
+                        onKeyPress={(e) => e.key === "Enter" && handleOtpSubmit()}
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Password
-                  </label>
-                  <div className="relative">
-                    <Lock
-                      size={16}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    />
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={form.password}
-                      onChange={(e) =>
-                        setForm({ ...form, password: e.target.value })
-                      }
-                      placeholder="Enter password"
-                      className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 pl-10 pr-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all"
-                      onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  <button
+                    onClick={handleOtpSubmit}
+                    disabled={loading || otpCode.length !== 6}
+                    className="w-full bg-[#0059b5] hover:bg-[#004bb0] text-white font-semibold py-2.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+                  >
+                    {loading ? (
+                      <>
+                        <Spinner size="sm" />
+                        Verifying...
+                      </>
+                    ) : (
+                      "Verify OTP"
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setOtpRequired(false);
+                      setOtpCode("");
+                      setError("");
+                    }}
+                    className="w-full border border-gray-300 text-gray-600 hover:bg-gray-50 font-semibold py-2.5 rounded-lg transition-all duration-200 mt-2"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* Form Fields */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Username
+                      </label>
+                      <div className="relative">
+                        <User
+                          size={16}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                        />
+                        <input
+                          type="text"
+                          value={form.username}
+                          onChange={(e) =>
+                            setForm({ ...form, username: e.target.value })
+                          }
+                          placeholder="Enter username"
+                          className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 pl-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                          onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Password
+                      </label>
+                      <div className="relative">
+                        <Lock
+                          size={16}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                        />
+                        <input
+                          type={showPassword ? "text" : "password"}
+                          value={form.password}
+                          onChange={(e) =>
+                            setForm({ ...form, password: e.target.value })
+                          }
+                          placeholder="Enter password"
+                          className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 pl-10 pr-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                          onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword(!showPassword)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        >
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Remember Me */}
+                  <div className="flex items-center justify-between mt-4 mb-6">
+                    <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="rounded border-gray-300 accent-primary-500"
+                      />
+                      Remember me
+                    </label>
+                    <a
+                      href="#"
+                      className="text-xs text-primary-500 hover:underline"
                     >
-                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
+                      Forgot password?
+                    </a>
                   </div>
-                </div>
-              </div>
 
-              {/* Remember Me */}
-              <div className="flex items-center justify-between mt-4 mb-6">
-                <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="rounded border-gray-300 accent-primary-500"
-                  />
-                  Remember me
-                </label>
-                <a
-                  href="#"
-                  className="text-xs text-primary-500 hover:underline"
-                >
-                  Forgot password?
-                </a>
-              </div>
-
-              {/* Sign In Button */}
-              <button
-                onClick={handleSubmit}
-                disabled={loading}
-                className="w-full bg-primary-500 hover:bg-primary-600 text-white font-medium py-2.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
-                    <Spinner size="sm" />
-                    Authenticating...
-                  </>
-                ) : (
-                  <>
-                    <LogIn size={16} />
-                    Sign In
-                  </>
-                )}
-              </button>
+                  {/* Sign In Button */}
+                  <button
+                    onClick={handleSubmit}
+                    disabled={loading}
+                    className="w-full bg-primary-500 hover:bg-primary-600 text-white font-medium py-2.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? (
+                      <>
+                        <Spinner size="sm" />
+                        Authenticating...
+                      </>
+                    ) : (
+                      <>
+                        <LogIn size={16} />
+                        Sign In
+                      </>
+                    )}
+                  </button>
+                </>
+              )}
 
               {/* Submit a Ticket Link */}
               <div className="flex items-center justify-center mt-4">

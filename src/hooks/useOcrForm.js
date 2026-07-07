@@ -59,7 +59,7 @@ export const formatOcrHint = (state) => {
       ? Math.round(state.confidence * 100)
       : 0;
     return confidence > 0
-      ? `OCR extracted data (${confidence}% confidence). Review before submitting.`
+      ? `OCR data extracted. Review before submitting.`
       : "OCR extracted data. Review before submitting.";
   }
   if (state.status === OCR_STATUS.ERROR) {
