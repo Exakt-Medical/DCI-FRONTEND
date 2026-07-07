@@ -32,7 +32,7 @@ function generateRefNumber() {
 const BULK_STEPS = [
   "Add to Queue",
   "Verify Vehicles",
-  "HPG Portal",
+  "HPG Verify",
   "DCI Clearance",
   "Issue Certificate"
 ];
@@ -751,8 +751,8 @@ export const AgentBulkClearanceRequestFlow = () => {
             <div className="max-w-3xl mx-auto">
               <div className="flex justify-between items-center mb-6">
                 <div>
-                  <h2 className="text-2xl font-bold text-[#001b3b]">HPG Portal</h2>
-                  <p className="text-gray-500 text-sm mt-1">Waiting for HPG officers to verify these transactions.</p>
+                  <h2 className="text-2xl font-bold text-[#001b3b]">HPG Verification</h2>
+                  <p className="text-gray-500 text-sm mt-1">Waiting for HPG to verify these transactions.</p>
                 </div>
               </div>
               
