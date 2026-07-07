@@ -1,6 +1,6 @@
 import { cn } from "../utils/cn";
 
-export const Spinner = ({ size = "md" }) => {
+export const Spinner = ({ size = "md", className }) => {
   const s =
     size === "sm"
       ? "w-4 h-4"
@@ -12,7 +12,8 @@ export const Spinner = ({ size = "md" }) => {
     <div
       className={cn(
         "border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin",
-        s
+        s,
+        className
       )}
     />
   );

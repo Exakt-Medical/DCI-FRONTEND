@@ -134,6 +134,7 @@ export const evaluateMvcMecValidation = (
   const originalChassis = norm(verifiedVehicle.chassisNumber);
   const originalPlate   = norm(verifiedVehicle.plateNumber);
   const originalColor   = norm(verifiedVehicle.color);
+  const originalMvFileNo = norm(verifiedVehicle.mvFileNumber || verifiedVehicle.mvFileNo);
   const originalStatus  = norm(verifiedVehicle.verificationStatus);
 
   if (originalStatus !== "VERIFIED" && originalStatus !== "COMPLETED" && originalStatus !== "HPG_VERIFIED") {
@@ -188,6 +189,9 @@ export const evaluateMvcMecValidation = (
   if (originalColor) {
     if (mvcColor !== originalColor) { mismatchedFields.push("color"); if (!reason) reason = `MVCC Color (${mvcColor}) does not match verified Color (${originalColor}).`; }
     if (mecColor !== originalColor) { mismatchedFields.push("mecColor"); if (!reason) reason = `MEC Color (${mecColor}) does not match verified Color (${originalColor}).`; }
+  }
+  if (originalMvFileNo) {
+    if (mvFileNo && mvFileNo !== originalMvFileNo) { mismatchedFields.push("mvFileNo"); if (!reason) reason = `MVCC MV File No (${mvFileNo}) does not match verified MV File No (${originalMvFileNo}).`; }
   }
 
   // MVCC vs MEC consistency
