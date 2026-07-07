@@ -22,7 +22,7 @@ export const DciVerifyPage = () => {
   const [validationErrors, setValidationErrors] = useState({});
   const [markedVerified, setMarkedVerified] = useState(false);
   
-  const [activeTab, setActiveTab] = useState("vehicle");
+  
   const { error: showErrorAlert } = useAlert();
 
   const {
@@ -50,7 +50,6 @@ export const DciVerifyPage = () => {
     setMarkedVerified(false);
     setValidationErrors({});
     resetForm();
-    setActiveTab("vehicle");
     setIsScannerOpen(false);
     handleVerify(scannedVoucherCode);
   };
@@ -208,47 +207,11 @@ export const DciVerifyPage = () => {
 
       {verified && vehicleData && (
         <>
-          <Card className="p-5 mb-5">
-            <div className="flex border-b border-gray-200 mb-5">
-              <button
-                className={`pb-3 px-4 text-sm font-semibold transition-colors relative ${
-                  activeTab === "vehicle" ? "text-primary-600" : "text-gray-500 hover:text-gray-700"
-                }`}
-                onClick={() => setActiveTab("vehicle")}
-              >
-                <div className="flex items-center gap-2">
-                  <Car size={16} />
-                  Vehicle Details
-                </div>
-                {activeTab === "vehicle" && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 rounded-t-full" />
-                )}
-              </button>
-              
-              <button
-                className={`pb-3 px-4 text-sm font-semibold transition-colors relative ${
-                  activeTab === "documents" ? "text-primary-600" : "text-gray-500 hover:text-gray-700"
-                }`}
-                onClick={() => setActiveTab("documents")}
-              >
-                <div className="flex items-center gap-2">
-                  <Upload size={16} />
-                  <span>Document Upload</span>
-                  {!isDocumentsComplete && !markedVerified && (
-                    <span className="flex h-2 w-2 relative ml-1">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" title="Action Required"></span>
-                    </span>
-                  )}
-                </div>
-                {activeTab === "documents" && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600 rounded-t-full" />
-                )}
-              </button>
-
-            </div>
-
-            {activeTab === "vehicle" && (
+          <Card className="p-5 mb-5 space-y-8">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Car size={18} className="text-primary-600" /> Vehicle Details
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-gray-50 rounded-lg p-3">
                   <label className="text-xs text-gray-500 block mb-1">Plate Number</label>
@@ -287,9 +250,11 @@ export const DciVerifyPage = () => {
                   <p className="text-sm font-medium text-gray-900">{vehicleData.ownerName}</p>
                 </div>
               </div>
-            )}
-
-            {activeTab === "documents" && (
+            </div>
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Upload size={18} className="text-primary-600" /> Document Upload
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <MvcMecUploadCard
                   title="MVCC (Motor Vehicle Clearance Certificate)"
@@ -323,8 +288,7 @@ export const DciVerifyPage = () => {
                   uploadHint={formatOcrHint(doc2State)}
                 />
               </div>
-            )}
-
+            </div>
           </Card>
 
           <div className="flex justify-between gap-3">
