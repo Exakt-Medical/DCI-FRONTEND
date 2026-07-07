@@ -18,6 +18,7 @@ import { ClearanceRequestPage } from "./features/clearance-request/ClearanceRequ
 import { CitizenClearanceRequestFlow } from "./features/clearance-request/CitizenClearanceRequestFlow";
 import { AgentClearanceRequestFlow } from "./features/clearance-request/AgentClearanceRequestFlow";
 import { AgentClearanceRequestPage } from "./features/clearance-request/AgentClearanceRequestPage";
+import { AgentBulkClearanceRequestFlow } from "./features/clearance-request/AgentBulkClearanceRequestFlow";
 import { HpgVerifyPage } from "./features/hpg/HpgVerifyPage";
 import { DciVerifyPage } from "./features/dci/DciVerifyPage";
 import { ProfilePage } from "./features/Profile/ProfilePage";
@@ -79,6 +80,7 @@ function App() {
           <Route path="/dci-access/clearance-requests" element={<ProtectedRoute allowedRoles={AGENT_ROLES}>{isAgent(role) ? <AgentClearanceRequestPage /> : <ClearanceRequestPage />}</ProtectedRoute>} />
           <Route path="/dci-access/new-clearance-request" element={<ProtectedRoute allowedRoles={AGENT_ROLES}>{isAgent(role) ? <AgentClearanceRequestFlow role={role} /> : <CitizenClearanceRequestFlow role={role} />}</ProtectedRoute>} />
           <Route path="/dci-access/new-certificate-request" element={<ProtectedRoute allowedRoles={AGENT_ROLES}>{isAgent(role) ? <AgentClearanceRequestFlow role={role} /> : <CitizenClearanceRequestFlow role={role} />}</ProtectedRoute>} />
+          <Route path="/dci-access/bulk-clearance-request" element={<ProtectedRoute allowedRoles={["agent_fixer", "agent"]}><AgentBulkClearanceRequestFlow role={role} /></ProtectedRoute>} />
           
           <Route path="/dci-access/hpg-verification" element={<ProtectedRoute allowedRoles={["hpg"]}><HpgVerifyPage /></ProtectedRoute>} />
           <Route path="/dci-access/dci-verification" element={<ProtectedRoute allowedRoles={["dci"]}><DciVerifyPage /></ProtectedRoute>} />

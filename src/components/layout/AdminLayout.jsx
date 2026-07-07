@@ -33,6 +33,7 @@ export const AdminLayout = () => {
       { id: "requests", label: "My Requests / Queue", icon: FileText, section: "REQUESTS", disabled: false },
       { id: "new-transaction-credits", label: "Transaction Credits", icon: CreditCard, section: "REQUESTS", disabled: false },
       { id: "new-clearance-request", label: "Request for Certification", icon: Shield, section: "REQUESTS", disabled: false },
+      { id: "bulk-clearance-request", label: "Bulk Request For Certification", icon: ListTodo, section: "REQUESTS", disabled: false },
     ],
     hpg: [
       { id: "hpg-verification", label: "HPG Verification", icon: Shield, section: "VERIFICATION", disabled: false },
