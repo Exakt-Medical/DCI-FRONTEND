@@ -52,10 +52,12 @@ export const DciVerifyPage = () => {
     resetForm();
     setActiveTab("vehicle");
     setIsScannerOpen(false);
+    handleVerify(scannedVoucherCode);
   };
 
-  const handleVerify = () => {
-    if (!voucherCode.trim()) {
+  const handleVerify = (codeToVerify) => {
+    const code = typeof codeToVerify === "string" ? codeToVerify : voucherCode;
+    if (!code.trim()) {
       setError("Please enter a voucher code");
       return;
     }
@@ -67,7 +69,7 @@ export const DciVerifyPage = () => {
     setValidationErrors({});
     resetForm();
 
-    api.get(`/certificate-requests/by-voucher/${voucherCode.trim()}`)
+    api.get(`/certificate-requests/by-voucher/${code.trim()}`)
       .then((res) => {
         const data = res.data;
         setVehicleData({ ...(data.vehicleData || {}), verificationStatus: data.status });
