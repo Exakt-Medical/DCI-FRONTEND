@@ -881,7 +881,7 @@ export const CitizenClearanceRequestFlow = () => {
     <div className="min-h-screen bg-gray-100 flex items-start justify-center p-4">
       {idFromQuery && isLoadingRequests ? (
         <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl shadow-lg w-full max-w-md mt-10">
-          <Spinner size="lg" />
+          <Spinner size="lg" className="mx-auto" />
           <p className="text-sm text-gray-500 mt-4 font-medium animate-pulse">Loading request details...</p>
         </div>
       ) : (
@@ -1046,7 +1046,7 @@ export const CitizenClearanceRequestFlow = () => {
                 </div>
                 {processingPayment ? (
                   <div className="text-center py-8">
-                    <Spinner size="lg" />
+                    <Spinner size="lg" className="mx-auto" />
                     <p className="text-sm font-medium text-gray-700 mt-4 animate-pulse">Verifying Payment Status...</p>
                     <p className="text-xs text-gray-500 mt-1">Please wait while we confirm your transaction with the payment gateway.</p>
                   </div>
@@ -1056,7 +1056,7 @@ export const CitizenClearanceRequestFlow = () => {
                     <h4 className="text-lg font-bold text-green-800">Payment Successful</h4>
                     {issuingVoucher ? (
                       <div className="mt-4 flex flex-col items-center justify-center gap-2">
-                        <Spinner size="md" />
+                        <Spinner size="md" className="mx-auto" />
                         <p className="text-xs text-gray-500">Generating voucher reference...</p>
                       </div>
                     ) : voucherAssigned ? (
@@ -1089,7 +1089,7 @@ export const CitizenClearanceRequestFlow = () => {
                     <div className="text-center p-8 bg-gray-50 rounded-xl border border-dashed border-gray-300">
                       {isVerifyingDocuments ? (
                         <div className="flex flex-col items-center justify-center">
-                          <Spinner size="md" />
+                          <Spinner size="md" className="mx-auto" />
                           <p className="text-sm text-gray-600 mt-4">Verifying vehicle details against the VVS system...</p>
                         </div>
                       ) : verificationFailed ? (
@@ -1099,7 +1099,7 @@ export const CitizenClearanceRequestFlow = () => {
                         </div>
                       ) : (
                         <div className="flex flex-col items-center justify-center">
-                          <Spinner size="md" />
+                          <Spinner size="md" className="mx-auto" />
                           <p className="text-sm text-gray-600 mt-4">Preparing verification...</p>
                         </div>
                       )}
@@ -1211,7 +1211,7 @@ export const CitizenClearanceRequestFlow = () => {
                     </div>
                   )}
 
-                  {transactionVerified && hpgVerified && (
+                  {transactionVerified && (
                     <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm mt-4">
                       <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                         <Search className="text-[#0059b5]" size={18} />
@@ -1225,8 +1225,7 @@ export const CitizenClearanceRequestFlow = () => {
                         </div>
                       ) : (
                         <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
-                          <Spinner size="md" className="mx-auto mb-3 text-amber-500" />
-                          <p className="font-bold text-amber-700 text-lg">Pending DCI Clearance</p>
+                          <p className="font-bold text-amber-700 text-lg">Awaiting DCI Clearance</p>
                           <p className="text-xs text-gray-500 mt-1">Waiting for DCI officers to clear your transaction.</p>
                         </div>
                       )}
@@ -1245,7 +1244,7 @@ export const CitizenClearanceRequestFlow = () => {
                 </div>
                 {isIssuingCertificate || requestStatus !== "CERTIFICATE_ISSUED" && !certificateNo ? (
                   <div className="text-center py-8">
-                    <Spinner size="lg" />
+                    <Spinner size="lg" className="mx-auto" />
                     <p className="text-sm text-gray-500 mt-4">Waiting for DCI Validation and Certificate Issuance...</p>
                   </div>
                 ) : certificateNo ? (
@@ -1412,7 +1411,7 @@ export const CitizenClearanceRequestFlow = () => {
                 }}
                 className="px-8 py-2.5 rounded-2xl bg-red-50 border border-red-200 text-red-600 font-semibold hover:bg-red-100/80 transition-colors min-w-[160px]"
               >
-                Discard & Proceed
+                Proceed Anyway
               </button>
             </div>
           </div>

@@ -112,7 +112,7 @@ export const DciVerifyPage = () => {
 
     const validation = evaluateMvcMecValidation(mvcPayload, mecPayload, vehicleData);
     if (!validation.valid) {
-      showErrorAlert("Data Mismatch", validation.reason);
+      showErrorAlert("Error", "Data Mismatch Found");
       const errors = {};
       if (validation.mismatchedFields) {
         validation.mismatchedFields.forEach(f => {
@@ -263,13 +263,13 @@ export const DciVerifyPage = () => {
                   preview={doc1Uploaded ? URL.createObjectURL(mvccFile) : null}
                   vehicleLabel="Vehicle Details (from MVCC)"
                   fields={[
-                    { key: "mvccControlNo", label: "MVCC Number", value: formData.mvccControlNo || "", error: validationErrors["mvccControlNo"], onChange: (e) => handleInputChange({ target: { name: "mvccControlNo", value: e.target.value } }) },
-                    { key: "mvccDateIssued", label: "Issue Date", value: formData.mvccDateIssued || "", error: validationErrors["mvccDateIssued"], onChange: (e) => handleInputChange({ target: { name: "mvccDateIssued", value: e.target.value } }) },
-                    { key: "mvFileNo", label: "MV File Number", value: formData.mvFileNo || "", error: validationErrors["mvFileNo"], onChange: (e) => handleInputChange({ target: { name: "mvFileNo", value: e.target.value } }) },
-                    { key: "engineNo", label: "Engine Number", value: formData.engineNo || "", error: validationErrors["engineNo"], onChange: (e) => handleInputChange({ target: { name: "engineNo", value: e.target.value } }) },
-                    { key: "chassisNo", label: "Chassis Number", value: formData.chassisNo || "", error: validationErrors["chassisNo"], onChange: (e) => handleInputChange({ target: { name: "chassisNo", value: e.target.value } }) },
-                    { key: "plateNo", label: "Plate Number", value: formData.plateNo || "", error: validationErrors["plateNo"], onChange: (e) => handleInputChange({ target: { name: "plateNo", value: e.target.value } }) },
-                    { key: "color", label: "Color", value: formData.color || "", error: validationErrors["color"], onChange: (e) => handleInputChange({ target: { name: "color", value: e.target.value } }) },
+                    { key: "mvccControlNo", label: "MVCC Number", value: formData.mvccControlNo || (doc1State.status === "extracting" ? "Extracting..." : ""), error: validationErrors["mvccControlNo"], onChange: (e) => handleInputChange({ target: { name: "mvccControlNo", value: e.target.value } }) },
+                    { key: "mvccDateIssued", label: "Issue Date", value: formData.mvccDateIssued || (doc1State.status === "extracting" ? "Extracting..." : ""), error: validationErrors["mvccDateIssued"], onChange: (e) => handleInputChange({ target: { name: "mvccDateIssued", value: e.target.value } }) },
+                    { key: "mvFileNo", label: "MV File Number", value: formData.mvFileNo || (doc1State.status === "extracting" ? "Extracting..." : ""), error: validationErrors["mvFileNo"], onChange: (e) => handleInputChange({ target: { name: "mvFileNo", value: e.target.value } }) },
+                    { key: "engineNo", label: "Engine Number", value: formData.engineNo || (doc1State.status === "extracting" ? "Extracting..." : ""), error: validationErrors["engineNo"], onChange: (e) => handleInputChange({ target: { name: "engineNo", value: e.target.value } }) },
+                    { key: "chassisNo", label: "Chassis Number", value: formData.chassisNo || (doc1State.status === "extracting" ? "Extracting..." : ""), error: validationErrors["chassisNo"], onChange: (e) => handleInputChange({ target: { name: "chassisNo", value: e.target.value } }) },
+                    { key: "plateNo", label: "Plate Number", value: formData.plateNo || (doc1State.status === "extracting" ? "Extracting..." : ""), error: validationErrors["plateNo"], onChange: (e) => handleInputChange({ target: { name: "plateNo", value: e.target.value } }) },
+                    { key: "color", label: "Color", value: formData.color || (doc1State.status === "extracting" ? "Extracting..." : ""), error: validationErrors["color"], onChange: (e) => handleInputChange({ target: { name: "color", value: e.target.value } }) },
                   ]}
                   uploadHint={formatOcrHint(doc1State)}
                 />
@@ -280,10 +280,10 @@ export const DciVerifyPage = () => {
                   preview={doc2Uploaded ? URL.createObjectURL(mecFile) : null}
                   vehicleLabel="Vehicle Details (from MEC)"
                   fields={[
-                    { key: "mecEngineNo", label: "Engine Number", value: formData.mecEngineNo || "", error: validationErrors["mecEngineNo"], onChange: (e) => handleInputChange({ target: { name: "mecEngineNo", value: e.target.value } }) },
-                    { key: "mecChassisNo", label: "Chassis Number", value: formData.mecChassisNo || "", error: validationErrors["mecChassisNo"], onChange: (e) => handleInputChange({ target: { name: "mecChassisNo", value: e.target.value } }) },
-                    { key: "mecPlateNo", label: "Plate Number", value: formData.mecPlateNo || "", error: validationErrors["mecPlateNo"], onChange: (e) => handleInputChange({ target: { name: "mecPlateNo", value: e.target.value } }) },
-                    { key: "mecColor", label: "Color", value: formData.mecColor || "", error: validationErrors["mecColor"], onChange: (e) => handleInputChange({ target: { name: "mecColor", value: e.target.value } }) },
+                    { key: "mecEngineNo", label: "Engine Number", value: formData.mecEngineNo || (doc2State.status === "extracting" ? "Extracting..." : ""), error: validationErrors["mecEngineNo"], onChange: (e) => handleInputChange({ target: { name: "mecEngineNo", value: e.target.value } }) },
+                    { key: "mecChassisNo", label: "Chassis Number", value: formData.mecChassisNo || (doc2State.status === "extracting" ? "Extracting..." : ""), error: validationErrors["mecChassisNo"], onChange: (e) => handleInputChange({ target: { name: "mecChassisNo", value: e.target.value } }) },
+                    { key: "mecPlateNo", label: "Plate Number", value: formData.mecPlateNo || (doc2State.status === "extracting" ? "Extracting..." : ""), error: validationErrors["mecPlateNo"], onChange: (e) => handleInputChange({ target: { name: "mecPlateNo", value: e.target.value } }) },
+                    { key: "mecColor", label: "Color", value: formData.mecColor || (doc2State.status === "extracting" ? "Extracting..." : ""), error: validationErrors["mecColor"], onChange: (e) => handleInputChange({ target: { name: "mecColor", value: e.target.value } }) },
                   ]}
                   uploadHint={formatOcrHint(doc2State)}
                 />
