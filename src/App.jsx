@@ -82,7 +82,7 @@ function App() {
           <Route path="/dci-access/new-certificate-request" element={<ProtectedRoute allowedRoles={AGENT_ROLES}>{isAgent(role) ? <AgentClearanceRequestFlow role={role} /> : <CitizenClearanceRequestFlow role={role} />}</ProtectedRoute>} />
           <Route path="/dci-access/bulk-clearance-request" element={<ProtectedRoute allowedRoles={["agent_fixer", "agent"]}><AgentBulkClearanceRequestFlow role={role} /></ProtectedRoute>} />
           
-          <Route path="/dci-access/hpg-verification" element={<ProtectedRoute allowedRoles={["hpg"]}><HpgVerifyPage /></ProtectedRoute>} />
+          <Route path="/dci-access/hpg-verification" element={<ProtectedRoute allowedRoles={["hpg", "dci"]}><HpgVerifyPage /></ProtectedRoute>} />
           <Route path="/dci-access/dci-verification" element={<ProtectedRoute allowedRoles={["dci"]}><DciVerifyPage /></ProtectedRoute>} />
           
           <Route path="/dci-access/tickets" element={<ProtectedRoute allowedRoles={["admin", "hpg", "dci"]}><TicketPage /></ProtectedRoute>} />

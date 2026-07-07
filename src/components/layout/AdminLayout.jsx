@@ -40,6 +40,7 @@ export const AdminLayout = () => {
       { id: "tickets", label: "Tickets", icon: Ticket, section: "SUPPORT", disabled: false },
     ],
     dci: [
+      { id: "hpg-verification", label: "HPG Verification", icon: Shield, section: "VERIFICATION", disabled: false },
       { id: "dci-verification", label: "DCI Verification", icon: Search, section: "VERIFICATION", disabled: false },
       { id: "tickets", label: "Tickets", icon: Ticket, section: "SUPPORT", disabled: false },
     ],

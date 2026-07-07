@@ -436,7 +436,7 @@ export const AgentBulkClearanceRequestFlow = () => {
             <p className="font-medium text-lg">Are you sure you want to leave?</p>
           </div>
           <p className="text-gray-600">
-            If you leave this page, your bulk batch will be discontinued, but any pending requests will be continued individually in your requests queue.
+            If you leave this page, your bulk batch will be discontinued, but any requests that is not done will be continued individually in your requests queue.
           </p>
           <div className="flex justify-end gap-3 mt-6">
             <button
@@ -511,66 +511,34 @@ export const AgentBulkClearanceRequestFlow = () => {
         <div className="bg-white rounded-b-xl shadow-lg p-6">
           {step === 1 && (
             <div className="space-y-8">
-              {/* Vehicle Option */}
-              <div className="text-center max-w-md mx-auto">
-                <h3 className="text-xl font-bold text-[#001b3b]">Vehicle Option</h3>
-                <p className="text-sm text-gray-500 mt-2">
-                  Please select if you are requesting a clearance certificate for a new or an existing vehicle.
-                </p>
-              </div>
-              
-              <div className="flex justify-center max-w-3xl mx-auto">
-                <div
-                  onClick={() => setVehicleOption("EXISTING")}
-                  className={`cursor-pointer rounded-xl border-2 p-8 transition-all duration-200 flex flex-col items-center text-center gap-4 max-w-md w-full ${
-                    vehicleOption === "EXISTING"
-                      ? "border-[#0059b5] bg-[#f8fbff] shadow-sm ring-1 ring-[#0059b5]/20"
-                      : "border-gray-200 hover:border-gray-300 hover:bg-gray-50/50"
-                  }`}
-                >
-                  <div className={`w-14 h-14 rounded-full flex items-center justify-center ${vehicleOption === "EXISTING" ? "bg-[#0059b5] text-white" : "bg-gray-100 text-gray-500"}`}>
-                    <Car className="w-7 h-7" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-gray-900 text-lg">Existing Vehicle</h4>
-                    <p className="text-sm text-gray-500 mt-1">
-                      For vehicles that are already registered.
-                    </p>
-                  </div>
+              <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Vehicle Option */}
+                <div>
+                  <label className="block text-sm font-bold text-[#001b3b] mb-2">Vehicle Option</label>
+                  <select 
+                    value={vehicleOption} 
+                    onChange={(e) => setVehicleOption(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0059b5] focus:border-[#0059b5] transition-colors shadow-sm bg-white"
+                  >
+                    <option value="EXISTING">Existing Vehicle</option>
+                  </select>
                 </div>
-              </div>
 
-              {/* Transaction Type */}
-              <div className="max-w-3xl mx-auto mt-8">
-                <h3 className="text-lg font-bold text-[#001b3b] text-center mb-6">Select Transaction Type</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[
-                    "Transfer of Ownership",
-                    "Change Color / Body Design",
-                    "Change Engine/Motor",
-                    "Change Chassis/VIN/Frame",
-                    "Permit to Assemble",
-                    "Record Check"
-                  ].map((type) => (
-                    <label
-                      key={type}
-                      className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-all ${
-                        transactionType === type
-                          ? "border-[#0059b5] bg-[#f8fbff] text-[#0059b5]"
-                          : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="transactionType"
-                        value={type}
-                        checked={transactionType === type}
-                        onChange={(e) => setTransactionType(e.target.value)}
-                        className="w-4 h-4 text-[#0059b5] focus:ring-[#0059b5] border-gray-300"
-                      />
-                      <span className="text-sm font-medium">{type}</span>
-                    </label>
-                  ))}
+                {/* Transaction Type */}
+                <div>
+                  <label className="block text-sm font-bold text-[#001b3b] mb-2">Transaction Type</label>
+                  <select 
+                    value={transactionType} 
+                    onChange={(e) => setTransactionType(e.target.value)}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0059b5] focus:border-[#0059b5] transition-colors shadow-sm bg-white"
+                  >
+                    <option value="Transfer of Ownership">Transfer of Ownership</option>
+                    <option value="Change Color / Body Design">Change Color / Body Design</option>
+                    <option value="Change Engine/Motor">Change Engine/Motor</option>
+                    <option value="Change Chassis/VIN/Frame">Change Chassis/VIN/Frame</option>
+                    <option value="Permit to Assemble">Permit to Assemble</option>
+                    <option value="Record Check">Record Check</option>
+                  </select>
                 </div>
               </div>
 
@@ -607,7 +575,7 @@ export const AgentBulkClearanceRequestFlow = () => {
                     onClick={handleAddToQueue} 
                     className="flex items-center gap-2 px-6 py-2.5 bg-[#0059b5] hover:bg-[#004a96] text-white rounded-full font-medium transition-colors shadow-sm"
                   >
-                    <Plus size={18} /> Add Vehicle to Batch
+                    <Plus size={18} /> Add Vehicle to Queue
                   </button>
                 </div>
               </div>
@@ -617,7 +585,7 @@ export const AgentBulkClearanceRequestFlow = () => {
                 <div className="max-w-4xl mx-auto mt-8 bg-gray-50 rounded-xl p-6 border border-gray-200">
                   <h4 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
                     <span className="bg-[#0059b5] text-white w-6 h-6 rounded-full flex items-center justify-center text-xs">{queue.length}</span>
-                    Vehicles in Batch
+                    Vehicles in Queue
                   </h4>
                   <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
                     {queue.map((item, index) => (
