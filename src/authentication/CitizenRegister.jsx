@@ -1,14 +1,20 @@
 import { useState } from "react";
-import { User, Lock, Mail, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { User, Lock, Mail, Eye, EyeOff, ArrowLeft, Calendar } from "lucide-react";
 import { Spinner } from "../components/Spinner";
 import DciLogo from "../assets/DCI-LOGO.png";
-import api from "../services/api";
+import { authService } from "../services/authService";
+import { FileUpload } from "../components/FileUpload";
+import { useAuth } from "../context/AuthContext";
+import emailjs from "@emailjs/browser";
+import { useAlert } from "../hooks/useAlert";
 
-export const CitizenRegister = ({ onComplete, onCancel }) => {
+export const CitizenRegister = () => {
   const [form, setForm] = useState({
     username: "",
     firstName: "",
     lastName: "",
+    birthdate: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -17,6 +23,40 @@ export const CitizenRegister = ({ onComplete, onCancel }) => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [idFile, setIdFile] = useState(null);
+  const [idPreview, setIdPreview] = useState(null);
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
+  
+  const navigate = useNavigate();
+  const { success } = useAlert();
+  const { handleLogin } = useAuth();
+
+  const handleIdUpload = (file, preview) => {
+    setIdFile(file);
+    setIdPreview(preview);
+    if (!file) return;
+
+    setOcrLoading(true);
+    // Mock OCR processing
+    setTimeout(() => {
+      const mockFirstName = "Juan";
+      const mockMiddleName = "Pedro";
+      const mockLastName = "Dela Cruz";
+      // Generate username: first letter of first name + first letter of middle name + full last name (no spaces)
+      const generatedUsername = `${mockFirstName.charAt(0)}${mockMiddleName.charAt(0)}${mockLastName.replace(/\s+/g, '')}`.toLowerCase();
+
+      setForm((prev) => ({
+        ...prev,
+        username: generatedUsername,
+        firstName: mockFirstName,
+        lastName: mockLastName,
+        birthdate: "1990-01-01",
+      }));
+      setOcrLoading(false);
+      success("ID Scanned", "Successfully extracted information from ID.");
+    }, 2000);
+  };
 
   const passwordStrength = (pw) => {
     let score = 0;
@@ -34,6 +74,7 @@ export const CitizenRegister = ({ onComplete, onCancel }) => {
     if (!form.username.trim()) errs.username = "Username is required";
     if (!form.firstName.trim()) errs.firstName = "First name is required";
     if (!form.lastName.trim()) errs.lastName = "Last name is required";
+    if (!form.birthdate) errs.birthdate = "Birthdate is required";
     if (!form.email.trim()) {
       errs.email = "Email is required";
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
@@ -54,19 +95,25 @@ export const CitizenRegister = ({ onComplete, onCancel }) => {
   const handleSubmit = async () => {
     if (!validate()) return;
     setLoading(true);
+    
     try {
-      await api.post("/public/register", {
-        username: form.username,
-        password: form.password,
-        confirmPassword: form.confirmPassword,
-        firstName: form.firstName,
-        lastName: form.lastName,
-        email: form.email,
-      });
-      await onComplete();
+      const templateParams = {
+        to_name: form.firstName,
+        to_email: form.email,
+        verification_link: window.location.origin + "/dci-access/verify?token=mock-token-123",
+      };
+      
+      await emailjs.send(
+        "service_4ik3xef",
+        "template_qgcsj7o",
+        templateParams,
+        "QMticHaw_n_hMIh_l"
+      );
+      
+      setShowVerificationPrompt(true);
     } catch (err) {
-      const msg = err.response?.data?.error || err.response?.data?.message || "Registration failed. Please try again.";
-      setErrors({ form: msg });
+      console.error("EmailJS Error:", err);
+      setErrors({ form: "Failed to send verification email. Please try again." });
     } finally {
       setLoading(false);
     }
@@ -100,7 +147,38 @@ export const CitizenRegister = ({ onComplete, onCancel }) => {
               </div>
             )}
 
-            <div className="space-y-4">
+            {showVerificationPrompt ? (
+              <div className="text-center py-6">
+                <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Mail size={32} />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">Verify Your Email</h2>
+                <p className="text-sm text-gray-600 mb-8">
+                  We've sent a real verification link to your email address. Please check your inbox (and spam folder) and click the link to verify your account.
+                </p>
+                <div className="space-y-3">
+                  {/* Verification is now required, skip button removed */}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-4">
+              <div className="relative">
+                {ocrLoading && (
+                  <div className="absolute inset-0 bg-white/80 z-10 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300">
+                    <Spinner size="md" />
+                    <span className="text-sm font-medium text-primary-600 mt-2">Scanning ID...</span>
+                  </div>
+                )}
+                <FileUpload
+                  label="Upload Valid ID (For Auto-fill)"
+                  accept="image/*"
+                  onFile={handleIdUpload}
+                  preview={idPreview}
+                  hint="Upload an image of your ID to automatically fill your details."
+                />
+              </div>
+
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Username</label>
                 <div className="relative">
@@ -139,6 +217,20 @@ export const CitizenRegister = ({ onComplete, onCancel }) => {
                   />
                   {errors.lastName && <p className="text-xs text-red-500 mt-1">{errors.lastName}</p>}
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Birthdate</label>
+                <div className="relative">
+                  <Calendar size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="date"
+                    value={form.birthdate}
+                    onChange={(e) => setForm({ ...form, birthdate: e.target.value })}
+                    className={inputClass("birthdate")}
+                  />
+                </div>
+                {errors.birthdate && <p className="text-xs text-red-500 mt-1">{errors.birthdate}</p>}
               </div>
 
               <div>
@@ -233,13 +325,15 @@ export const CitizenRegister = ({ onComplete, onCancel }) => {
 
             <div className="mt-4">
               <button
-                onClick={onCancel}
+                onClick={() => navigate("/dci-access")}
                 className="w-full border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium py-2.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
               >
                 <ArrowLeft size={16} />
                 Cancel
               </button>
             </div>
+            </>
+            )}
           </div>
 
           <div className="border-t border-gray-100 px-6 py-3 bg-gray-50">

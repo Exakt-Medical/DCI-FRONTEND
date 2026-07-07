@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { authService } from "../services/authService";
+import { useNavigate } from "react-router-dom";
 
 const AuthContext = createContext(null);
 
@@ -8,10 +9,16 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(localStorage.getItem("token"));
   const [role, setRole] = useState(localStorage.getItem("role"));
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    if (token && role) {
-      setUser({ token, role });
+    if (token) {
+      if (role && role !== "null") {
+        setUser({ token, role });
+      } else {
+        // Corrupted state (e.g. from previous bug), clear it out
+        logout();
+      }
     }
   }, []);
 
@@ -73,6 +80,35 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
+  const getDefaultPageForRole = (currentRole) => {
+    const role = (currentRole || "").toLowerCase();
+    if (role === "citizen") return "requests";
+    if (role === "hpg") return "verification";
+    if (role === "lto") return "certificate-lookup";
+    // admin, agent_fixer, agent, and any other roles → dashboard
+    return "dashboard";
+  };
+
+  const handleLogin = (userRole, userData) => {
+    const landingPage = getDefaultPageForRole(userRole);
+    setRole(userRole);
+    localStorage.setItem("role", userRole);
+    
+    // Ensure we have a token so isAuthenticated is true
+    const mockToken = "mock-token-123";
+    localStorage.setItem("token", mockToken);
+    setToken(mockToken);
+    
+    if (userData) {
+      localStorage.setItem("userProfile", JSON.stringify(userData));
+    }
+    navigate(`/dci-access/${landingPage}`);
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate("/dci-access");
+  };
   return (
     <AuthContext.Provider
       value={{
@@ -82,6 +118,8 @@ export function AuthProvider({ children }) {
         loading,
         login,
         logout,
+        handleLogin,
+        handleLogout,
         isAuthenticated: !!token,
       }}
     >

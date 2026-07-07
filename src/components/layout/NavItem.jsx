@@ -1,11 +1,13 @@
 import { cn } from "../../utils/cn";
+import { useNavigate } from "react-router-dom";
 
-export function NavItem({ item, isActive, isSidebarOpen, onClick }) {
+export function NavItem({ item, isActive, isSidebarOpen }) {
   const Icon = item.icon;
+  const navigate = useNavigate();
 
   return (
     <button
-      onClick={() => onClick(item.id, item.disabled)}
+      onClick={() => !item.disabled && navigate(`/dci-access/${item.id}`)}
       disabled={item.disabled}
       className={cn(
         "w-full flex items-center transition-all duration-200 my-1",

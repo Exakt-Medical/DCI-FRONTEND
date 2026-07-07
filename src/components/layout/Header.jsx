@@ -50,7 +50,7 @@ export const Header = ({
   }, []);
 
   return (
-    <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6">
+    <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 relative z-[60]">
       <div>
         <h1 className="text-xl font-semibold text-gray-800 capitalize">
           {PAGE_TITLES[currentPage] || currentPage.replace(/-/g, " ")}

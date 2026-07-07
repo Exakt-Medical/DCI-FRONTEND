@@ -1,5 +1,7 @@
 // pages/LoginPage.jsx
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { Card } from "../components/Card";
 import { Button } from "../components/Button";
 import { Spinner } from "../components/Spinner";
@@ -18,7 +20,9 @@ import { authService } from "../services/authService";
 import DciLogo from "../assets/DCI-LOGO.png";
 import { CreateTicketModal } from "../features/Tickets/CreateTicketModal";
 
-export const LoginPage = ({ onLogin, onRegisterClick }) => {
+export const LoginPage = () => {
+  const navigate = useNavigate();
+  const { handleLogin } = useAuth();
   const [form, setForm] = useState({ username: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -90,7 +94,7 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
         localStorage.setItem("rememberMe", "false");
       }
 
-      onLogin(role.toLowerCase(), {});
+      handleLogin(role.toLowerCase(), {});
     } catch (err) {
       const msg = err.response?.data?.error || "Invalid username or password";
       setError(msg);
@@ -247,7 +251,7 @@ export const LoginPage = ({ onLogin, onRegisterClick }) => {
               {/* Register as Citizen */}
               <div className="mt-4">
                 <button
-                  onClick={onRegisterClick}
+                  onClick={() => navigate("/dci-access/register")}
                   className="w-full border border-primary-500 text-primary-500 hover:bg-primary-50 font-medium py-2.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-2"
                 >
                   Register as Citizen
