@@ -301,14 +301,14 @@ export const CitizenClearanceRequestFlow = () => {
   useEffect(() => {
     const handleBeforeUnload = (e) => {
       if (window.bypassBeforeUnload) return;
-      if (step >= 2 && step !== 5 && !certificateNo) {
+      if (step >= 2 && step !== 5 && step !== 6 && !certificateNo) {
         e.preventDefault();
         e.returnValue = "";
       }
     };
 
     const handleLinkClick = (e) => {
-      if (step >= 2 && step !== 5 && !certificateNo) {
+      if (step >= 2 && step !== 5 && step !== 6 && !certificateNo) {
         const anchor = e.target.closest("a");
         if (anchor) {
           const targetHref = anchor.getAttribute("href");
