@@ -16,6 +16,8 @@ import {
   AlertTriangle,
   X,
   Car,
+  Shield,
+  Search,
 } from "lucide-react";
 import { CITIZEN_STEPS, VALIDATION_STATE } from "../../constants/clearanceRequestConfig";
 import {
@@ -29,7 +31,7 @@ import { verificationService } from "../../services/verificationService";
 import { useAlert } from "../../hooks/useAlert";
 import { useAuth } from "../../context/AuthContext";
 import { useRequest } from "../../context/RequestContext";
-import { fetchMyRequests } from "../../services/certificateRequestService";
+import { fetchMyRequests, fetchRequestById } from "../../services/certificateRequestService";
 import { CreateTicketModal } from "../Tickets/CreateTicketModal";
 import { DataMismatchModal } from "./components/DataMismatchModal";
 import { ticketService } from "../../services/ticketService";
@@ -43,6 +45,7 @@ import {
   getMissingFieldsText,
   mergeVehicleFields,
 } from "./utils/clearanceRequestUtils";
+
 import { useOrCrOcr } from "./hooks/useOrCrOcr";
 import { useCitizenPayment } from "./hooks/useCitizenPayment";
 
@@ -119,8 +122,8 @@ export const CitizenClearanceRequestFlow = () => {
       const status = selectedRequest.status;
       if (status === "VOUCHER_ISSUED") return 4;
       if (status === "DOCUMENTS_VERIFIED" || status === "VERIFICATION_FAILED") return 4;
-      if (status === "HPG_VERIFIED") return 6;
-      if (status === "MVC_MEC_VALIDATED" || status === "CERTIFICATE_ISSUED") return 7;
+      if (status === "HPG_VERIFIED" || status === "MVC_MEC_VALIDATED") return 4;
+      if (status === "CERTIFICATE_ISSUED") return 5;
     }
 
     const queryStep = Number(params.get("step"));
@@ -219,8 +222,8 @@ export const CitizenClearanceRequestFlow = () => {
       let derivedStep = selectedRequest.currentStep;
       if (selectedRequest.status === "VOUCHER_ISSUED") derivedStep = 4;
       else if (selectedRequest.status === "DOCUMENTS_VERIFIED" || selectedRequest.status === "VERIFICATION_FAILED") derivedStep = 4;
-      else if (selectedRequest.status === "HPG_VERIFIED") derivedStep = 6;
-      else if (selectedRequest.status === "MVC_MEC_VALIDATED" || selectedRequest.status === "CERTIFICATE_ISSUED") derivedStep = 7;
+      else if (selectedRequest.status === "HPG_VERIFIED" || selectedRequest.status === "MVC_MEC_VALIDATED") derivedStep = 4;
+      else if (selectedRequest.status === "CERTIFICATE_ISSUED") derivedStep = 5;
       
       setStep(Math.min(derivedStep, maxStep));
       hasSyncedStep.current = true;
@@ -673,11 +676,41 @@ export const CitizenClearanceRequestFlow = () => {
     if (id && !selectedRequest && !hasData) return;
     if (requestStatus === "VERIFICATION_FAILED" || selectedRequest?.status === "VERIFICATION_FAILED") return;
 
+    const isAlreadyVerified = 
+      ["DOCUMENTS_VERIFIED", "HPG_VERIFIED", "MVC_MEC_VALIDATED", "CERTIFICATE_ISSUED"].includes(requestStatus) ||
+      (selectedRequest?.status && ["DOCUMENTS_VERIFIED", "HPG_VERIFIED", "MVC_MEC_VALIDATED", "CERTIFICATE_ISSUED"].includes(selectedRequest.status));
+      
+    if (isAlreadyVerified) return;
+
     if (step === 4 && !transactionVerified && !isVerifyingDocuments && !hasTriggeredVerification.current && !verificationFailed) {
       hasTriggeredVerification.current = true;
       handleVerifyVehicle();
     }
   }, [step, transactionVerified, isVerifyingDocuments, verificationFailed, id, selectedRequest, requestStatus, orCr, crCr]);
+
+  // Polling for external verification status (HPG, DCI)
+  useEffect(() => {
+    if (step !== 4 || !transactionVerified || requestStatus === "CERTIFICATE_ISSUED" || !id) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const data = await fetchRequestById(id);
+        if (data && data.status) {
+          setRequestStatus(data.status);
+          if (data.hpgVerified || data.status === "HPG_VERIFIED" || data.status === "MVC_MEC_VALIDATED" || data.status === "CERTIFICATE_ISSUED") {
+            setHpgVerified(true);
+          }
+          if (data.certificateNo) {
+            setCertificateNo(data.certificateNo);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to poll request status:", error);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [step, transactionVerified, requestStatus, id]);
 
   const getTicketPrefilledData = () => {
     const vehicleInfo = {
@@ -781,8 +814,7 @@ export const CitizenClearanceRequestFlow = () => {
       return Boolean(isDocumentComplete(orCr, OR_EXPECTED_FIELDS) && isDocumentComplete(crCr, CR_EXPECTED_FIELDS) && !hasMismatch);
     }
     if (step === 3) return Boolean(paymentDone && voucherAssigned);
-    if (step === 4) return Boolean(transactionVerified);
-    if (step === 5) return Boolean(hpgVerified);
+    if (step === 4) return Boolean(requestStatus === "CERTIFICATE_ISSUED" || requestStatus === "MVC_MEC_VALIDATED");
     return false;
   };
 
@@ -790,7 +822,22 @@ export const CitizenClearanceRequestFlow = () => {
     if (!canNext()) return;
     if (step === 1) { setStep(2); return; }
     if (step === 2) { await handleVerifyStep2(); return; }
-    if (step === 4) { setStep(5); return; }
+    if (step === 4) {
+      if (requestStatus === "MVC_MEC_VALIDATED") {
+        setIsIssuingCertificate(true);
+        try {
+          await saveCitizenRequest({
+            currentStep: 5,
+            status: "CERTIFICATE_ISSUED"
+          });
+          setRequestStatus("CERTIFICATE_ISSUED");
+        } finally {
+          setIsIssuingCertificate(false);
+        }
+      }
+      setStep(5);
+      return;
+    }
     setStep((prev) => prev + 1);
   };
 
@@ -808,7 +855,7 @@ export const CitizenClearanceRequestFlow = () => {
       orCr,
       crCr,
       dateCreated,
-      currentStep: 6,
+      currentStep: 5,
       status: "CERTIFICATE_ISSUED",
       voucherStatus: "VOUCHER_ISSUED",
       clearanceStatus: "CERTIFICATE_ISSUED",
@@ -1123,51 +1170,74 @@ export const CitizenClearanceRequestFlow = () => {
                       </div>
                     </div>
                   )}
+
+                  {transactionVerified && (
+                    <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm mt-4">
+                      <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
+                        <Shield className="text-[#0059b5]" size={18} />
+                        <h3 className="text-base font-bold text-gray-900">HPG Verification Status</h3>
+                      </div>
+                      {hpgVerified ? (
+                        <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
+                          <CheckCircle size={40} className="text-green-600 mx-auto mb-3" />
+                          <p className="font-bold text-green-700 text-lg">HPG Verified</p>
+                          <p className="text-sm text-gray-600 mt-1">Your vehicle has been successfully verified by HPG.</p>
+                          <p className="text-xs text-gray-400 mt-2">
+                            Transaction Code: <span className="font-mono font-semibold">{voucherCode}</span>
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
+                          <p className="font-bold text-amber-700 text-lg">Please present your transaction to HPG.</p>
+                          <div className="mt-4 inline-flex items-center gap-3 bg-white border border-amber-300 rounded-lg px-4 py-2 shadow-sm">
+                            <div className="text-left">
+                              <span className="text-xs text-gray-500 block text-center">TRANSACTION CODE</span>
+                              <span className="text-base font-mono font-bold text-gray-900 tracking-wider">{voucherCode}</span>
+                            </div>
+                          </div>
+                          
+                          <div className="mt-4 flex justify-center gap-3">
+                            <Button onClick={handlePreviewCodeSlip} variant="outline" size="sm" className="flex items-center gap-1.5">
+                              <Eye size={14} /> Preview Slip
+                            </Button>
+                            <Button onClick={handleDownloadCodeSlip} variant="outline" size="sm" className="flex items-center gap-1.5">
+                              <Download size={14} /> Download Slip
+                            </Button>
+                          </div>
+                          
+                          <p className="text-xs text-gray-400 mt-3 animate-pulse">Waiting for HPG officer verification...</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {transactionVerified && hpgVerified && (
+                    <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm mt-4">
+                      <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
+                        <Search className="text-[#0059b5]" size={18} />
+                        <h3 className="text-base font-bold text-gray-900">DCI Clearance Status</h3>
+                      </div>
+                      {requestStatus === "CERTIFICATE_ISSUED" || requestStatus === "MVC_MEC_VALIDATED" ? (
+                        <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
+                          <CheckCircle size={40} className="text-green-600 mx-auto mb-3" />
+                          <p className="font-bold text-green-700 text-lg">DCI Cleared</p>
+                          <p className="text-sm text-gray-600 mt-1">Your request has passed DCI validation.</p>
+                        </div>
+                      ) : (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
+                          <Spinner size="md" className="mx-auto mb-3 text-amber-500" />
+                          <p className="font-bold text-amber-700 text-lg">Pending DCI Clearance</p>
+                          <p className="text-xs text-gray-500 mt-1">Waiting for DCI officers to clear your transaction.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                 </div>
               </Card>
             )}
 
             {step === 5 && (
-              <Card className="p-5">
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
-                  <FileText size={18} className="text-[#0059b5]" />
-                  <h3 className="text-base font-bold text-gray-900">HPG Verification Status</h3>
-                </div>
-                {hpgVerified ? (
-                  <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
-                    <CheckCircle size={40} className="text-green-600 mx-auto mb-3 animate-bounce" />
-                    <p className="font-bold text-green-700 text-lg">HPG Verified</p>
-                    <p className="text-sm text-gray-600 mt-1">Your vehicle has been successfully verified by HPG.</p>
-                    <p className="text-xs text-gray-400 mt-2">
-                      Transaction Code: <span className="font-mono font-semibold">{voucherCode}</span>
-                    </p>
-                  </div>
-                ) : (
-                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
-                    <p className="font-bold text-amber-700 text-lg">Please present your transaction to HPG/LTO.</p>
-                    <div className="mt-4 inline-flex items-center gap-3 bg-white border border-amber-300 rounded-lg px-4 py-2 shadow-sm">
-                      <div className="text-left">
-                        <span className="text-xs text-gray-500 block text-center">TRANSACTION CODE</span>
-                        <span className="text-base font-mono font-bold text-gray-900 tracking-wider">{voucherCode}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-4 flex justify-center gap-3">
-                      <Button onClick={handlePreviewCodeSlip} variant="outline" size="sm" className="flex items-center gap-1.5">
-                        <Eye size={14} /> Preview Slip
-                      </Button>
-                      <Button onClick={handleDownloadCodeSlip} variant="outline" size="sm" className="flex items-center gap-1.5">
-                        <Download size={14} /> Download Slip
-                      </Button>
-                    </div>
-                    
-                    <p className="text-xs text-gray-400 mt-3 animate-pulse">Waiting for HPG officer verification...</p>
-                  </div>
-                )}
-              </Card>
-            )}
-
-            {step === 6 && (
               <Card className="p-5">
                 <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                   <FileText size={18} className="text-[#0059b5]" />
@@ -1207,11 +1277,9 @@ export const CitizenClearanceRequestFlow = () => {
                     <X size={16} /> Cancel
                   </Button>
                 ) : (
-                  step > 1 && !(step === 3 && paymentDone) && step !== 4 && step !== 5 && (
-                    <Button variant="ghost" onClick={prevStep}>
-                      <ChevronLeft size={16} /> Back
-                    </Button>
-                  )
+                  <Button variant="ghost" onClick={prevStep}>
+                    <ChevronLeft size={16} /> Back
+                  </Button>
                 )}
                 {step === 4 && verificationFailed && (
                   <Button
@@ -1231,8 +1299,8 @@ export const CitizenClearanceRequestFlow = () => {
                       {crPreview && getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS) && <p>• {getMissingFieldsText(crCr, "CR", CR_EXPECTED_FIELDS)}</p>}
                     </div>
                   )}
-                  <Button onClick={nextStep} disabled={!canNext() || isVerifyingDocuments}>
-                    {isVerifyingDocuments ? "Verifying..." : "Next"} <ChevronRight size={16} />
+                  <Button onClick={nextStep} disabled={!canNext() || isVerifyingDocuments || isIssuingCertificate}>
+                    {isVerifyingDocuments ? "Verifying..." : isIssuingCertificate ? "Issuing..." : "Next"} <ChevronRight size={16} />
                   </Button>
                 </div>
               ) : (
