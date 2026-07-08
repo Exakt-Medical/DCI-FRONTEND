@@ -169,7 +169,6 @@ export const CitizenRegister = () => {
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">DCI Clearance Verification System</h1>
-                <h1 className="text-xl font-bold text-gray-900">Mindanao</h1>
               </div>
 
               <div className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Create Citizen Account</div>
