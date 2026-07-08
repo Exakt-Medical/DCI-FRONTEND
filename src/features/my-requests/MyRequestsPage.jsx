@@ -105,8 +105,9 @@ export const MyRequestsPage = () => {
 
   const loadAllRequests = async () => {
     try {
-      const data = await fetchMyRequests();
-      setRequests(data || []);
+      // MOCK BEHAVIOR: Load from localStorage
+      const savedRequests = JSON.parse(localStorage.getItem('dci_mock_requests') || '[]');
+      setRequests(savedRequests);
     } catch (error) {
       console.error("Failed to load requests:", error);
     }

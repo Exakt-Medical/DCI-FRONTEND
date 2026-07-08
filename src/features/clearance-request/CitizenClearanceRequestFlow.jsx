@@ -75,8 +75,9 @@ export const CitizenClearanceRequestFlow = () => {
   const loadAllRequests = async () => {
     try {
       setIsLoadingRequests(true);
-      const data = await fetchMyRequests();
-      setAvailableVoucherRequests(data || []);
+      // MOCK BEHAVIOR: Load from localStorage
+      const savedRequests = JSON.parse(localStorage.getItem('dci_mock_requests') || '[]');
+      setAvailableVoucherRequests(savedRequests);
     } catch (error) {
       console.error("Failed to load requests:", error);
     } finally {
@@ -258,47 +259,12 @@ export const CitizenClearanceRequestFlow = () => {
 
   // Poll for HPG verification status when on step 5
   useEffect(() => {
-    let interval;
-    if (step === 5 && !hpgVerified && id) {
-      interval = setInterval(async () => {
-        try {
-          const requests = await fetchMyRequests();
-          const currentReq = requests.find((r) => String(r.id) === String(id));
-          if (currentReq && (currentReq.hpgVerified || currentReq.status === "HPG_VERIFIED")) {
-            setHpgVerified(true);
-            setRequestStatus(currentReq.status);
-          }
-        } catch (e) {
-          console.error("Polling error:", e);
-        }
-      }, 5000); // Poll every 5 seconds
-    }
-    return () => clearInterval(interval);
+    // MOCK BEHAVIOR: No polling needed
   }, [step, hpgVerified, id]);
 
   // Poll for DCI verification status when on step 6
   useEffect(() => {
-    let interval;
-    if (step === 6 && requestStatus !== "CERTIFICATE_ISSUED" && !certificateNo && id) {
-      interval = setInterval(async () => {
-        try {
-          const requests = await fetchMyRequests();
-          const currentReq = requests.find((r) => String(r.id) === String(id));
-          if (currentReq) {
-            if (currentReq.status === "CERTIFICATE_ISSUED") {
-              setRequestStatus("CERTIFICATE_ISSUED");
-              if (currentReq.certificateNo) setCertificateNo(currentReq.certificateNo);
-            } else if (currentReq.status === "MVC_MEC_VALIDATED") {
-              setRequestStatus("MVC_MEC_VALIDATED");
-              handleDciVerification();
-            }
-          }
-        } catch (e) {
-          console.error("Polling error:", e);
-        }
-      }, 5000); // Poll every 5 seconds
-    }
-    return () => clearInterval(interval);
+    // MOCK BEHAVIOR: No polling needed
   }, [step, requestStatus, certificateNo, id]);
 
   useEffect(() => {
@@ -378,6 +344,49 @@ export const CitizenClearanceRequestFlow = () => {
     VALIDATION_STATE,
   });
 
+  // Mock OR/CR Uploads
+  const mockOcrUploadState = {
+    or: { status: OCR_STATUS.SUCCESS, message: "" },
+    cr: { status: OCR_STATUS.SUCCESS, message: "" },
+    mvc: ocrUploadState.mvc,
+    mec: ocrUploadState.mec,
+  };
+
+  const MOCK_VEHICLE_DATA = {
+    plateNumber: "ABC1234",
+    mvFileNumber: "1301-00000012345",
+    engineNumber: "ENG123456789",
+    chassisNumber: "CHAS123456789",
+    make: "TOYOTA",
+    series: "VIOS",
+    yearModel: "2020",
+    color: "RED",
+    classification: "PRIVATE",
+    vehicleType: "CAR",
+  };
+
+  const mockHandleOrUpload = (file) => {
+    const url = URL.createObjectURL(file);
+    setOrPreview(url);
+    setOrCr((prev) => ({ ...prev, ...MOCK_VEHICLE_DATA }));
+    setValidationErrors((prev) => {
+      const newErrors = { ...prev };
+      Object.keys(MOCK_VEHICLE_DATA).forEach((k) => (newErrors[k] = false));
+      return newErrors;
+    });
+  };
+
+  const mockHandleCrUpload = (file) => {
+    const url = URL.createObjectURL(file);
+    setCrPreview(url);
+    setCrCr((prev) => ({ ...prev, ...MOCK_VEHICLE_DATA }));
+    setValidationErrors((prev) => {
+      const newErrors = { ...prev };
+      Object.keys(MOCK_VEHICLE_DATA).forEach((k) => (newErrors[k] = false));
+      return newErrors;
+    });
+  };
+
   async function saveCitizenRequest(overrides = {}) {
     const isExtracting = (val) => !val || val === "Extracting...";
     const hasData = (obj) =>
@@ -409,17 +418,29 @@ export const CitizenClearanceRequestFlow = () => {
       ...overrides,
     };
 
-    if (onSaveRequest) {
-      const resObj = await onSaveRequest(record);
-      const savedId = resObj?.id || resObj;
-      if (savedId && !id) { setId(savedId); record.id = savedId; }
-      if (resObj?.certificateNo) {
-        setCertificateNo(resObj.certificateNo);
-        record.certificateNo = resObj.certificateNo;
-        record.clearanceReferenceNo = resObj.certificateNo;
-        record.clearanceStatus = "CERTIFICATE_ISSUED";
-      }
+    // MOCK BEHAVIOR: Do not call backend API
+    const savedId = id || "DCI-REQ-" + Math.floor(Math.random() * 10000);
+    if (!id) {
+      setId(savedId);
+      record.id = savedId;
     }
+    // If overrides provided a certificateNo (like in verify vehicle step), ensure it's recorded
+    if (overrides.certificateNo) {
+      record.certificateNo = overrides.certificateNo;
+      record.clearanceReferenceNo = overrides.certificateNo;
+      record.clearanceStatus = "CERTIFICATE_ISSUED";
+    }
+
+    // MOCK BEHAVIOR: Save to localStorage
+    const savedRequests = JSON.parse(localStorage.getItem('dci_mock_requests') || '[]');
+    const existingIndex = savedRequests.findIndex(r => r.id === record.id);
+    if (existingIndex >= 0) {
+      savedRequests[existingIndex] = { ...savedRequests[existingIndex], ...record };
+    } else {
+      savedRequests.push(record);
+    }
+    localStorage.setItem('dci_mock_requests', JSON.stringify(savedRequests));
+
     return record;
   }
 
@@ -498,6 +519,20 @@ export const CitizenClearanceRequestFlow = () => {
     saveCitizenRequest,
     showError, navigate,
   });
+
+  // Mock Payment
+  const [mockProcessingPayment, setMockProcessingPayment] = useState(false);
+  const mockHandleProceedToPayment = () => {
+    setMockProcessingPayment(true);
+    setTimeout(() => {
+      setMockProcessingPayment(false);
+      setPaymentDone(true);
+      setVoucherCode("DCI-VCH" + Math.floor(Math.random() * 10000));
+      setVoucherAssigned(true);
+      showSuccessAlert("Payment Successful", "Payment completed successfully.");
+      saveCitizenRequest({ paymentDone: true });
+    }, 1000);
+  };
 
   const handleDownload = async () => {
     if (!certificateNo) return;
@@ -611,51 +646,76 @@ export const CitizenClearanceRequestFlow = () => {
   const handleVerifyVehicle = async () => {
     setIsVerifyingDocuments(true);
     try {
-      const payload = {
-        mvFileNumber: (crCr.mvFileNumber || orCr.mvFileNumber || "").trim().toUpperCase(),
-        plateNumber: (crCr.plateNumber || orCr.plateNumber || "").trim().toUpperCase(),
-        engineNumber: (crCr.engineNumber || orCr.engineNumber || "").trim().toUpperCase(),
-        chassisNumber: (crCr.chassisNumber || orCr.chassisNumber || "").trim().toUpperCase(),
+      // Domino 1: Wait 3 seconds -> Vehicle Found
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      const vvsData = {
+        verificationStatus: "VERIFIED",
+        verificationId: "MOCK-VERIFICATION-" + Math.floor(Math.random() * 10000),
+        ownerFirstName: "JUAN",
+        ownerLastName: "DELA CRUZ",
+        ownerMiddleName: "M",
+        ownerAddress: "123 MOCK STREET, MANILA",
+        make: crCr.make || orCr.make || "TOYOTA",
+        series: crCr.series || orCr.series || "VIOS",
+        yearModel: crCr.yearModel || orCr.yearModel || "2020",
+        color: crCr.color || orCr.color || "RED",
+        classification: crCr.classification || orCr.classification || "PRIVATE",
+        denomination: crCr.vehicleType || orCr.vehicleType || "CAR",
+        engineNumber: crCr.engineNumber || orCr.engineNumber || "ENG123456789",
+        chassisNumber: crCr.chassisNumber || orCr.chassisNumber || "CHAS123456789",
+        plateNumber: crCr.plateNumber || orCr.plateNumber || "ABC1234",
+        mvFileNo: crCr.mvFileNumber || orCr.mvFileNumber || "1301-00000012345",
       };
 
-      const verifyRes = await verificationService.verify(payload);
-      const vvsData = verifyRes?.data || {};
+      const ownerName = "JUAN M DELA CRUZ";
 
-      if (vvsData.verificationStatus !== "VERIFIED") {
-        throw new Error(vvsData.failureReason || "No matching verified vehicle record found in VVS system.");
-      }
-
-      const ownerName =
-        [vvsData.ownerFirstName, vvsData.ownerMiddleName, vvsData.ownerLastName]
-          .filter(Boolean)
-          .join(" ") ||
-        vvsData.ownerName ||
-        "Unknown Owner";
-
+      setIsVerifyingDocuments(false); // Stop loading to show "LTO Vehicle Found"
       setTransactionVerified(true);
-      setVerificationId(vvsData.verificationId || "");
+      setVerificationId(vvsData.verificationId);
       setVvsOwnerName(ownerName);
       setVvsVehicleDetails(vvsData);
-
+      
       await saveCitizenRequest({
         currentStep: 4,
         status: "DOCUMENTS_VERIFIED",
-        verificationId: vvsData.verificationId || "",
+        verificationId: vvsData.verificationId,
         vvsOwnerName: ownerName,
         vvsVehicleDetails: vvsData,
       });
       setRequestStatus("DOCUMENTS_VERIFIED");
+      showSuccessAlert("Vehicle Found", "Vehicle details verified successfully.");
 
-      showSuccessAlert("Verification Complete", "Transaction code issued successfully.");
+      // Domino 2: Wait 3 seconds -> HPG Verified
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      setHpgVerified(true);
+      await saveCitizenRequest({
+        currentStep: 4,
+        status: "HPG_VERIFIED",
+        hpgVerified: true,
+      });
+      setRequestStatus("HPG_VERIFIED");
+      showSuccessAlert("HPG Verified", "Vehicle cleared by HPG.");
+
+      // Domino 3: Wait 3 seconds -> DCI Cleared
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      const mockCertNo = "DCI-CERT" + Math.floor(Math.random() * 10000);
+      setCertificateNo(mockCertNo);
+
+      await saveCitizenRequest({
+        currentStep: 4,
+        status: "CERTIFICATE_ISSUED",
+        certificateNo: mockCertNo,
+        clearanceReferenceNo: mockCertNo,
+        clearanceStatus: "CERTIFICATE_ISSUED"
+      });
+      setRequestStatus("CERTIFICATE_ISSUED");
+
+      showSuccessAlert("DCI Cleared", "DCI clearance validation complete. Certificate issued.");
     } catch (error) {
       setVerificationFailed(true);
-      const errMsg =
-        error?.response?.data?.failureReason ||
-        error?.response?.data?.error ||
-        error?.message ||
-        "Verification failed.";
-      setVerificationError(errMsg);
-
+      setVerificationError("Verification failed.");
+      setIsVerifyingDocuments(false);
       try {
         await saveCitizenRequest({
           currentStep: 4,
@@ -665,8 +725,6 @@ export const CitizenClearanceRequestFlow = () => {
       } catch (saveError) {
         console.error("Failed to save verification failed status", saveError);
       }
-    } finally {
-      setIsVerifyingDocuments(false);
     }
   };
 
@@ -690,26 +748,7 @@ export const CitizenClearanceRequestFlow = () => {
 
   // Polling for external verification status (HPG, DCI)
   useEffect(() => {
-    if (step !== 4 || !transactionVerified || requestStatus === "CERTIFICATE_ISSUED" || !id) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const data = await fetchRequestById(id);
-        if (data && data.status) {
-          setRequestStatus(data.status);
-          if (data.hpgVerified || data.status === "HPG_VERIFIED" || data.status === "MVC_MEC_VALIDATED" || data.status === "CERTIFICATE_ISSUED") {
-            setHpgVerified(true);
-          }
-          if (data.certificateNo) {
-            setCertificateNo(data.certificateNo);
-          }
-        }
-      } catch (error) {
-        console.error("Failed to poll request status:", error);
-      }
-    }, 5000);
-
-    return () => clearInterval(interval);
+    // MOCK BEHAVIOR: No polling needed
   }, [step, transactionVerified, requestStatus, id]);
 
   const getTicketPrefilledData = () => {
@@ -1000,9 +1039,9 @@ export const CitizenClearanceRequestFlow = () => {
                   <VehicleDocumentUploadCard
                     title="OR"
                     uploadLabel="Upload Official Receipt"
-                    onFile={handleOrUpload}
+                    onFile={mockHandleOrUpload}
                     preview={orPreview}
-                    uploadHint={formatOcrHint(ocrUploadState.or)}
+                    uploadHint={formatOcrHint(mockOcrUploadState.or)}
                     vehicleLabel="Vehicle Details (from OR)"
                     vehicleValues={orCr}
                     vehicleFieldSet="or"
@@ -1012,15 +1051,15 @@ export const CitizenClearanceRequestFlow = () => {
                   <VehicleDocumentUploadCard
                     title="CR"
                     uploadLabel="Upload Certificate of Registration"
-                    onFile={handleCrUpload}
+                    onFile={mockHandleCrUpload}
                     preview={crPreview}
-                    uploadHint={formatOcrHint(ocrUploadState.cr)}
+                    uploadHint={formatOcrHint(mockOcrUploadState.cr)}
                     vehicleLabel="Vehicle Details (from CR)"
                     vehicleValues={crCr}
                     vehicleFieldSet="cr"
                     onVehicleChange={updateCrCr}
                     errors={validationErrors}
-                    disabled={ocrUploadState.or.status === OCR_STATUS.IDLE || ocrUploadState.or.status === OCR_STATUS.EXTRACTING}
+                    disabled={mockOcrUploadState.or.status === OCR_STATUS.IDLE || mockOcrUploadState.or.status === OCR_STATUS.EXTRACTING}
                   />
                 </div>
                 {hasMismatch && (
@@ -1045,7 +1084,7 @@ export const CitizenClearanceRequestFlow = () => {
                   <p className="text-3xl font-bold text-gray-900">PHP 100.00</p>
                   <p className="text-xs text-gray-500 mt-1">Single payment covers the whole request.</p>
                 </div>
-                {processingPayment ? (
+                {mockProcessingPayment ? (
                   <div className="text-center py-8">
                     <Spinner size="lg" className="mx-auto" />
                     <p className="text-sm font-medium text-gray-700 mt-4 animate-pulse">Verifying Payment Status...</p>
@@ -1072,7 +1111,7 @@ export const CitizenClearanceRequestFlow = () => {
                     )}
                   </div>
                 ) : (
-                  <Button onClick={handleProceedToPayment} className="w-full">
+                  <Button onClick={mockHandleProceedToPayment} className="w-full">
                     <CreditCard size={16} /> Proceed to Payment
                   </Button>
                 )}

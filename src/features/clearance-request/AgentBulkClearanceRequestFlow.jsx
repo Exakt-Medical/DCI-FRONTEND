@@ -54,7 +54,8 @@ export const AgentBulkClearanceRequestFlow = () => {
         const profile = JSON.parse(localStorage.getItem("userProfile") || "{}");
         const userId = localStorage.getItem("userId") || profile.id;
         if (userId) {
-          const inventory = await voucherInventoryService.fetchAgentInventory(userId);
+          // MOCK BEHAVIOR: Read from localStorage
+          const inventory = JSON.parse(localStorage.getItem("mock_agent_vouchers") || "[]");
           const available = inventory.filter(v => v.inventoryStatus === "AVAILABLE" || v.status === "AVAILABLE");
           setAvailableVouchers(available);
         }
@@ -65,54 +66,57 @@ export const AgentBulkClearanceRequestFlow = () => {
     fetchVoucherCount();
   }, []);
 
-  // Poll for HPG, DCI, and Certificate status
+  // Mock domino effect for Bulk Flow Steps 3 and 4
   useEffect(() => {
-    let interval;
-    if (step >= 3 && step <= 5 && queue.length > 0) {
-      interval = setInterval(async () => {
-        try {
-          const requests = await fetchMyRequests();
-          if (!requests || requests.length === 0) return;
+    if (step === 3 && queue.some(item => item.status === "VERIFIED")) {
+      const timer = setTimeout(() => {
+        setQueue(prevQueue => prevQueue.map(item => ({ ...item, status: "HPG_VERIFIED" })));
+        
+        // Update in localStorage
+        const savedRequests = JSON.parse(localStorage.getItem('dci_mock_requests') || '[]');
+        const updatedRequests = savedRequests.map(r => {
+          if (queue.find(q => q.backendId === r.id)) {
+            return { ...r, status: "HPG_VERIFIED", currentStep: 4, hpgVerified: true };
+          }
+          return r;
+        });
+        localStorage.setItem('dci_mock_requests', JSON.stringify(updatedRequests));
 
-          setQueue(prevQueue => {
-            let hasChanges = false;
-            const updated = prevQueue.map(item => {
-              if (!item.backendId) return item;
-              const remoteItem = requests.find(r => String(r.id) === String(item.backendId));
-              if (remoteItem && remoteItem.status !== item.status) {
-                hasChanges = true;
-                
-                let newStatus = remoteItem.status;
-                let newCertNo = remoteItem.certificateNo || item.certificateNo;
-                
-                // Auto-advance DCI validated status to CERTIFICATE_ISSUED for bulk flow
-                if (newStatus === "MVC_MEC_VALIDATED") {
-                  newStatus = "CERTIFICATE_ISSUED";
-                  // Update backend silently
-                  handleRequestSave({
-                    id: remoteItem.id,
-                    status: "CERTIFICATE_ISSUED",
-                    clearanceStatus: "CERTIFICATE_ISSUED",
-                    certificateNo: ""
-                  }).catch(console.error);
-                }
-
-                return {
-                  ...item,
-                  status: newStatus,
-                  certificateNo: newCertNo,
-                };
-              }
-              return item;
-            });
-            return hasChanges ? updated : prevQueue;
-          });
-        } catch (e) {
-          console.error("Polling error:", e);
-        }
-      }, 5000);
+        showSuccessAlert("HPG Verified", "All vehicles cleared by HPG.");
+      }, 3000);
+      return () => clearTimeout(timer);
     }
-    return () => clearInterval(interval);
+
+    if (step === 4 && queue.some(item => item.status === "HPG_VERIFIED")) {
+      const timer = setTimeout(() => {
+        setQueue(prevQueue => prevQueue.map(item => {
+          const mockCertNo = "DCI-CERT" + Math.floor(Math.random() * 10000);
+          return { ...item, status: "CERTIFICATE_ISSUED", certificateNo: mockCertNo };
+        }));
+
+        // Update in localStorage
+        const savedRequests = JSON.parse(localStorage.getItem('dci_mock_requests') || '[]');
+        const updatedRequests = savedRequests.map(r => {
+          const matched = queue.find(q => q.backendId === r.id);
+          if (matched) {
+            const mockCertNo = "DCI-CERT" + Math.floor(Math.random() * 10000);
+            return { 
+              ...r, 
+              status: "CERTIFICATE_ISSUED", 
+              currentStep: 5, 
+              certificateNo: mockCertNo,
+              clearanceReferenceNo: mockCertNo,
+              clearanceStatus: "CERTIFICATE_ISSUED"
+            };
+          }
+          return r;
+        });
+        localStorage.setItem('dci_mock_requests', JSON.stringify(updatedRequests));
+        
+        showSuccessAlert("DCI Cleared", "DCI clearance validation complete for all vehicles.");
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
   }, [step, queue]);
   
   // Current Form State
@@ -171,16 +175,42 @@ export const AgentBulkClearanceRequestFlow = () => {
     };
   }, [queue.length, step]);
 
-  const {
-    ocrUploadState,
-    handleOrUpload,
-    handleCrUpload,
-  } = useOrCrOcr({
-    orCr, crCr,
-    setOrCr, setCrCr,
-    setOrPreview, setCrPreview,
-    setValidationErrors: () => {},
-  });
+  // Mock OR/CR Uploads
+  const mockOcrUploadState = {
+    or: { status: OCR_STATUS.SUCCESS, message: "" },
+    cr: { status: OCR_STATUS.SUCCESS, message: "" },
+    mvc: { status: OCR_STATUS.IDLE, message: "" },
+    mec: { status: OCR_STATUS.IDLE, message: "" },
+  };
+
+  const MOCK_VEHICLE_DATA = {
+    plateNumber: "ABC1234",
+    mvFileNumber: "1301-00000012345",
+    engineNumber: "ENG123456789",
+    chassisNumber: "CHAS123456789",
+    make: "TOYOTA",
+    series: "VIOS",
+    yearModel: "2020",
+    color: "RED",
+    classification: "PRIVATE",
+    vehicleType: "CAR",
+  };
+
+  const mockHandleOrUpload = (file) => {
+    const url = URL.createObjectURL(file);
+    setOrPreview(url);
+    setOrCr((prev) => ({ ...prev, ...MOCK_VEHICLE_DATA }));
+  };
+
+  const mockHandleCrUpload = (file) => {
+    const url = URL.createObjectURL(file);
+    setCrPreview(url);
+    setCrCr((prev) => ({ ...prev, ...MOCK_VEHICLE_DATA }));
+  };
+
+  const ocrUploadState = mockOcrUploadState;
+  const handleOrUpload = mockHandleOrUpload;
+  const handleCrUpload = mockHandleCrUpload;
 
   // Backend integration states
   const [isVerifying, setIsVerifying] = useState(false);
@@ -262,6 +292,10 @@ export const AgentBulkClearanceRequestFlow = () => {
       let hasFailures = false;
 
       const updatedQueue = [];
+      const newSavedRequests = [];
+
+      // MOCK BEHAVIOR: Simulate bulk verification delay
+      await new Promise(resolve => setTimeout(resolve, 3000));
 
       for (const item of queue) {
         if (item.status !== "QUEUED") {
@@ -270,32 +304,37 @@ export const AgentBulkClearanceRequestFlow = () => {
         }
         
         try {
-          const payload = {
-            mvFileNumber: (item.crCr.mvFileNumber || item.orCr.mvFileNumber || "").trim().toUpperCase(),
-            plateNumber: (item.crCr.plateNumber || item.orCr.plateNumber || "").trim().toUpperCase(),
-            engineNumber: (item.crCr.engineNumber || item.orCr.engineNumber || "").trim().toUpperCase(),
-            chassisNumber: (item.crCr.chassisNumber || item.orCr.chassisNumber || "").trim().toUpperCase(),
+          // MOCK BEHAVIOR: Always verify successfully
+          const vvsData = {
+            verificationStatus: "VERIFIED",
+            verificationId: "DCI-VERIFICATION-" + Math.floor(Math.random() * 10000),
+            ownerFirstName: "JUAN",
+            ownerLastName: "DELA CRUZ",
+            ownerMiddleName: "M",
+            ownerAddress: "123 DCI STREET, MANILA",
+            make: item.crCr.make || item.orCr.make || "TOYOTA",
+            series: item.crCr.series || item.orCr.series || "VIOS",
+            yearModel: item.crCr.yearModel || item.orCr.yearModel || "2020",
+            color: item.crCr.color || item.orCr.color || "RED",
+            classification: item.crCr.classification || item.orCr.classification || "PRIVATE",
+            denomination: item.crCr.vehicleType || item.orCr.vehicleType || "CAR",
+            engineNumber: item.crCr.engineNumber || item.orCr.engineNumber || "ENG123456789",
+            chassisNumber: item.crCr.chassisNumber || item.orCr.chassisNumber || "CHAS123456789",
+            plateNumber: item.crCr.plateNumber || item.orCr.plateNumber || "ABC1234",
+            mvFileNo: item.crCr.mvFileNumber || item.orCr.mvFileNumber || "1301-00000012345",
           };
-          
-          const verifyRes = await verificationService.verify(payload);
-          const vvsData = verifyRes?.data || {};
 
-          if (vvsData.verificationStatus !== "VERIFIED") {
-            throw new Error(vvsData.failureReason || "No matching verified vehicle record found.");
-          }
-
-          const ownerName =
-            [vvsData.ownerFirstName, vvsData.ownerMiddleName, vvsData.ownerLastName]
-              .filter(Boolean)
-              .join(" ") ||
-            vvsData.ownerName ||
-            "Unknown Owner";
+          const ownerName = "JUAN M DELA CRUZ";
 
           const assignedVoucher = vouchersToUse.shift();
           const assignedVoucherCode = assignedVoucher.voucherCode;
           const assignedVoucherId = assignedVoucher.voucherId || assignedVoucher.id;
+          assignedVoucher.inventoryStatus = "CONSUMED"; // mark as consumed
+
+          const savedId = "DCI-REQ" + Math.floor(Math.random() * 10000);
 
           const requestRecord = {
+            id: savedId,
             currentStep: 3,
             status: "DOCUMENTS_VERIFIED",
             verificationId: vvsData.verificationId || "",
@@ -313,18 +352,15 @@ export const AgentBulkClearanceRequestFlow = () => {
             transactionType: item.transactionType,
           };
 
-          const savedReq = await handleRequestSave(requestRecord);
+          newSavedRequests.push(requestRecord);
           
           updatedQueue.push({
             ...item,
             status: "VERIFIED",
-            backendId: savedReq?.id || null,
+            backendId: savedId,
             voucherCode: assignedVoucherCode,
             vvsData,
           });
-
-          // 50ms delay to ensure unique timestamp-based reference IDs on the backend
-          await new Promise(resolve => setTimeout(resolve, 50));
         } catch (error) {
           hasFailures = true;
           updatedQueue.push({
@@ -335,6 +371,21 @@ export const AgentBulkClearanceRequestFlow = () => {
         }
       }
 
+      // MOCK BEHAVIOR: Save consumed vouchers and requests to localStorage
+      const allVouchers = JSON.parse(localStorage.getItem("mock_agent_vouchers") || "[]");
+      const updatedVouchers = allVouchers.map(v => {
+        const found = availableVouchers.find(av => (av.voucherId || av.id) === (v.voucherId || v.id));
+        if (found && found.inventoryStatus === "CONSUMED") {
+          return { ...v, inventoryStatus: "CONSUMED" };
+        }
+        return v;
+      });
+      localStorage.setItem("mock_agent_vouchers", JSON.stringify(updatedVouchers));
+
+      const existingRequests = JSON.parse(localStorage.getItem("dci_mock_requests") || "[]");
+      localStorage.setItem("dci_mock_requests", JSON.stringify([...existingRequests, ...newSavedRequests]));
+
+      setAvailableVouchers(vouchersToUse);
       setQueue(updatedQueue);
       
       if (hasFailures) {

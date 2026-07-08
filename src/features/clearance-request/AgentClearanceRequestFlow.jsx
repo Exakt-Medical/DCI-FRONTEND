@@ -73,7 +73,8 @@ export const AgentClearanceRequestFlow = () => {
   const loadAllRequests = async () => {
     try {
       setIsLoadingRequests(true);
-      const data = await fetchMyRequests();
+      // MOCK BEHAVIOR: Load from localStorage
+      const data = JSON.parse(localStorage.getItem("dci_mock_requests") || "[]");
       setAvailableVoucherRequests(data || []);
     } catch (error) {
       console.error("Failed to load requests:", error);
@@ -91,7 +92,8 @@ export const AgentClearanceRequestFlow = () => {
         const profile = JSON.parse(localStorage.getItem("userProfile") || "{}");
         const userId = localStorage.getItem("userId") || profile.id;
         if (userId) {
-          const inventory = await voucherInventoryService.fetchAgentInventory(userId);
+          // MOCK BEHAVIOR: Load from localStorage
+          const inventory = JSON.parse(localStorage.getItem("mock_agent_vouchers") || "[]");
           const available = inventory.filter(v => v.inventoryStatus === "AVAILABLE" || v.status === "AVAILABLE").length;
           setAvailableVoucherCount(available);
         }
@@ -265,49 +267,33 @@ export const AgentClearanceRequestFlow = () => {
     if (selectedRequest.mecData) setMecData(selectedRequest.mecData);
   }, [selectedRequest, maxStep, id]);
 
-  // Poll for HPG verification status when on step 4
+  // Mock domino effect for HPG verification status when on step 4
   useEffect(() => {
-    let interval;
-    if (step === 4 && !hpgVerified && id) {
-      interval = setInterval(async () => {
-        try {
-          const requests = await fetchMyRequests();
-          const currentReq = requests.find((r) => String(r.id) === String(id));
-          if (currentReq && (currentReq.hpgVerified || currentReq.status === "HPG_VERIFIED")) {
-            setHpgVerified(true);
-            setRequestStatus(currentReq.status);
-          }
-        } catch (e) {
-          console.error("Polling error:", e);
-        }
-      }, 5000); // Poll every 5 seconds
+    if (step === 3 && !hpgVerified && id) {
+      const timer = setTimeout(() => {
+        setHpgVerified(true);
+        setRequestStatus("HPG_VERIFIED");
+        saveCitizenRequest({
+          currentStep: 4,
+          status: "HPG_VERIFIED",
+          hpgVerified: true
+        });
+      }, 3000);
+      return () => clearTimeout(timer);
     }
-    return () => clearInterval(interval);
   }, [step, hpgVerified, id]);
 
-  // Poll for DCI verification status when on step 5
+  // Mock domino effect for DCI verification status when on step 5
   useEffect(() => {
-    let interval;
-    if (step === 5 && requestStatus !== "CERTIFICATE_ISSUED" && !certificateNo && id) {
-      interval = setInterval(async () => {
-        try {
-          const requests = await fetchMyRequests();
-          const currentReq = requests.find((r) => String(r.id) === String(id));
-          if (currentReq) {
-            if (currentReq.status === "CERTIFICATE_ISSUED") {
-              setRequestStatus("CERTIFICATE_ISSUED");
-              if (currentReq.certificateNo) setCertificateNo(currentReq.certificateNo);
-            } else if (currentReq.status === "MVC_MEC_VALIDATED") {
-              setRequestStatus("MVC_MEC_VALIDATED");
-              handleDciVerification();
-            }
-          }
-        } catch (e) {
-          console.error("Polling error:", e);
+    if (step === 3 && requestStatus !== "CERTIFICATE_ISSUED" && !certificateNo && id) {
+      const timer = setTimeout(() => {
+        if (requestStatus !== "MVC_MEC_VALIDATED") {
+          setRequestStatus("MVC_MEC_VALIDATED");
+          handleDciVerification();
         }
-      }, 5000); // Poll every 5 seconds
+      }, 3000);
+      return () => clearTimeout(timer);
     }
-    return () => clearInterval(interval);
   }, [step, requestStatus, certificateNo, id]);
 
   useEffect(() => {
@@ -370,22 +356,44 @@ export const AgentClearanceRequestFlow = () => {
     setValidationErrors((prev) => ({ ...prev, [field]: false }));
   };
 
-  const {
-    ocrUploadState,
-    handleOrUpload,
-    handleCrUpload,
-    handleMvcUpload,
-    handleMecUpload,
-  } = useOrCrOcr({
-    orCr, crCr, mvcData, mecData,
-    setOrCr, setCrCr, setMvcData, setMecData,
-    setOrPreview, setCrPreview, setMvcPreview, setMecPreview,
-    setMvcFileName, setMecFileName,
-    setValidationErrors,
-    setCitizenValidationState, setCitizenValidationMessage,
-    saveCitizenRequest,
-    VALIDATION_STATE,
-  });
+  // Mock OR/CR Uploads
+  const mockOcrUploadState = {
+    or: { status: OCR_STATUS.SUCCESS, message: "" },
+    cr: { status: OCR_STATUS.SUCCESS, message: "" },
+    mvc: { status: OCR_STATUS.IDLE, message: "" },
+    mec: { status: OCR_STATUS.IDLE, message: "" },
+  };
+
+  const MOCK_VEHICLE_DATA = {
+    plateNumber: "ABC1234",
+    mvFileNumber: "1301-00000012345",
+    engineNumber: "ENG123456789",
+    chassisNumber: "CHAS123456789",
+    make: "TOYOTA",
+    series: "VIOS",
+    yearModel: "2020",
+    color: "RED",
+    classification: "PRIVATE",
+    vehicleType: "CAR",
+  };
+
+  const mockHandleOrUpload = (file) => {
+    const url = URL.createObjectURL(file);
+    setOrPreview(url);
+    setOrCr((prev) => ({ ...prev, ...MOCK_VEHICLE_DATA }));
+  };
+
+  const mockHandleCrUpload = (file) => {
+    const url = URL.createObjectURL(file);
+    setCrPreview(url);
+    setCrCr((prev) => ({ ...prev, ...MOCK_VEHICLE_DATA }));
+  };
+
+  const ocrUploadState = mockOcrUploadState;
+  const handleOrUpload = mockHandleOrUpload;
+  const handleCrUpload = mockHandleCrUpload;
+  const handleMvcUpload = () => {};
+  const handleMecUpload = () => {};
 
   async function saveCitizenRequest(overrides = {}) {
     const isExtracting = (val) => !val || val === "Extracting...";
@@ -418,17 +426,31 @@ export const AgentClearanceRequestFlow = () => {
       ...overrides,
     };
 
-    if (onSaveRequest) {
-      const resObj = await onSaveRequest(record);
-      const savedId = resObj?.id || resObj;
-      if (savedId && !id) { setId(savedId); record.id = savedId; }
-      if (resObj?.certificateNo) {
-        setCertificateNo(resObj.certificateNo);
-        record.certificateNo = resObj.certificateNo;
-        record.clearanceReferenceNo = resObj.certificateNo;
-        record.clearanceStatus = "CERTIFICATE_ISSUED";
-      }
+    // MOCK BEHAVIOR: Save directly to localStorage
+    const savedRequests = JSON.parse(localStorage.getItem('dci_mock_requests') || '[]');
+    const existingIndex = savedRequests.findIndex(r => String(r.id) === String(record.id));
+    
+    if (!record.id) {
+      const newId = "DCI-REQ-" + Math.floor(Math.random() * 1000000);
+      record.id = newId;
+      setId(newId);
     }
+    
+    if (record.status === "CERTIFICATE_ISSUED" && !record.certificateNo) {
+      const mockCertNo = "DCI-CERT-" + Math.floor(Math.random() * 10000);
+      record.certificateNo = mockCertNo;
+      record.clearanceReferenceNo = mockCertNo;
+      record.clearanceStatus = "CERTIFICATE_ISSUED";
+      setCertificateNo(mockCertNo);
+    }
+
+    if (existingIndex >= 0) {
+      savedRequests[existingIndex] = { ...savedRequests[existingIndex], ...record };
+    } else {
+      savedRequests.push(record);
+    }
+    
+    localStorage.setItem('dci_mock_requests', JSON.stringify(savedRequests));
     return record;
   }
 
@@ -592,9 +614,7 @@ export const AgentClearanceRequestFlow = () => {
     setIsVerifyingDocuments(true);
     try {
       if (!voucherAssigned) {
-        const profile = JSON.parse(localStorage.getItem("userProfile") || "{}");
-        const userId = localStorage.getItem("userId") || profile.id;
-        const inventory = await voucherInventoryService.fetchAgentInventory(userId);
+        const inventory = JSON.parse(localStorage.getItem("mock_agent_vouchers") || "[]");
         const available = inventory.find(
           (v) => v.inventoryStatus === "AVAILABLE" || v.status === "AVAILABLE",
         );
@@ -628,10 +648,11 @@ export const AgentClearanceRequestFlow = () => {
       let assignedVoucherCode = voucherCode;
       let assignedVoucherId = null;
 
+      // MOCK BEHAVIOR: Simulate verification delay
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
       if (!voucherAssigned) {
-        const profile = JSON.parse(localStorage.getItem("userProfile") || "{}");
-        const userId = localStorage.getItem("userId") || profile.id;
-        const inventory = await voucherInventoryService.fetchAgentInventory(userId);
+        const inventory = JSON.parse(localStorage.getItem("mock_agent_vouchers") || "[]");
         const available = inventory.find(
           (v) => v.inventoryStatus === "AVAILABLE" || v.status === "AVAILABLE",
         );
@@ -640,28 +661,37 @@ export const AgentClearanceRequestFlow = () => {
         }
         assignedVoucherCode = available.voucherCode;
         assignedVoucherId = available.voucherId || available.id;
+
+        // Mark consumed locally
+        const updatedInventory = inventory.map(v => 
+          (v.voucherId || v.id) === assignedVoucherId 
+            ? { ...v, inventoryStatus: "CONSUMED" }
+            : v
+        );
+        localStorage.setItem("mock_agent_vouchers", JSON.stringify(updatedInventory));
       }
 
-      const payload = {
-        mvFileNumber: (crCr.mvFileNumber || orCr.mvFileNumber || "").trim().toUpperCase(),
-        plateNumber: (crCr.plateNumber || orCr.plateNumber || "").trim().toUpperCase(),
-        engineNumber: (crCr.engineNumber || orCr.engineNumber || "").trim().toUpperCase(),
-        chassisNumber: (crCr.chassisNumber || orCr.chassisNumber || "").trim().toUpperCase(),
+      // MOCK BEHAVIOR: Always verify successfully
+      const vvsData = {
+        verificationStatus: "VERIFIED",
+        verificationId: "DCI-VERIFICATION-" + Math.floor(Math.random() * 10000),
+        ownerFirstName: "JUAN",
+        ownerLastName: "DELA CRUZ",
+        ownerMiddleName: "M",
+        ownerAddress: "123 DCI STREET, MANILA",
+        make: crCr.make || orCr.make || "TOYOTA",
+        series: crCr.series || orCr.series || "VIOS",
+        yearModel: crCr.yearModel || orCr.yearModel || "2020",
+        color: crCr.color || orCr.color || "RED",
+        classification: crCr.classification || orCr.classification || "PRIVATE",
+        denomination: crCr.vehicleType || orCr.vehicleType || "CAR",
+        engineNumber: crCr.engineNumber || orCr.engineNumber || "ENG123456789",
+        chassisNumber: crCr.chassisNumber || orCr.chassisNumber || "CHAS123456789",
+        plateNumber: crCr.plateNumber || orCr.plateNumber || "ABC1234",
+        mvFileNo: crCr.mvFileNumber || orCr.mvFileNumber || "1301-00000012345",
       };
 
-      const verifyRes = await verificationService.verify(payload);
-      const vvsData = verifyRes?.data || {};
-
-      if (vvsData.verificationStatus !== "VERIFIED") {
-        throw new Error(vvsData.failureReason || "No matching verified vehicle record found in VVS system.");
-      }
-
-      const ownerName =
-        [vvsData.ownerFirstName, vvsData.ownerMiddleName, vvsData.ownerLastName]
-          .filter(Boolean)
-          .join(" ") ||
-        vvsData.ownerName ||
-        "Unknown Owner";
+      const ownerName = "JUAN M DELA CRUZ";
 
       setTransactionVerified(true);
       setVerificationId(vvsData.verificationId || "");
@@ -688,11 +718,7 @@ export const AgentClearanceRequestFlow = () => {
       }
     } catch (error) {
       setVerificationFailed(true);
-      const errMsg =
-        error?.response?.data?.failureReason ||
-        error?.response?.data?.error ||
-        error?.message ||
-        "Verification failed.";
+      const errMsg = error?.message || "Verification failed.";
       setVerificationError(errMsg);
 
       try {
@@ -727,29 +753,7 @@ export const AgentClearanceRequestFlow = () => {
     }
   }, [step, transactionVerified, isVerifyingDocuments, verificationFailed, id, selectedRequest, requestStatus, orCr, crCr]);
 
-  // Polling for external verification status (HPG, DCI)
-  useEffect(() => {
-    if (step !== 3 || !transactionVerified || requestStatus === "CERTIFICATE_ISSUED" || !id) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const data = await fetchRequestById(id);
-        if (data && data.status) {
-          setRequestStatus(data.status);
-          if (data.hpgVerified || data.status === "HPG_VERIFIED" || data.status === "MVC_MEC_VALIDATED" || data.status === "CERTIFICATE_ISSUED") {
-            setHpgVerified(true);
-          }
-          if (data.certificateNo) {
-            setCertificateNo(data.certificateNo);
-          }
-        }
-      } catch (error) {
-        console.error("Failed to poll request status:", error);
-      }
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [step, transactionVerified, requestStatus, id]);
+  // Polling removed (replaced by mock domino effect above)
 
   const getTicketPrefilledData = () => {
     const vehicleInfo = {
@@ -782,35 +786,11 @@ export const AgentClearanceRequestFlow = () => {
   };
 
   const handleCreateTicket = async (formData) => {
-    const { vehicleSubType, concernType } = formData;
-    const typeLabel =
-      vehicleSubType === "dataMismatch" ? "Data Mismatch"
-        : vehicleSubType === "vehicleNotFound" ? "Vehicle Not Found"
-        : concernType === "other" ? "Other"
-        : concernType
-          ? concernType.charAt(0).toUpperCase() + concernType.slice(1)
-          : "General";
-
     const referenceNumber = generateRefNumber();
-    const created = await ticketService.create({
-      referenceNumber,
-      requestedBy: formData.requestedBy?.name ?? "",
-      type: typeLabel,
-      status: "PENDING",
-      address: formData.description ?? "",
-      name: formData.requestedBy?.name ?? "",
-      processedBy: null,
-      dateRequested: new Date().toISOString(),
-      dateUpdated: new Date().toISOString(),
-      escalated: "NO",
-      roleBased: role?.toUpperCase() ?? null,
-      plateNo: formData.vehicleInfo?.plateNo ?? null,
-      mvFileNo: formData.vehicleInfo?.mvFileNo ?? null,
-      make: formData.vehicleInfo?.make ?? null,
-      series: formData.vehicleInfo?.model ?? null,
-      engineNo: formData.vehicleInfo?.engineNo ?? null,
-      chassisNo: formData.vehicleInfo?.chassisNo ?? null,
-    });
+    // MOCK BEHAVIOR: Simulate ticket creation
+    await new Promise(resolve => setTimeout(resolve, 500));
+    const created = { id: Date.now() };
+
     if (created) {
       showSuccessAlert("Ticket Submitted", `Your support ticket has been submitted. Reference: ${referenceNumber}`);
       setIsTicketModalOpen(false);
@@ -821,25 +801,8 @@ export const AgentClearanceRequestFlow = () => {
   const handleDataMismatchSubmit = async ({ crAttachment }) => {
     const referenceNumber = generateRefNumber();
     try {
-      await ticketService.create({
-        referenceNumber,
-        requestedBy: role || "Agent",
-        type: "Data Mismatch",
-        status: "PENDING",
-        address: crAttachment,
-        name: role || "Agent",
-        processedBy: null,
-        dateRequested: new Date().toISOString(),
-        dateUpdated: new Date().toISOString(),
-        escalated: "NO",
-        roleBased: role?.toUpperCase() ?? null,
-        plateNo: orCr.plateNumber ?? null,
-        mvFileNo: crCr.mvFileNumber ?? null,
-        make: orCr.make ?? null,
-        series: orCr.series ?? null,
-        engineNo: orCr.engineNumber ?? null,
-        chassisNo: crCr.chassisNumber ?? null,
-      });
+      // MOCK BEHAVIOR: Simulate ticket creation
+      await new Promise(resolve => setTimeout(resolve, 500));
       showSuccessAlert("Ticket Submitted", `Data Mismatch ticket ${referenceNumber} has been created.`);
       setIsDataMismatchModalOpen(false);
     } catch {
