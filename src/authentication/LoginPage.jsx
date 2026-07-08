@@ -174,7 +174,6 @@ export const LoginPage = () => {
                 <div className="space-y-4">
                   <p className="text-xs text-gray-500 leading-relaxed">
                     We've sent a 6-digit one-time password (OTP) code to your registered email address <strong>{emailForOtp}</strong>.<br />
-                    Please use the mock verification code: <strong className="text-primary-600">123456</strong> to complete your login.
                   </p>
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-1">
