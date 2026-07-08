@@ -296,7 +296,9 @@ export const MyRequestsPage = () => {
                         <StatusBadge done={clearanceDone(req)} />
                       </div>
                     </td>
-                    <td className="py-3 text-gray-500 text-xs">{req.dateCreated || "-"}</td>
+                    <td className="py-3 text-gray-500 text-xs">
+                      {req.dateCreated ? new Date(req.dateCreated).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : "-"}
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -895,12 +895,13 @@ export function parseFields(
       lineScan: lineScan.mvccControlNo,
       coord: coord.mvccControlNo,
       regex: regex.mvccControlNo,
+      specific: (mvccSpecific?.mvccControlNo || mecSpecific?.mvccControlNo) ?? "",
     }),
     ownerName: pickField("OWNER NAME", isLikelyOwnerName, {
       lineScan: lineScan.ownerName,
       coord: coord.ownerName,
       regex: regex.ownerName,
-      specific: mecSpecific?.ownerName ?? "",
+      specific: (mvccSpecific?.ownerName || mecSpecific?.ownerName) ?? "",
     }),
     address: pickField("ADDRESS", (v) => v.length >= 5, {
       lineScan: lineScan.address,
@@ -913,20 +914,20 @@ export function parseFields(
       coord: coord.makeBrand,
       regex: regex.makeBrand,
       lineScan: lineScan.makeBrand,
-      specific: mecSpecific?.makeBrand ?? "",
+      specific: (mvccSpecific?.makeBrand || mecSpecific?.makeBrand) ?? "",
     }),
     color: pickField("COLOR", isLikelyColor, {
       lineScan: lineScan.color,
       coord: coord.color,
       regex: regex.color,
-      specific: mecSpecific?.color ?? "",
+      specific: (mvccSpecific?.color || mecSpecific?.color) ?? "",
     }),
     plateNo: pickField("PLATE NO.", isLikelyPlate, {
       lineScan: lineScan.plate,
       stacked: stacked.plate,
       coord: coord.plate,
       regex: regex.plate,
-      specific: mecSpecific?.plateNo ?? "",
+      specific: (mvccSpecific?.plateNo || mecSpecific?.plateNo) ?? "",
     }),
     engineNo: pickField("ENGINE NO.", isLikelyEngine, {
       findings: findings.engine,
@@ -934,7 +935,7 @@ export function parseFields(
       lineScan: lineScan.engine,
       stacked: stacked.engine,
       regex: regex.engine,
-      specific: mecSpecific?.engineNo ?? "",
+      specific: (mvccSpecific?.engineNo || mecSpecific?.engineNo) ?? "",
     }),
     chassisNo: pickField("CHASSIS NO.", isLikelyChassis, {
       findings: findings.chassis,
@@ -942,12 +943,12 @@ export function parseFields(
       lineScan: lineScan.chassis,
       stacked: stacked.chassis,
       regex: regex.chassis,
-      specific: mecSpecific?.chassisNo ?? "",
+      specific: (mvccSpecific?.chassisNo || mecSpecific?.chassisNo) ?? "",
     }),
     date: pickField(
       "DATE",
       isLikelyDate,
-      { lineScan: lineScan.date, coord: coord.date, regex: regex.date },
+      { lineScan: lineScan.date, coord: coord.date, regex: regex.date, specific: mvccSpecific?.date ?? "" },
       true,
     ),
     yearModel: pickField("YEAR MODEL", isLikelyYearModel, {
@@ -959,6 +960,7 @@ export function parseFields(
       lineScan: lineScan.mvFileNo,
       coord: coord.mvFileNo,
       regex: regex.mvFileNo,
+      specific: mvccSpecific?.mvFileNo ?? "",
     }),
     hpgOffice: pickField("HPG OFFICE", (v) => v.length >= 3, {
       regex: regex.hpgOffice,

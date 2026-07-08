@@ -340,6 +340,9 @@ export function useOcrForm(type = "mvcc") {
           mvccControlNo: (fields.mvccControlNo || "").toUpperCase(),
           mvccDateIssued: normalizeDateForInput(fields.date) || "",
           mvFileNo: (fields.mvFileNo || "").toUpperCase(),
+          engineNo: (fields.engineNo || prev.engineNo).toUpperCase(),
+          chassisNo: (fields.chassisNo || prev.chassisNo).toUpperCase(),
+          color: (fields.color || prev.color).toUpperCase(),
           hpgOffice: (fields.hpgOffice || "").toUpperCase(),
           purpose: (fields.purpose || "").toUpperCase(),
         }));
@@ -568,6 +571,9 @@ export function useOcrForm(type = "mvcc") {
         "hpgOffice",
         "purpose",
         "makeBrand",
+        "engineNo",
+        "chassisNo",
+        "color",
       ]
     : ["orNumber", "orDate", "amountPaid", "ltoBranch", "ownerName"];
 

@@ -1,6 +1,6 @@
 import type { OcrWord } from "./types";
 import { FIELD_ALIASES } from "./constants";
-import { extractAroundLabel, findRightText } from "./extractors";
+import { extractAroundLabel, findRightText, findBelowText } from "./extractors";
 import { isLabelLine, toCanonical } from "./normalize";
 import {
   isLikelyMvrrNumber,
@@ -9,6 +9,15 @@ import {
   isLikelyTin,
   isLikelyMeNumber,
   isLikelyOfficerName,
+  isLikelyControlNo,
+  isLikelyOwnerName,
+  isLikelyMakeBrand,
+  isLikelyColor,
+  isLikelyPlate,
+  isLikelyEngine,
+  isLikelyChassis,
+  isLikelyDate,
+  isLikelyMvFileNo,
 } from "./validators";
 
 function extractMultiLineAddress(lines: string[], aliases: readonly string[]): string {
@@ -28,22 +37,39 @@ function extractMultiLineAddress(lines: string[], aliases: readonly string[]): s
 }
 
 export function extractMVCCFields(lines: string[], words: OcrWord[]) {
+  const getField = (aliases: readonly string[], validator: (v: string) => boolean) => {
+    return (
+      extractAroundLabel(lines, aliases, validator) ||
+      findBelowText(aliases, words, validator) ||
+      findRightText(aliases, words, validator)
+    );
+  };
+
+  const getGridField = (aliases: readonly string[], validator: (v: string) => boolean) => {
+    return (
+      findBelowText(aliases, words, validator) ||
+      extractAroundLabel(lines, aliases, validator) ||
+      findRightText(aliases, words, validator)
+    );
+  };
+
   return {
-    mvrrNumber:
-      extractAroundLabel(lines, FIELD_ALIASES.mvrrNumber, isLikelyMvrrNumber)
-      || findRightText(FIELD_ALIASES.mvrrNumber, words, isLikelyMvrrNumber),
-    crNumber:
-      extractAroundLabel(lines, FIELD_ALIASES.crNumber, isLikelyCrNumber)
-      || findRightText(FIELD_ALIASES.crNumber, words, isLikelyCrNumber),
-    sbrNo:
-      extractAroundLabel(lines, FIELD_ALIASES.sbrNo, isLikelySbrNo)
-      || findRightText(FIELD_ALIASES.sbrNo, words, isLikelySbrNo),
+    mvccControlNo: getField(FIELD_ALIASES.mvccControlNo, isLikelyControlNo),
+    ownerName: getField(FIELD_ALIASES.ownerName, isLikelyOwnerName),
+    makeBrand: getGridField(FIELD_ALIASES.makeBrand, isLikelyMakeBrand),
+    color: getGridField(FIELD_ALIASES.color, isLikelyColor),
+    plateNo: getGridField(FIELD_ALIASES.plateNo, isLikelyPlate),
+    engineNo: getGridField(FIELD_ALIASES.engineNo, isLikelyEngine),
+    chassisNo: getGridField(FIELD_ALIASES.chassisNo, isLikelyChassis),
+    date: getField(FIELD_ALIASES.date, isLikelyDate),
+    mvFileNo: getGridField(FIELD_ALIASES.mvFileNo, isLikelyMvFileNo),
+    mvrrNumber: getGridField(FIELD_ALIASES.mvrrNumber, isLikelyMvrrNumber),
+    crNumber: getGridField(FIELD_ALIASES.crNumber, isLikelyCrNumber),
+    sbrNo: getGridField(FIELD_ALIASES.sbrNo, isLikelySbrNo),
     acquiredFrom: extractMultiLineAddress(lines, FIELD_ALIASES.acquiredFrom),
-    tin:
-      extractAroundLabel(lines, FIELD_ALIASES.tin, isLikelyTin)
-      || findRightText(FIELD_ALIASES.tin, words, isLikelyTin),
-    processingOfficer: extractAroundLabel(lines, FIELD_ALIASES.processingOfficer, isLikelyOfficerName),
-    clearanceOfficer: extractAroundLabel(lines, FIELD_ALIASES.clearanceOfficer, isLikelyOfficerName),
-    meNumber: extractAroundLabel(lines, FIELD_ALIASES.meNumber, isLikelyMeNumber),
+    tin: getField(FIELD_ALIASES.tin, isLikelyTin),
+    processingOfficer: getField(FIELD_ALIASES.processingOfficer, isLikelyOfficerName),
+    clearanceOfficer: getField(FIELD_ALIASES.clearanceOfficer, isLikelyOfficerName),
+    meNumber: getField(FIELD_ALIASES.meNumber, isLikelyMeNumber),
   };
 }
