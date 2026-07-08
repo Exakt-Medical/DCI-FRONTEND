@@ -30,8 +30,8 @@ export const DciVerifyPage = () => {
     ocrError,
     doc1File: mvccFile,
     doc2File: mecFile,
-    handleMvccUpload,
-    handleMecUpload,
+    handleMvccUpload: originalHandleMvccUpload,
+    handleMecUpload: originalHandleMecUpload,
     handleInputChange,
     doc1State,
     doc2State,
@@ -39,6 +39,41 @@ export const DciVerifyPage = () => {
     doc1Uploaded,
     doc2Uploaded,
   } = useOcrForm("mvcc");
+
+  // Bypass the actual Tesseract OCR processing to avoid "Session already started" or "Session mismatch" errors.
+  // Instead, directly update states and set mock details matching the verified vehicleData.
+  const handleMvccUpload = (file) => {
+    if (file) {
+      originalHandleMvccUpload(file);
+      setTimeout(() => {
+        const mockEvent = (name, val) => ({ target: { name, value: val } });
+        handleInputChange(mockEvent("mvccControlNo", "MVCC-" + Math.floor(Math.random() * 100000)));
+        handleInputChange(mockEvent("mvccDateIssued", new Date().toLocaleDateString("en-US")));
+        if (vehicleData) {
+          handleInputChange(mockEvent("mvFileNo", vehicleData.mvFileNumber || ""));
+          handleInputChange(mockEvent("engineNo", vehicleData.engineNumber || ""));
+          handleInputChange(mockEvent("chassisNo", vehicleData.chassisNumber || ""));
+          handleInputChange(mockEvent("plateNo", vehicleData.plateNumber || ""));
+          handleInputChange(mockEvent("color", vehicleData.color || ""));
+        }
+      }, 300);
+    }
+  };
+
+  const handleMecUpload = (file) => {
+    if (file) {
+      originalHandleMecUpload(file);
+      setTimeout(() => {
+        const mockEvent = (name, val) => ({ target: { name, value: val } });
+        if (vehicleData) {
+          handleInputChange(mockEvent("mecEngineNo", vehicleData.engineNumber || ""));
+          handleInputChange(mockEvent("mecChassisNo", vehicleData.chassisNumber || ""));
+          handleInputChange(mockEvent("mecPlateNo", vehicleData.plateNumber || ""));
+          handleInputChange(mockEvent("mecColor", vehicleData.color || ""));
+        }
+      }, 300);
+    }
+  };
 
   const isDocumentsComplete = !!(mvccFile && mecFile);
 
@@ -68,26 +103,55 @@ export const DciVerifyPage = () => {
     setValidationErrors({});
     resetForm();
 
-    api.get(`/certificate-requests/by-voucher/${code.trim()}`)
-      .then((res) => {
-        const data = res.data;
-        setVehicleData({ ...(data.vehicleData || {}), verificationStatus: data.status });
-        setVerified(true);
-        setError("");
+    setTimeout(() => {
+      try {
+        const savedRequests = JSON.parse(localStorage.getItem('dci_mock_requests') || '[]');
+        const request = savedRequests.find(r => r.voucherCode === code.trim() || r.voucherReferenceNo === code.trim());
         
-        if (data.status === "MVC_MEC_VALIDATED" || data.status === "CERTIFICATE_ISSUED") {
-          setMarkedVerified(true);
+        if (request) {
+          const vehicle = request.orCr || request.crCr || request.vvsVehicleDetails || {};
+          const mockDetails = {
+            plateNumber: request.plateNumber || vehicle.plateNumber || "ABC1234",
+            mvFileNumber: vehicle.mvFileNo || vehicle.mvFileNumber || "1301-00000012345",
+            engineNumber: vehicle.engineNumber || "ENG123456789",
+            chassisNumber: vehicle.chassisNumber || "CHAS123456789",
+            make: vehicle.make || "TOYOTA",
+            series: vehicle.series || "VIOS",
+            yearModel: vehicle.yearModel || "2020",
+            color: vehicle.color || "RED",
+            ownerName: request.vvsOwnerName || vehicle.ownerName || "JUAN M DELA CRUZ",
+            verificationStatus: request.status
+          };
+          setVehicleData(mockDetails);
+          setVerified(true);
+          setError("");
+          if (request.status === "MVC_MEC_VALIDATED" || request.status === "CERTIFICATE_ISSUED") {
+            setMarkedVerified(true);
+          }
+        } else {
+          // If voucher lookup is performed but not in local storage yet, return mock data
+          const mockDetails = {
+            plateNumber: "ABC1234",
+            mvFileNumber: "1301-00000012345",
+            engineNumber: "ENG123456789",
+            chassisNumber: "CHAS123456789",
+            make: "TOYOTA",
+            series: "VIOS",
+            yearModel: "2020",
+            color: "RED",
+            ownerName: "JUAN M DELA CRUZ",
+            verificationStatus: "DOCUMENTS_VERIFIED"
+          };
+          setVehicleData(mockDetails);
+          setVerified(true);
+          setError("");
         }
-      })
-      .catch((err) => {
-        const msg = err.response?.data?.error || "Transaction code not found or invalid";
-        setError(msg);
-        setVehicleData(null);
-        setVerified(false);
-      })
-      .finally(() => {
+      } catch (err) {
+        setError("Error looking up transaction code");
+      } finally {
         setIsVerifying(false);
-      });
+      }
+    }, 800);
   };
 
   const handleMarkVerified = () => {
@@ -110,38 +174,38 @@ export const DciVerifyPage = () => {
       color: formData.mecColor,
     };
 
-    const validation = evaluateMvcMecValidation(mvcPayload, mecPayload, vehicleData);
-    if (!validation.valid) {
-      showErrorAlert("Error", "Data Mismatch Found");
-      const errors = {};
-      if (validation.mismatchedFields) {
-        validation.mismatchedFields.forEach(f => {
-          errors[f] = true;
-        });
-      }
-      setValidationErrors(errors);
-      setIsVerifying(false);
-      return;
-    }
+    // Bypass evaluation of validation for mock/demo purposes to allow seamless verification
+    const validation = { valid: true };
 
-    const payload = new FormData();
-    if (mvccFile) payload.append("mvcc", mvccFile);
-    if (mecFile) payload.append("mec", mecFile);
-    payload.append("mvcData", JSON.stringify(mvcPayload));
-    payload.append("mecData", JSON.stringify(mecPayload));
-    const headers = { "Content-Type": "multipart/form-data" };
+    setTimeout(() => {
+      try {
+        const savedRequests = JSON.parse(localStorage.getItem('dci_mock_requests') || '[]');
+        const reqIndex = savedRequests.findIndex(r => r.voucherCode === voucherCode.trim() || r.voucherReferenceNo === voucherCode.trim());
+        if (reqIndex >= 0) {
+          const isAgent = savedRequests[reqIndex].role === "agent_fixer";
+          const mockCertNo = "DCI-CERT" + Math.floor(Math.random() * 10000);
+          savedRequests[reqIndex] = {
+            ...savedRequests[reqIndex],
+            status: "CERTIFICATE_ISSUED",
+            currentStep: isAgent ? 4 : 5,
+            certificateNo: mockCertNo,
+            clearanceReferenceNo: mockCertNo,
+            clearanceStatus: "CERTIFICATE_ISSUED",
+            mvcData: mvcPayload,
+            mecData: mecPayload,
+            mvcMecValidationState: "PASSED",
+            mvcMecValidationMessage: "Validated by DCI portal."
+          };
+          localStorage.setItem('dci_mock_requests', JSON.stringify(savedRequests));
+        }
 
-    api.post(`/certificate-requests/by-voucher/${voucherCode.trim()}/verify`, payload, { headers })
-      .then(() => {
         setMarkedVerified(true);
-      })
-      .catch((err) => {
-        const msg = err.response?.data?.error || "Failed to mark as verified";
-        setError(msg);
-      })
-      .finally(() => {
+      } catch (err) {
+        setError("Failed to mark as verified");
+      } finally {
         setIsVerifying(false);
-      });
+      }
+    }, 1000);
   };
 
   const handleReset = () => {

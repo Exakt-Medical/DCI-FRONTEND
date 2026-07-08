@@ -646,8 +646,7 @@ export const CitizenClearanceRequestFlow = () => {
   const handleVerifyVehicle = async () => {
     setIsVerifyingDocuments(true);
     try {
-      // Domino 1: Wait 3 seconds -> Vehicle Found
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       const vvsData = {
         verificationStatus: "VERIFIED",
@@ -670,7 +669,7 @@ export const CitizenClearanceRequestFlow = () => {
 
       const ownerName = "JUAN M DELA CRUZ";
 
-      setIsVerifyingDocuments(false); // Stop loading to show "LTO Vehicle Found"
+      setIsVerifyingDocuments(false);
       setTransactionVerified(true);
       setVerificationId(vvsData.verificationId);
       setVvsOwnerName(ownerName);
@@ -685,33 +684,6 @@ export const CitizenClearanceRequestFlow = () => {
       });
       setRequestStatus("DOCUMENTS_VERIFIED");
       showSuccessAlert("Vehicle Found", "Vehicle details verified successfully.");
-
-      // Domino 2: Wait 3 seconds -> HPG Verified
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      setHpgVerified(true);
-      await saveCitizenRequest({
-        currentStep: 4,
-        status: "HPG_VERIFIED",
-        hpgVerified: true,
-      });
-      setRequestStatus("HPG_VERIFIED");
-      showSuccessAlert("HPG Verified", "Vehicle cleared by HPG.");
-
-      // Domino 3: Wait 3 seconds -> DCI Cleared
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      const mockCertNo = "DCI-CERT" + Math.floor(Math.random() * 10000);
-      setCertificateNo(mockCertNo);
-
-      await saveCitizenRequest({
-        currentStep: 4,
-        status: "CERTIFICATE_ISSUED",
-        certificateNo: mockCertNo,
-        clearanceReferenceNo: mockCertNo,
-        clearanceStatus: "CERTIFICATE_ISSUED"
-      });
-      setRequestStatus("CERTIFICATE_ISSUED");
-
-      showSuccessAlert("DCI Cleared", "DCI clearance validation complete. Certificate issued.");
     } catch (error) {
       setVerificationFailed(true);
       setVerificationError("Verification failed.");
@@ -748,8 +720,35 @@ export const CitizenClearanceRequestFlow = () => {
 
   // Polling for external verification status (HPG, DCI)
   useEffect(() => {
-    // MOCK BEHAVIOR: No polling needed
-  }, [step, transactionVerified, requestStatus, id]);
+    if (step !== 4 || !id) return;
+    
+    const interval = setInterval(() => {
+      try {
+        const savedRequests = JSON.parse(localStorage.getItem('dci_mock_requests') || '[]');
+        const updated = savedRequests.find(r => r.id === id);
+        if (updated) {
+          if (updated.status === "HPG_VERIFIED" && requestStatus !== "HPG_VERIFIED") {
+            setHpgVerified(true);
+            setRequestStatus("HPG_VERIFIED");
+            showSuccessAlert("HPG Verified", "Vehicle cleared by HPG.");
+          } else if (updated.status === "CERTIFICATE_ISSUED" || updated.status === "MVC_MEC_VALIDATED") {
+            setHpgVerified(true);
+            if (updated.certificateNo) {
+              setCertificateNo(updated.certificateNo);
+            }
+            setRequestStatus(updated.status);
+            if (requestStatus !== updated.status) {
+              showSuccessAlert("DCI Cleared", "DCI clearance validation complete. Certificate issued.");
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Polling error:", err);
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [step, id, requestStatus]);
 
   const getTicketPrefilledData = () => {
     const vehicleInfo = {

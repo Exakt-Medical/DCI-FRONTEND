@@ -267,34 +267,7 @@ export const AgentClearanceRequestFlow = () => {
     if (selectedRequest.mecData) setMecData(selectedRequest.mecData);
   }, [selectedRequest, maxStep, id]);
 
-  // Mock domino effect for HPG verification status when on step 4
-  useEffect(() => {
-    if (step === 3 && !hpgVerified && id) {
-      const timer = setTimeout(() => {
-        setHpgVerified(true);
-        setRequestStatus("HPG_VERIFIED");
-        saveCitizenRequest({
-          currentStep: 4,
-          status: "HPG_VERIFIED",
-          hpgVerified: true
-        });
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [step, hpgVerified, id]);
-
-  // Mock domino effect for DCI verification status when on step 5
-  useEffect(() => {
-    if (step === 3 && requestStatus !== "CERTIFICATE_ISSUED" && !certificateNo && id) {
-      const timer = setTimeout(() => {
-        if (requestStatus !== "MVC_MEC_VALIDATED") {
-          setRequestStatus("MVC_MEC_VALIDATED");
-          handleDciVerification();
-        }
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [step, requestStatus, certificateNo, id]);
+  // Automatic HPG and DCI domino timers removed to align with DCI manual trigger model.
 
   useEffect(() => {
     const handleBeforeUnload = (e) => {
@@ -428,7 +401,6 @@ export const AgentClearanceRequestFlow = () => {
 
     // MOCK BEHAVIOR: Save directly to localStorage
     const savedRequests = JSON.parse(localStorage.getItem('dci_mock_requests') || '[]');
-    const existingIndex = savedRequests.findIndex(r => String(r.id) === String(record.id));
     
     if (!record.id) {
       const newId = "DCI-REQ-" + Math.floor(Math.random() * 1000000);
@@ -444,6 +416,7 @@ export const AgentClearanceRequestFlow = () => {
       setCertificateNo(mockCertNo);
     }
 
+    const existingIndex = savedRequests.findIndex(r => String(r.id) === String(record.id));
     if (existingIndex >= 0) {
       savedRequests[existingIndex] = { ...savedRequests[existingIndex], ...record };
     } else {
@@ -649,7 +622,7 @@ export const AgentClearanceRequestFlow = () => {
       let assignedVoucherId = null;
 
       // MOCK BEHAVIOR: Simulate verification delay
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       if (!voucherAssigned) {
         const inventory = JSON.parse(localStorage.getItem("mock_agent_vouchers") || "[]");
@@ -753,7 +726,37 @@ export const AgentClearanceRequestFlow = () => {
     }
   }, [step, transactionVerified, isVerifyingDocuments, verificationFailed, id, selectedRequest, requestStatus, orCr, crCr]);
 
-  // Polling removed (replaced by mock domino effect above)
+  // Polling for external verification status (HPG, DCI)
+  useEffect(() => {
+    if (step !== 3 || !id) return;
+    
+    const interval = setInterval(() => {
+      try {
+        const savedRequests = JSON.parse(localStorage.getItem('dci_mock_requests') || '[]');
+        const updated = savedRequests.find(r => r.id === id);
+        if (updated) {
+          if (updated.status === "HPG_VERIFIED" && requestStatus !== "HPG_VERIFIED") {
+            setHpgVerified(true);
+            setRequestStatus("HPG_VERIFIED");
+            showSuccessAlert("HPG Verified", "Vehicle cleared by HPG.");
+          } else if (updated.status === "CERTIFICATE_ISSUED" || updated.status === "MVC_MEC_VALIDATED") {
+            setHpgVerified(true);
+            if (updated.certificateNo) {
+              setCertificateNo(updated.certificateNo);
+            }
+            setRequestStatus(updated.status);
+            if (requestStatus !== updated.status) {
+              showSuccessAlert("DCI Cleared", "DCI clearance validation complete. Certificate issued.");
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Polling error:", err);
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [step, id, requestStatus]);
 
   const getTicketPrefilledData = () => {
     const vehicleInfo = {

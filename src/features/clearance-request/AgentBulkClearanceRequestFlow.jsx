@@ -66,57 +66,57 @@ export const AgentBulkClearanceRequestFlow = () => {
     fetchVoucherCount();
   }, []);
 
-  // Mock domino effect for Bulk Flow Steps 3 and 4
+  // Real-time localStorage polling for Bulk Flow status updates
   useEffect(() => {
-    if (step === 3 && queue.some(item => item.status === "VERIFIED")) {
-      const timer = setTimeout(() => {
-        setQueue(prevQueue => prevQueue.map(item => ({ ...item, status: "HPG_VERIFIED" })));
-        
-        // Update in localStorage
+    if (step < 3 || step > 4 || queue.length === 0) return;
+
+    const interval = setInterval(() => {
+      try {
         const savedRequests = JSON.parse(localStorage.getItem('dci_mock_requests') || '[]');
-        const updatedRequests = savedRequests.map(r => {
-          if (queue.find(q => q.backendId === r.id)) {
-            return { ...r, status: "HPG_VERIFIED", currentStep: 4, hpgVerified: true };
-          }
-          return r;
-        });
-        localStorage.setItem('dci_mock_requests', JSON.stringify(updatedRequests));
+        let changed = false;
 
-        showSuccessAlert("HPG Verified", "All vehicles cleared by HPG.");
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
+        const updatedQueue = queue.map(item => {
+          if (!item.backendId) return item;
+          const req = savedRequests.find(r => r.id === item.backendId);
+          if (req) {
+            let newStatus = item.status;
+            let newCertNo = item.certificateNo;
 
-    if (step === 4 && queue.some(item => item.status === "HPG_VERIFIED")) {
-      const timer = setTimeout(() => {
-        setQueue(prevQueue => prevQueue.map(item => {
-          const mockCertNo = "DCI-CERT" + Math.floor(Math.random() * 10000);
-          return { ...item, status: "CERTIFICATE_ISSUED", certificateNo: mockCertNo };
-        }));
+            if (req.status === "HPG_VERIFIED" && item.status !== "HPG_VERIFIED" && item.status !== "CERTIFICATE_ISSUED" && item.status !== "MVC_MEC_VALIDATED") {
+              newStatus = "HPG_VERIFIED";
+              changed = true;
+            } else if ((req.status === "CERTIFICATE_ISSUED" || req.status === "MVC_MEC_VALIDATED") && item.status !== "CERTIFICATE_ISSUED") {
+              newStatus = "CERTIFICATE_ISSUED";
+              newCertNo = req.certificateNo || item.certificateNo || ("DCI-CERT" + Math.floor(Math.random() * 10000));
+              changed = true;
+            }
 
-        // Update in localStorage
-        const savedRequests = JSON.parse(localStorage.getItem('dci_mock_requests') || '[]');
-        const updatedRequests = savedRequests.map(r => {
-          const matched = queue.find(q => q.backendId === r.id);
-          if (matched) {
-            const mockCertNo = "DCI-CERT" + Math.floor(Math.random() * 10000);
-            return { 
-              ...r, 
-              status: "CERTIFICATE_ISSUED", 
-              currentStep: 5, 
-              certificateNo: mockCertNo,
-              clearanceReferenceNo: mockCertNo,
-              clearanceStatus: "CERTIFICATE_ISSUED"
+            return {
+              ...item,
+              status: newStatus,
+              certificateNo: newCertNo
             };
           }
-          return r;
+          return item;
         });
-        localStorage.setItem('dci_mock_requests', JSON.stringify(updatedRequests));
-        
-        showSuccessAlert("DCI Cleared", "DCI clearance validation complete for all vehicles.");
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
+
+        if (changed) {
+          setQueue(updatedQueue);
+          // Show alert if all transitioned to HPG_VERIFIED
+          if (step === 3 && updatedQueue.every(i => i.status === "HPG_VERIFIED")) {
+            showSuccessAlert("HPG Verified", "All vehicles cleared by HPG.");
+          }
+          // Show alert if all transitioned to CERTIFICATE_ISSUED
+          if (step === 4 && updatedQueue.every(i => i.status === "CERTIFICATE_ISSUED")) {
+            showSuccessAlert("DCI Cleared", "DCI clearance validation complete for all vehicles.");
+          }
+        }
+      } catch (err) {
+        console.error("Bulk polling error:", err);
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
   }, [step, queue]);
   
   // Current Form State
