@@ -62,6 +62,7 @@ const KNOWN_COLORS = new Set([
   "CRIMSON",
   "NAVY",
   "AQUA",
+  "NOT AVAILABLE",
 ]);
 
 export function isLikelyColor(value: string): boolean {

@@ -60,9 +60,33 @@ export function findRightText(aliases: readonly string[], words: OcrWord[], vali
 export function findBelowText(aliases: readonly string[], words: OcrWord[], validator?: (v: string) => boolean): string {
   const lw = getLabelWord(aliases, words);
   if (!lw) return "";
-  const xTol = Math.max(90, lw.width * 1.8);
+  const headersOnSameLine = words
+    .filter((w) => Math.abs(w.y - lw.y) < lw.height * 0.8 && (isLabelLine(w.text) || w === lw))
+    .sort((a, b) => a.x - b.x);
+
+  const myIdx = headersOnSameLine.findIndex((w) => w === lw);
+  let minX = -Infinity;
+  let maxX = Infinity;
+
+  if (myIdx > 0) {
+    const prev = headersOnSameLine[myIdx - 1];
+    minX = (prev.x + prev.width + lw.x) / 2;
+  }
+  if (myIdx !== -1 && myIdx < headersOnSameLine.length - 1) {
+    const next = headersOnSameLine[myIdx + 1];
+    maxX = (lw.x + lw.width + next.x) / 2;
+  }
+
+  // Fallback safety bounds if it's the only word on the line
+  if (minX === -Infinity) minX = lw.x - lw.width;
+  if (maxX === Infinity) maxX = lw.x + lw.width * 2.5;
+
   const candidates = words
-    .filter((w) => w.y > lw.y + lw.height * 0.3 && Math.abs(w.x - lw.x) <= xTol && w.y - lw.y < 300)
+    .filter((w) => w.y > lw.y + lw.height * 0.3 && w.y - lw.y < 300)
+    .filter((w) => {
+      const wCenter = w.x + w.width / 2;
+      return wCenter > minX && wCenter < maxX;
+    })
     .sort((a, b) => a.y - b.y);
   for (const c of candidates) {
     if (isVehicleIdLabel(c.text)) break;
@@ -75,9 +99,32 @@ export function findBelowText(aliases: readonly string[], words: OcrWord[], vali
 export function findAboveText(aliases: readonly string[], words: OcrWord[], validator?: (v: string) => boolean): string {
   const lw = getLabelWord(aliases, words);
   if (!lw) return "";
-  const xTol = Math.max(90, lw.width * 1.8);
+  const headersOnSameLine = words
+    .filter((w) => Math.abs(w.y - lw.y) < lw.height * 0.8 && (isLabelLine(w.text) || w === lw))
+    .sort((a, b) => a.x - b.x);
+
+  const myIdx = headersOnSameLine.findIndex((w) => w === lw);
+  let minX = -Infinity;
+  let maxX = Infinity;
+
+  if (myIdx > 0) {
+    const prev = headersOnSameLine[myIdx - 1];
+    minX = (prev.x + prev.width + lw.x) / 2;
+  }
+  if (myIdx !== -1 && myIdx < headersOnSameLine.length - 1) {
+    const next = headersOnSameLine[myIdx + 1];
+    maxX = (lw.x + lw.width + next.x) / 2;
+  }
+
+  if (minX === -Infinity) minX = lw.x - lw.width;
+  if (maxX === Infinity) maxX = lw.x + lw.width * 2.5;
+
   const candidates = words
-    .filter((w) => w.y < lw.y && Math.abs(w.x - lw.x) <= xTol && lw.y - w.y < 250)
+    .filter((w) => w.y < lw.y && lw.y - w.y < 250)
+    .filter((w) => {
+      const wCenter = w.x + w.width / 2;
+      return wCenter > minX && wCenter < maxX;
+    })
     .sort((a, b) => b.y - a.y);
   for (const c of candidates) {
     if (isLabelLine(c.text)) continue;

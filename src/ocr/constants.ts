@@ -22,6 +22,7 @@ export const LABEL_CANONICALS = new Set([
   "COLOUR",
   "TYPEOFFUEL",
   "CLASSIFICATION",
+  "SERIES",
   "VEHICLETYPE",
   "VEHICLECATEGORY",
   "MAKEBRAND",
@@ -131,7 +132,9 @@ export const FIELD_ALIASES = {
     "BRAND",
   ],
   color: ["COLOR", "COLOUR", "VEHICLE COLOR"],
-  vehicleType: ["VEHICLE TYPE", "TYPE", "CLASSIFICATION", "VEHICLE CATEGORY"],
+  classification: ["CLASSIFICATION", "CLASSIFCATION", "CLASSFICATION", "CLASS", "CLASSIFICAT1ON"],
+  series: ["SERIES"],
+  vehicleType: ["VEHICLE TYPE", "VEHICLE CATEGORY"],
   plateNo: [
     "C.S NO./PLATE NO.",
     "CS NO./PLATE NO.",
@@ -151,6 +154,7 @@ export const FIELD_ALIASES = {
     "MOTOR NUMBER",
     "ENGINE",
     "ENGINENUMBER",
+    "PISTON DISPLACEMENT",
   ],
   chassisNo: [
     "CHASSIS NO",
@@ -168,6 +172,11 @@ export const FIELD_ALIASES = {
     "MODEL YEAR",
     "YEAR OF MODEL",
     "YR MODEL",
+    "YEAR REBUILT",
+    "(FOR REBUILT MVS)",
+    "FOR REBUILT MVS",
+    "(NEW/USED IMPORTED CBU)",
+    "NEW/USED IMPORTED CBU",
   ],
   mvFileNo: [
     "MV FILE NO",
@@ -221,7 +230,7 @@ export const FIELD_ALIASES = {
     "TRANSACTING OFFICE",
   ],
   fuelType: ["FUEL TYPE", "TYPE OF FUEL"],
-  grossWeight: ["GROSS WEIGHT", "GROSS WT", "GVW", "VEHICLE WEIGHT"],
+  grossWeight: ["GROSS WEIGHT", "GROSS WT", "GVW", "VEHICLE WEIGHT", "MAX POWER", "MAX POWER (KW)", "(FOR ELECTRIC VEHICLE)", "FOR ELECTRIC VEHICLE"],
   netWeight: ["NET WEIGHT", "NET WT", "NET CAPACITY"],
 } as const;
 

@@ -89,6 +89,18 @@ function isLikelyReceiptNo(value: string): boolean {
   return /^[A-Z0-9\-./]{4,25}$/.test(v);
 }
 
+function isLikelyVehicleType(value: string): boolean {
+  return value.trim().length >= 3;
+}
+
+function stripPaymentBreakdown(val: string): string {
+  if (!val) return val;
+  return val
+    .replace(/(?:LEGAL\s*RESEARCH\s*FEE|SCIENCE\s*TAX(?:.*REGISTRATION)?|MVUC|DELINQUENT\s*REGISTRATION|PHP\s*[\d,.]+).*$/i, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 function isLikelyAmount(value: string): boolean {
   const v = value.trim().replace(/,/g, "");
   return (
@@ -557,10 +569,19 @@ function pickField(
   validator: (v: string) => boolean,
   candidates: Record<string, string>,
   allowFallback = false,
+  prioritizeCoord = false
 ): FieldExtractionEntry {
-  const entries = Object.entries(candidates)
+  let entries = Object.entries(candidates)
     .map(([source, value]) => ({ source, value: value.trim() }))
     .filter((item) => Boolean(item.value));
+
+  if (prioritizeCoord) {
+    const coordIdx = entries.findIndex((e) => e.source === "coord");
+    if (coordIdx > 0) {
+      const coordEntry = entries.splice(coordIdx, 1)[0];
+      entries.unshift(coordEntry);
+    }
+  }
 
   const validEntry = entries.find((item) => validator(item.value));
   const fallback = allowFallback ? (entries[0]?.value ?? "") : "";
@@ -667,7 +688,12 @@ export function parseFields(
       isLikelyMakeBrand,
     ),
     date: extractAroundLabel(lines, FIELD_ALIASES.date, isLikelyDate),
-    vehicleType: extractAroundLabel(lines, FIELD_ALIASES.vehicleType, (v) => v.length >= 3),
+    classification:
+      extractAroundLabel(lines, FIELD_ALIASES.classification, (v) => v.length >= 3) ||
+      extractInlineAfterLabel(lines, FIELD_ALIASES.classification, (v) => v.length >= 3),
+    series:
+      extractAroundLabel(lines, FIELD_ALIASES.series, (v) => v.length >= 2) ||
+      extractInlineAfterLabel(lines, FIELD_ALIASES.series, (v) => v.length >= 2),
     remarks: extractAroundLabel(lines, FIELD_ALIASES.remarks, (v) => v.length >= 3),
     orNumber:
       extractAroundLabel(lines, FIELD_ALIASES.orNumber, isLikelyReceiptNo) ||
@@ -758,9 +784,12 @@ export function parseFields(
       findRightText(FIELD_ALIASES.tin, words, isLikelyTin) ||
       findBelowText(FIELD_ALIASES.tin, words, isLikelyTin) ||
       findAboveText(FIELD_ALIASES.tin, words, isLikelyTin),
-    vehicleType:
-      findRightText(FIELD_ALIASES.vehicleType, words) ||
-      findBelowText(FIELD_ALIASES.vehicleType, words),
+    classification:
+      findRightText(FIELD_ALIASES.classification, words) ||
+      findBelowText(FIELD_ALIASES.classification, words),
+    series:
+      findRightText(FIELD_ALIASES.series, words) ||
+      findBelowText(FIELD_ALIASES.series, words),
     remarks:
       findRightText(FIELD_ALIASES.remarks, words) ||
       findBelowText(FIELD_ALIASES.remarks, words),
@@ -877,6 +906,13 @@ export function parseFields(
     ltoBranch: extractByPatterns(flat, [
       /(?:FIELD\s+OFFICE|LTO\s+BRANCH|LAND\s+TRANSPORTATION\s+OFFICE|TRANSACTING\s+OFFICE)\s*[:\-]\s*([A-Z][A-Z0-9\s.,'-]{2,40})/im,
     ]),
+    classification: extractByPatterns(flat, [
+      /(?:CLASSIFICATION|CLASSIFCATION|CLASSFICATION)\s*[:\-]?\s*([A-Z0-9\s.,'-]+)/im,
+      /(?:CLASS)\s*[:\-]\s*([A-Z0-9\s.,'-]+)/im,
+    ]),
+    series: extractByPatterns(flat, [
+      /(?:SERIES)\s*[:\-]?\s*([A-Z0-9\s.,'-]+)/im,
+    ]),
     fuelType: extractByPatterns(flat, [
       /(?:TYPE\s*OF\s*FUEL|FUEL\s*TYPE)\s*[:\-]?\s*([A-Z]{3,15})/im,
     ]),
@@ -889,6 +925,8 @@ export function parseFields(
   };
 
   const globalBrand = KNOWN_VEHICLE_BRANDS.find((b) => flat.includes(b)) ?? "";
+
+  const isTable = docType === "MVCC" || docType === "CR";
 
   const extraction: FieldExtractionMap = {
     mvccControlNo: pickField("MVCC CONTROL NO.", isLikelyControlNo, {
@@ -915,20 +953,20 @@ export function parseFields(
       regex: regex.makeBrand,
       lineScan: lineScan.makeBrand,
       specific: (mvccSpecific?.makeBrand || mecSpecific?.makeBrand) ?? "",
-    }),
+    }, false, isTable),
     color: pickField("COLOR", isLikelyColor, {
       lineScan: lineScan.color,
       coord: coord.color,
       regex: regex.color,
       specific: (mvccSpecific?.color || mecSpecific?.color) ?? "",
-    }),
+    }, false, isTable),
     plateNo: pickField("PLATE NO.", isLikelyPlate, {
       lineScan: lineScan.plate,
       stacked: stacked.plate,
       coord: coord.plate,
       regex: regex.plate,
       specific: (mvccSpecific?.plateNo || mecSpecific?.plateNo) ?? "",
-    }),
+    }, false, isTable),
     engineNo: pickField("ENGINE NO.", isLikelyEngine, {
       findings: findings.engine,
       coord: coord.engine,
@@ -936,7 +974,7 @@ export function parseFields(
       stacked: stacked.engine,
       regex: regex.engine,
       specific: (mvccSpecific?.engineNo || mecSpecific?.engineNo) ?? "",
-    }),
+    }, false, isTable),
     chassisNo: pickField("CHASSIS NO.", isLikelyChassis, {
       findings: findings.chassis,
       coord: coord.chassis,
@@ -944,7 +982,7 @@ export function parseFields(
       stacked: stacked.chassis,
       regex: regex.chassis,
       specific: (mvccSpecific?.chassisNo || mecSpecific?.chassisNo) ?? "",
-    }),
+    }, false, isTable),
     date: pickField(
       "DATE",
       isLikelyDate,
@@ -955,13 +993,13 @@ export function parseFields(
       lineScan: lineScan.yearModel,
       coord: coord.yearModel,
       regex: regex.yearModel,
-    }),
+    }, false, isTable),
     mvFileNo: pickField("MV FILE NO.", isLikelyMvFileNo, {
       lineScan: lineScan.mvFileNo,
       coord: coord.mvFileNo,
       regex: regex.mvFileNo,
       specific: mvccSpecific?.mvFileNo ?? "",
-    }),
+    }, false, isTable),
     hpgOffice: pickField("HPG OFFICE", (v) => v.length >= 3, {
       regex: regex.hpgOffice,
     }),
@@ -1018,10 +1056,16 @@ export function parseFields(
       specific: mecSpecific?.notedBy ?? "",
       regex: regex.notedBy,
     }),
-    vehicleType: pickField("VEHICLE TYPE", (v) => v.length >= 3, {
-      lineScan: lineScan.vehicleType,
-      coord: coord.vehicleType,
-    }),
+    classification: pickField("CLASSIFICATION", (v) => v.length >= 3, {
+      lineScan: stripPaymentBreakdown(lineScan.classification),
+      coord: stripPaymentBreakdown(coord.classification),
+      regex: stripPaymentBreakdown(regex.classification),
+    }, false, isTable),
+    series: pickField("SERIES", (v) => v.length >= 2, {
+      lineScan: stripPaymentBreakdown(lineScan.series),
+      coord: stripPaymentBreakdown(coord.series),
+      regex: stripPaymentBreakdown(regex.series),
+    }, false, isTable),
     remarks: pickField("REMARKS", (v) => v.length >= 3, {
       lineScan: lineScan.remarks,
       coord: coord.remarks,
@@ -1125,6 +1169,22 @@ export function parseFields(
     extraction.date.selected,
     "| source:",
     extraction.date.source,
+  );
+  console.log(
+    "classification:",
+    extraction.classification.confidence,
+    "| selected:",
+    extraction.classification.selected,
+    "| source:",
+    extraction.classification.source,
+  );
+  console.log(
+    "series:",
+    extraction.series.confidence,
+    "| selected:",
+    extraction.series.selected,
+    "| source:",
+    extraction.series.source,
   );
   console.log(
     "yearModel:",
@@ -1267,6 +1327,8 @@ export function parseFields(
     date: cleanFieldValue("date", extraction.date.selected),
     yearModel: cleanFieldValue("yearModel", extraction.yearModel.selected),
     mvFileNo: cleanFieldValue("mvFileNo", extraction.mvFileNo.selected),
+    classification: cleanFieldValue("classification", extraction.classification.selected),
+    series: cleanFieldValue("series", extraction.series.selected),
     hpgOffice: cleanFieldValue("hpgOffice", extraction.hpgOffice.selected),
     purpose: cleanFieldValue("purpose", extraction.purpose.selected),
     hpgTechnician: cleanFieldValue(
@@ -1293,7 +1355,6 @@ export function parseFields(
     nhqPid: cleanFieldValue("nhqPid", extraction.nhqPid.selected),
     examinedBy: cleanFieldValue("examinedBy", extraction.examinedBy.selected),
     notedBy: cleanFieldValue("notedBy", extraction.notedBy.selected),
-    vehicleType: cleanFieldValue("vehicleType", extraction.vehicleType.selected),
     remarks: cleanFieldValue("remarks", extraction.remarks.selected),
     engineNoStencilled: cleanFieldValue("engineNoStencilled", extraction.engineNoStencilled.selected),
     chassisNoStencilled: cleanFieldValue("chassisNoStencilled", extraction.chassisNoStencilled.selected),

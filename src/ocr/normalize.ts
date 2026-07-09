@@ -21,7 +21,7 @@ export function cleanFieldValue(field: keyof FormFields, value: string): string 
     field === "engineNoStencilled" ||
     field === "chassisNoStencilled"
   ) {
-    return base.replace(/\s+/g, "").replace(/[|!]/g, "1").replace(/[OQD]/g, "0").replace(/[IL]/g, "1");
+    return base.replace(/\s+/g, "").replace(/[|!]/g, "1");
   }
   if (field === "plateNo" || field === "yearModel") {
     return base.replace(/\s+/g, "").replace(/[|!]/g, "1");
@@ -42,6 +42,7 @@ export function repairOcrText(raw: string): string {
     .replace(/\bSILVERIGRAY\b/g, "SILVER/GRAY")
     .replace(/\bREDIBLACK\b/g, "RED/BLACK")
     .replace(/\bBLUEIWHITE\b/g, "BLUE/WHITE")
+    .replace(/\bNPLANPLANPLA\b/g, "NPLA NPLA NPLA")
     .replace(/\b(HONDA|YAMAHA|SUZUKI|KAWASAKI|TOYOTA|MITSUBISHI|ISUZU)(MIC|MC|M\/C|MOTO|MOTOR)\b/g, "$1")
     .replace(/DEPARTMENTOF/g, "DEPARTMENT OF")
     .replace(/PASSENGERCAPACITY/g, "PASSENGER CAPACITY")
