@@ -109,6 +109,13 @@ export const DciVerifyPage = () => {
         const request = savedRequests.find(r => r.voucherCode === code.trim() || r.voucherReferenceNo === code.trim());
         
         if (request) {
+          if (request.status !== "HPG_VERIFIED" && request.status !== "MVC_MEC_VALIDATED" && request.status !== "CERTIFICATE_ISSUED") {
+            setError("This transaction must be verified by HPG first.");
+            setVehicleData(null);
+            setVerified(false);
+            return;
+          }
+
           const vehicle = request.orCr || request.crCr || request.vvsVehicleDetails || {};
           const mockDetails = {
             plateNumber: request.plateNumber || vehicle.plateNumber || "ABC1234",
