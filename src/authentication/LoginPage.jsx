@@ -79,12 +79,7 @@ export const LoginPage = () => {
         localStorage.setItem("rememberMe", "false");
       }
 
-      if (location.state?.from) {
-        handleLogin(returnedRole.toLowerCase(), {});
-        navigate(location.state.from);
-      } else {
-        handleLogin(returnedRole.toLowerCase(), {});
-      }
+      handleLogin(returnedRole.toLowerCase(), {});
       
     } catch (err) {
       const msg = err.message || "Invalid username or password";
@@ -114,12 +109,7 @@ export const LoginPage = () => {
         localStorage.setItem("rememberMe", "false");
       }
 
-      if (location.state?.from) {
-        handleLogin(returnedRole.toLowerCase(), {});
-        navigate(location.state.from);
-      } else {
-        handleLogin(returnedRole.toLowerCase(), {});
-      }
+      handleLogin(returnedRole.toLowerCase(), {});
     } catch (err) {
       const msg = err.message || "Invalid OTP code";
       setError(msg);
