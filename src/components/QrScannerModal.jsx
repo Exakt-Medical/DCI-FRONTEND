@@ -43,13 +43,6 @@ export const QrScannerModal = ({ isOpen, onClose, onScan }) => {
 
             if (!normalizedCode) return;
 
-            if (!normalizedCode.startsWith("VCH")) {
-              setScanError(
-                "Invalid QR content. Expected voucher code format like VCH-XXXXXX.",
-              );
-              return;
-            }
-
             hasScannedRef.current = true;
             onScan(normalizedCode);
           },
