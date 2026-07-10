@@ -6,7 +6,7 @@ import { useAlert } from "../hooks/useAlert";
 import DciLogo from "../assets/DCI-LOGO.png";
 import { authService } from "../services/authService";
 import { FileUpload } from "../components/FileUpload";
-import { runSharedLocalOcr } from "../hooks/useOcrForm";
+import { usePaddleOcr } from "../hooks/usePaddleOcr";
 
 export const CitizenRegister = () => {
   const [form, setForm] = useState({
@@ -30,6 +30,8 @@ export const CitizenRegister = () => {
   
   const navigate = useNavigate();
   const { success } = useAlert();
+  
+  const { runOcr } = usePaddleOcr();
 
   const suggestUsername = (first, last) => {
     if (!first && !last) return "";
@@ -58,32 +60,27 @@ export const CitizenRegister = () => {
     setOcrLoading(true);
     setOcrHint("Extracting details from ID...");
     try {
-      const result = await runSharedLocalOcr(file);
-      const upperText = result.normalizedText || "";
-      
-      let firstName = "";
-      let lastName = "";
-      
-      const givenMatch = upperText.match(/(?:GIVEN\s*NAME|FIRST\s*NAME|GIVEN|FIRST)\s*[:\-]?\s*([A-Z\s.,'-]{2,40})/i);
-      if (givenMatch?.[1]) firstName = givenMatch[1].trim();
-      
-      const surnameMatch = upperText.match(/(?:SURNAME|LAST\s*NAME|FAMILY\s*NAME|SUR|LAST)\s*[:\-]?\s*([A-Z\s.,'-]{2,40})/i);
-      if (surnameMatch?.[1]) lastName = surnameMatch[1].trim();
-
-      const updatedForm = { ...form };
-      if (firstName) updatedForm.firstName = firstName;
-      if (lastName) updatedForm.lastName = lastName;
-      
-      if (firstName || lastName) {
-        if (!usernameEdited) {
-          updatedForm.username = suggestUsername(updatedForm.firstName, updatedForm.lastName);
+      const result = await runOcr(file);
+      if (result && result.success) {
+        const { firstName, lastName } = result.data;
+        const updatedForm = { ...form };
+        if (firstName) updatedForm.firstName = firstName;
+        if (lastName) updatedForm.lastName = lastName;
+        
+        if (firstName || lastName) {
+          if (!usernameEdited) {
+            updatedForm.username = suggestUsername(updatedForm.firstName, updatedForm.lastName);
+          }
+          setOcrHint("Details extracted! Please double check the extracted data below.");
+        } else {
+          setOcrHint("Could not extract name details. Please fill manually.");
         }
-        setOcrHint("Details extracted successfully!");
+        setForm(updatedForm);
       } else {
-        setOcrHint("Could not extract name details. Please fill manually.");
+        setOcrHint("Could not extract details. Please fill manually.");
       }
-      setForm(updatedForm);
     } catch (e) {
+      console.error(e);
       setOcrHint("OCR extraction failed. Please fill manually.");
     } finally {
       setOcrLoading(false);
