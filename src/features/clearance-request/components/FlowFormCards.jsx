@@ -29,7 +29,7 @@ const CR_FIELD_CONFIG = [
 ];
 
 export const VehicleFields = ({ values, onChange, fieldSet = "cr", errors = {}, isExtracting = false }) => (
-  <div className="space-y-3">
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-3">
     {(fieldSet === "or" ? OR_FIELD_CONFIG : CR_FIELD_CONFIG).map((field) => (
       <Input
         key={field.key}
