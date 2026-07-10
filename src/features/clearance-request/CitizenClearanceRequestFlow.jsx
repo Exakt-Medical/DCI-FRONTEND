@@ -23,6 +23,7 @@ import { CITIZEN_STEPS, VALIDATION_STATE } from "../../constants/clearanceReques
 import {
   MvcMecUploadCard,
   VehicleDocumentUploadCard,
+  VehicleFields,
 } from "./components/FlowFormCards";
 import { formatOcrHint, OCR_STATUS } from "../../hooks/useOcrForm";
 import { generateClearanceCertificatePDF } from "./utils/generateClearanceCertificatePDF";
@@ -34,6 +35,7 @@ import { useRequest } from "../../context/RequestContext";
 import { fetchMyRequests, fetchRequestById } from "../../services/certificateRequestService";
 import { CreateTicketModal } from "../Tickets/CreateTicketModal";
 import { DataMismatchModal } from "./components/DataMismatchModal";
+import { OrCrMismatchModal } from "./components/OrCrMismatchModal";
 import { ticketService } from "../../services/ticketService";
 import {
   emptyVehicle,
@@ -64,6 +66,8 @@ export const CitizenClearanceRequestFlow = () => {
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
   const [isDataMismatchModalOpen, setIsDataMismatchModalOpen] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [orCrMismatches, setOrCrMismatches] = useState([]);
+  const [isOrCrMismatchModalOpen, setIsOrCrMismatchModalOpen] = useState(false);
   const {
     handleRequestSave: onSaveRequest,
     handleClearanceRequestComplete: onComplete,
@@ -340,17 +344,8 @@ export const CitizenClearanceRequestFlow = () => {
     };
   }, [step, certificateNo]);
 
-  // Compute OR/CR field mismatches for display
-  const mismatches = (() => {
-    const fields = [
-      ["plateNumber", "Plate Number"],
-      ["mvFileNumber", "MV File Number"],
-    ];
-    return fields
-      .filter(([f]) => orCr[f] && crCr[f] && orCr[f] !== crCr[f])
-      .map(([, label]) => label);
-  })();
-  const hasMismatch = mismatches.length > 0;
+  // Compute OR/CR field mismatches for display - handled by modal now.
+  const hasMismatch = false;
 
   const updateOrCr = (field, value) => {
     setOrCr((prev) => ({ ...prev, [field]: value ? value.toUpperCase() : "" }));
@@ -376,12 +371,47 @@ export const CitizenClearanceRequestFlow = () => {
     setCitizenValidationState, setCitizenValidationMessage,
     saveCitizenRequest,
     VALIDATION_STATE,
+    onOrExtracted: (parsedVehicle) => {
+      setCrCr((prev) => mergeVehicleFields(prev, parsedVehicle));
+    },
+    onCrExtracted: (parsedVehicle) => {
+      const newMismatches = [];
+      const fieldsToCheck = [
+        { field: "plateNumber", label: "Plate Number" },
+        { field: "mvFileNumber", label: "MV File Number" },
+        { field: "color", label: "Color" },
+        { field: "yearModel", label: "Year Model" },
+        { field: "ownerName", label: "Owner's Name" },
+        { field: "classification", label: "Classification" },
+      ];
+      fieldsToCheck.forEach(({ field, label }) => {
+        const orVal = orCr[field];
+        const crVal = parsedVehicle[field];
+        if (orVal && crVal && orVal.toUpperCase() !== crVal.toUpperCase()) {
+          newMismatches.push({
+            field,
+            label,
+            orValue: orVal.toUpperCase(),
+            crValue: crVal.toUpperCase(),
+          });
+        }
+      });
+      if (newMismatches.length > 0) {
+        setOrCrMismatches(newMismatches);
+        setIsOrCrMismatchModalOpen(true);
+      }
+    },
   });
 
+  const handleOrCrMismatchSubmit = (resolvedValues) => {
+    setOrCr((prev) => ({ ...prev, ...resolvedValues }));
+    setCrCr((prev) => ({ ...prev, ...resolvedValues }));
+    setIsOrCrMismatchModalOpen(false);
+  };
+
   async function saveCitizenRequest(overrides = {}) {
-    const isExtracting = (val) => !val || val === "Extracting...";
     const hasData = (obj) =>
-      Object.values(obj).some((v) => typeof v === "string" && v.trim() && v !== "Extracting...");
+      Object.values(obj).some((v) => typeof v === "string" && v.trim());
 
     const record = {
       id,
@@ -573,14 +603,14 @@ export const CitizenClearanceRequestFlow = () => {
     let hasEmpty = false;
 
     OR_EXPECTED_FIELDS.forEach((field) => {
-      if (!orCr[field] || orCr[field].trim() === "" || orCr[field] === "Extracting...") {
-        newErrors[field] = true;
+      if (!orCr[field] || orCr[field].trim() === "") {
+        newErrors[field] = "This field is required.";
         hasEmpty = true;
       }
     });
     CR_EXPECTED_FIELDS.forEach((field) => {
-      if (!crCr[field] || crCr[field].trim() === "" || crCr[field] === "Extracting...") {
-        newErrors[field] = true;
+      if (!crCr[field] || crCr[field].trim() === "") {
+        newErrors[field] = "This field is required.";
         hasEmpty = true;
       }
     });
@@ -996,18 +1026,15 @@ export const CitizenClearanceRequestFlow = () => {
 
             {step === 2 && (
               <div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
                   <VehicleDocumentUploadCard
                     title="OR"
                     uploadLabel="Upload Official Receipt"
                     onFile={handleOrUpload}
                     preview={orPreview}
                     uploadHint={formatOcrHint(ocrUploadState.or)}
-                    vehicleLabel="Vehicle Details (from OR)"
-                    vehicleValues={orCr}
-                    vehicleFieldSet="or"
-                    onVehicleChange={updateOrCr}
                     errors={validationErrors}
+                    hideFields={true}
                   />
                   <VehicleDocumentUploadCard
                     title="CR"
@@ -1015,22 +1042,33 @@ export const CitizenClearanceRequestFlow = () => {
                     onFile={handleCrUpload}
                     preview={crPreview}
                     uploadHint={formatOcrHint(ocrUploadState.cr)}
-                    vehicleLabel="Vehicle Details (from CR)"
-                    vehicleValues={crCr}
-                    vehicleFieldSet="cr"
-                    onVehicleChange={updateCrCr}
                     errors={validationErrors}
                     disabled={ocrUploadState.or.status === OCR_STATUS.IDLE || ocrUploadState.or.status === OCR_STATUS.EXTRACTING}
+                    hideFields={true}
                   />
                 </div>
-                {hasMismatch && (
-                  <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2">
-                    <AlertTriangle size={18} className="text-red-500 shrink-0" />
-                    <p className="text-sm text-red-700">
-                      Mismatched fields: <strong>{mismatches.join(", ")}</strong>. OR and CR details must match to proceed.
-                    </p>
+                
+                <Card className="p-5">
+                  <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
+                    <FileText size={18} className="text-[#0059b5]" />
+                    <h3 className="text-base font-bold text-gray-900">Vehicle Details</h3>
                   </div>
-                )}
+                  <p className="text-[11px] text-gray-500 mb-4">
+                    Please review and complete the vehicle details below.
+                  </p>
+                  <VehicleFields
+                    values={crCr}
+                    onChange={(field, value) => {
+                      updateCrCr(field, value);
+                      if (OR_EXPECTED_FIELDS.includes(field)) {
+                        updateOrCr(field, value);
+                      }
+                    }}
+                    fieldSet="cr"
+                    errors={validationErrors}
+                    isExtracting={ocrUploadState.cr.status === OCR_STATUS.EXTRACTING || ocrUploadState.or.status === OCR_STATUS.EXTRACTING}
+                  />
+                </Card>
               </div>
             )}
 
@@ -1349,6 +1387,12 @@ export const CitizenClearanceRequestFlow = () => {
           isSubmitting={false}
         />
       )}
+      <OrCrMismatchModal
+        isOpen={isOrCrMismatchModalOpen}
+        onClose={() => setIsOrCrMismatchModalOpen(false)}
+        mismatches={orCrMismatches}
+        onSubmit={handleOrCrMismatchSubmit}
+      />
       {showConfirmModal && (
         <Modal
           isOpen={showConfirmModal}

@@ -20,7 +20,6 @@ export const emptyVehicle = {
   series: "",
   yearModel: "",
   ownerName: "",
-  address: "",
 };
 
 export const emptyMvc = {
@@ -81,7 +80,6 @@ export const CR_EXPECTED_FIELDS = [
   "series",
   "yearModel",
   "ownerName",
-  "address",
 ];
 
 // ── Vehicle field merging ────────────────────────────────────────────────────

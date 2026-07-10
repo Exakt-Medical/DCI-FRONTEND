@@ -26,10 +26,9 @@ const CR_FIELD_CONFIG = [
   { key: "series", label: "Series", required: true },
   { key: "yearModel", label: "Year Model", required: true },
   { key: "ownerName", label: "Owner's Name", required: true },
-  { key: "address", label: "Owner's Address", required: true },
 ];
 
-export const VehicleFields = ({ values, onChange, fieldSet = "cr", errors = {} }) => (
+export const VehicleFields = ({ values, onChange, fieldSet = "cr", errors = {}, isExtracting = false }) => (
   <div className="space-y-3">
     {(fieldSet === "or" ? OR_FIELD_CONFIG : CR_FIELD_CONFIG).map((field) => (
       <Input
@@ -43,7 +42,7 @@ export const VehicleFields = ({ values, onChange, fieldSet = "cr", errors = {} }
           }
           onChange(field.key, val.toUpperCase());
         }}
-        placeholder="Auto-extracted"
+        placeholder={isExtracting ? "Extracting..." : "Auto-extracted"}
         required={true}
         error={errors[field.key]}
         maxLength={field.key === "mvFileNumber" ? 15 : undefined}
@@ -65,6 +64,8 @@ export const VehicleDocumentUploadCard = ({
   onVehicleChange,
   errors = {},
   disabled,
+  hideFields = false,
+  isExtracting = false,
 }) => (
   <Card className="p-5">
     <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
@@ -82,19 +83,21 @@ export const VehicleDocumentUploadCard = ({
     <p className="mt-2 text-[11px] text-gray-500">
       OCR accepts PDF and image uploads for automatic field extraction.
     </p>
-    <div className="mt-4 space-y-3">
-      <div className="pt-2 border-t border-gray-200">
-        <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
-          {vehicleLabel}
-        </p>
-        <VehicleFields
-          values={vehicleValues}
-          onChange={onVehicleChange}
-          fieldSet={vehicleFieldSet}
-          errors={errors}
-        />
+    {!hideFields && (
+      <div className="mt-4 space-y-3">
+        <div className="pt-2 border-t border-gray-200">
+          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            {vehicleLabel}
+          </p>
+          <VehicleFields
+            values={vehicleValues}
+            onChange={onVehicleChange}
+            fieldSet={vehicleFieldSet}
+            errors={errors}
+          />
+        </div>
       </div>
-    </div>
+    )}
   </Card>
 );
 
@@ -107,6 +110,7 @@ export const MvcMecUploadCard = ({
   fields,
   uploadHint,
   vehicleLabel,
+  isExtracting = false,
 }) => (
   <Card className="p-5 border border-gray-200">
     <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
@@ -141,7 +145,7 @@ export const MvcMecUploadCard = ({
                   field.onChange({ target: { name: field.key, value: e.target.value.toUpperCase() } });
                 }
               }}
-              placeholder={field.placeholder || "Auto-extracted"}
+              placeholder={isExtracting ? "Extracting..." : (field.placeholder || "Auto-extracted")}
               required={true}
               error={field.error}
             />

@@ -49,6 +49,8 @@ export const useOrCrOcr = ({
   setCitizenValidationMessage,
   saveCitizenRequest,
   VALIDATION_STATE,
+  onOrExtracted,
+  onCrExtracted,
 }) => {
   const [ocrUploadState, setOcrUploadState] = useState(emptyOcrUploadState);
   const ocrUploadVersionRef = useRef({
@@ -80,20 +82,19 @@ export const useOrCrOcr = ({
     const runId = nextOcrVersion("or");
     const previousState = { orCr };
     setOcrState("or", { status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
-    setOrCr({
-      plateNumber: "Extracting...", mvFileNumber: "Extracting...",
-      classification: "Extracting...",
-      color: "Extracting...", yearModel: "Extracting...",
-      ownerName: "Extracting...",
-    });
 
     try {
       const result = await extractClearanceDocumentData(file, CLEARANCE_OCR_DOCUMENT_TYPE.OR);
       if (!isCurrentOcrVersion("or", runId)) return;
 
       const parsed = result.fields || {};
-      setOrCr(mergeVehicleFields(orCr, parsed.vehicle || {}));
+      const vehicleData = { ...(parsed.vehicle || {}) };
+      delete vehicleData.engineNumber;
+      delete vehicleData.chassisNumber;
+      
+      setOrCr(mergeVehicleFields(orCr, vehicleData));
       setOcrState("or", { status: OCR_STATUS.SUCCESS, confidence: result.confidence || 0, error: "" });
+      if (onOrExtracted) onOrExtracted(vehicleData);
     } catch (error) {
       if (!isCurrentOcrVersion("or", runId)) return;
       setOrCr(previousState.orCr || emptyVehicle);
@@ -114,14 +115,6 @@ export const useOrCrOcr = ({
     const runId = nextOcrVersion("cr");
     const previousState = { crCr };
     setOcrState("cr", { status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
-    setCrCr({
-      engineNumber: "Extracting...", chassisNumber: "Extracting...",
-      plateNumber: "Extracting...", mvFileNumber: "Extracting...",
-      makeBrand: "Extracting...",
-      color: "Extracting...", classification: "Extracting...",
-      series: "Extracting...", yearModel: "Extracting...",
-      ownerName: "Extracting...", address: "Extracting...",
-    });
 
     try {
       const result = await extractClearanceDocumentData(file, CLEARANCE_OCR_DOCUMENT_TYPE.CR);
@@ -130,6 +123,7 @@ export const useOrCrOcr = ({
       const parsed = result.fields || {};
       setCrCr(mergeVehicleFields(crCr, parsed.vehicle || {}));
       setOcrState("cr", { status: OCR_STATUS.SUCCESS, confidence: result.confidence || 0, error: "" });
+      if (onCrExtracted) onCrExtracted(parsed.vehicle || {});
     } catch (error) {
       if (!isCurrentOcrVersion("cr", runId)) return;
       setCrCr(previousState.crCr || emptyVehicle);
@@ -152,12 +146,6 @@ export const useOrCrOcr = ({
     const runId = nextOcrVersion("mvc");
     const previousState = { ...mvcData };
     setOcrState("mvc", { status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
-
-    setMvcData({
-      mvcNo: "Extracting...", issueDate: "Extracting...", engineNo: "Extracting...",
-      chassisNo: "Extracting...", plateNo: "Extracting...", mvFileNo: "Extracting...",
-      color: "Extracting...",
-    });
 
     try {
       const result = await extractClearanceDocumentData(file, CLEARANCE_OCR_DOCUMENT_TYPE.MVC);
@@ -207,8 +195,6 @@ export const useOrCrOcr = ({
     const previousState = { ...mecData };
     setOcrState("mec", { status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
 
-    setMecData({ engineNoStencilled: "Extracting...", chassisNoStencilled: "Extracting...", plateNo: "Extracting...", color: "Extracting..." });
-
     try {
       const result = await extractClearanceDocumentData(file, CLEARANCE_OCR_DOCUMENT_TYPE.MEC);
       if (!isCurrentOcrVersion("mec", runId)) return;
@@ -252,12 +238,6 @@ export const useOrCrOcr = ({
     const previousState = { ...agentMvcData };
     setOcrState("agentMvc", { status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
 
-    setAgentMvcData({
-      mvcNo: "Extracting...", issueDate: "Extracting...", engineNo: "Extracting...",
-      chassisNo: "Extracting...", plateNo: "Extracting...", mvFileNo: "Extracting...",
-      color: "Extracting...",
-    });
-
     try {
       const result = await extractClearanceDocumentData(file, CLEARANCE_OCR_DOCUMENT_TYPE.MVC);
       if (!isCurrentOcrVersion("agentMvc", runId)) return;
@@ -293,8 +273,6 @@ export const useOrCrOcr = ({
     const runId = nextOcrVersion("agentMec");
     const previousState = { ...agentMecData };
     setOcrState("agentMec", { status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
-
-    setAgentMecData({ engineNoStencilled: "Extracting...", chassisNoStencilled: "Extracting...", plateNo: "Extracting...", color: "Extracting..." });
 
     try {
       const result = await extractClearanceDocumentData(file, CLEARANCE_OCR_DOCUMENT_TYPE.MEC);
