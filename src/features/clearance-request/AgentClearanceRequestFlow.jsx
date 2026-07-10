@@ -960,7 +960,7 @@ export const AgentClearanceRequestFlow = () => {
               <img src={DCI_LOGO} alt="DCI" className="h-10" />
               <span className="font-bold text-gray-900">Clearance Request</span>
               <span className="text-xs text-gray-500 ml-auto">
-                {role === "agent_fixer" ? "Agent / Fixer" : "Citizen"}
+                {role === "agent_fixer" ? "Agent" : "Citizen"}
               </span>
             </div>
 
