@@ -12,6 +12,8 @@ const OR_FIELD_CONFIG = [
   { key: "color", label: "Color", required: true },
   { key: "yearModel", label: "Year", required: true },
   { key: "ownerName", label: "Received From", required: true },
+  { key: "ownerAddress", label: "Owner's Address", required: true },
+  { key: "bodyType", label: "Body Type", required: true },
 ];
 
 const CR_FIELD_CONFIG = [
@@ -24,8 +26,10 @@ const CR_FIELD_CONFIG = [
   { key: "color", label: "Color", required: true },
   { key: "classification", label: "Classification", required: true },
   { key: "series", label: "Series", required: true },
+  { key: "bodyType", label: "Body Type", required: true },
   { key: "yearModel", label: "Year Model", required: true },
   { key: "ownerName", label: "Owner's Name", required: true },
+  { key: "ownerAddress", label: "Owner's Address", required: true },
 ];
 
 export const VehicleFields = ({ values, onChange, fieldSet = "cr", errors = {}, isExtracting = false }) => (

@@ -1171,18 +1171,23 @@ export const CitizenClearanceRequestFlow = () => {
                           <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.color || crCr.color || "N/A"}</p>
                         </div>
                         <div>
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Body Type</p>
+                          <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.bodyType || crCr?.bodyType || "N/A"}</p>
+                        </div>
+                        <div>
                           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Owner</p>
                           <p className="text-sm font-semibold text-gray-900 uppercase">{vvsOwnerName.replace(/(?!^)[A-Za-z](?!$)/g, "*")}</p>
                         </div>
+                        
                         <div>
                           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Classification</p>
                           <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.classification || crCr.classification || "N/A"}</p>
                         </div>
-                        
                         <div>
                           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Vehicle Type</p>
                           <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.denomination || "N/A"}</p>
                         </div>
+
                         <div>
                           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Engine Number</p>
                           <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.engineNumber || crCr.engineNumber || "N/A"}</p>
