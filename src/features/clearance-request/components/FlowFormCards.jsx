@@ -6,14 +6,27 @@ import { cn } from "../../../utils/cn";
 
 const OR_FIELD_CONFIG = [
   { key: "plateNumber", label: "Plate Number", required: true },
-  { key: "mvFileNumber", label: "MV File Number", required: true },
+  { key: "mvFileNumber", label: "File No.", required: true },
+  { key: "classification", label: "Classification", required: true },
+
+  { key: "color", label: "Color", required: true },
+  { key: "yearModel", label: "Year", required: true },
+  { key: "ownerName", label: "Received From", required: true },
 ];
 
 const CR_FIELD_CONFIG = [
-  { key: "plateNumber", label: "Plate Number", required: true },
-  { key: "mvFileNumber", label: "MV File Number", required: true },
   { key: "engineNumber", label: "Engine Number", required: true },
   { key: "chassisNumber", label: "Chassis Number", required: true },
+  { key: "plateNumber", label: "Plate Number", required: true },
+  { key: "mvFileNumber", label: "File No.", required: true },
+
+  { key: "makeBrand", label: "Make/Brand", required: true },
+  { key: "color", label: "Color", required: true },
+  { key: "classification", label: "Classification", required: true },
+  { key: "series", label: "Series", required: true },
+  { key: "yearModel", label: "Year Model", required: true },
+  { key: "ownerName", label: "Owner's Name", required: true },
+  { key: "address", label: "Owner's Address", required: true },
 ];
 
 export const VehicleFields = ({ values, onChange, fieldSet = "cr", errors = {} }) => (

@@ -13,6 +13,14 @@ export const emptyVehicle = {
   mvFileNumber: "",
   engineNumber: "",
   chassisNumber: "",
+
+  makeBrand: "",
+  color: "",
+  classification: "",
+  series: "",
+  yearModel: "",
+  ownerName: "",
+  address: "",
 };
 
 export const emptyMvc = {
@@ -54,13 +62,26 @@ export const makeCertificateNo = (index = 0) =>
 export const OR_EXPECTED_FIELDS = [
   "plateNumber",
   "mvFileNumber",
+  "classification",
+
+  "color",
+  "yearModel",
+  "ownerName",
 ];
 
 export const CR_EXPECTED_FIELDS = [
-  "plateNumber",
-  "mvFileNumber",
   "engineNumber",
   "chassisNumber",
+  "plateNumber",
+  "mvFileNumber",
+
+  "makeBrand",
+  "color",
+  "classification",
+  "series",
+  "yearModel",
+  "ownerName",
+  "address",
 ];
 
 // ── Vehicle field merging ────────────────────────────────────────────────────
@@ -68,7 +89,7 @@ export const CR_EXPECTED_FIELDS = [
 /** Shallow-merges `next` fields into `current`, uppercasing non-blank strings. */
 export const mergeVehicleFields = (current = {}, next = {}) => {
   const merged = { ...current };
-  Object.keys(current).forEach((key) => {
+  Object.keys(next).forEach((key) => {
     const value = next[key];
     if (typeof value === "string" && value.trim()) {
       let val = value.trim().toUpperCase();

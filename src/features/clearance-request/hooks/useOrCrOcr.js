@@ -82,7 +82,9 @@ export const useOrCrOcr = ({
     setOcrState("or", { status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
     setOrCr({
       plateNumber: "Extracting...", mvFileNumber: "Extracting...",
-      engineNumber: "Extracting...", chassisNumber: "Extracting...",
+      classification: "Extracting...",
+      color: "Extracting...", yearModel: "Extracting...",
+      ownerName: "Extracting...",
     });
 
     try {
@@ -113,8 +115,12 @@ export const useOrCrOcr = ({
     const previousState = { crCr };
     setOcrState("cr", { status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
     setCrCr({
-      plateNumber: "Extracting...", mvFileNumber: "Extracting...",
       engineNumber: "Extracting...", chassisNumber: "Extracting...",
+      plateNumber: "Extracting...", mvFileNumber: "Extracting...",
+      makeBrand: "Extracting...",
+      color: "Extracting...", classification: "Extracting...",
+      series: "Extracting...", yearModel: "Extracting...",
+      ownerName: "Extracting...", address: "Extracting...",
     });
 
     try {

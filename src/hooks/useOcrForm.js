@@ -104,14 +104,14 @@ const averageConfidence = (values) => {
 const buildVehiclePayload = (fields, extras = {}) => ({
   plateNumber: (fields.plateNo || "").toUpperCase(),
   mvFileNumber: (fields.mvFileNo || "").toUpperCase(),
-  classification: "",
-  vehicleType: "",
+  classification: (fields.classification || "").toUpperCase(),
+
   fuelType: extras.fuelType || "",
   airconType: "",
   engineNumber: (fields.engineNo || "").toUpperCase(),
   chassisNumber: (fields.chassisNo || "").toUpperCase(),
-  make: (fields.makeBrand || "").toUpperCase(),
-  series: "",
+  makeBrand: (fields.makeBrand || "").toUpperCase(),
+  series: (fields.series || "").toUpperCase(),
   yearModel: (fields.yearModel || "").toUpperCase(),
   color: (fields.color || "").toUpperCase(),
   ownerName: (fields.ownerName || "").toUpperCase(),
@@ -208,7 +208,7 @@ export async function extractClearanceDocumentData(file, documentType) {
           mvFileNo: (fields.mvFileNo || "").toUpperCase(),
           engineNo: (fields.engineNo || "").toUpperCase(),
           chassisNo: (fields.chassisNo || "").toUpperCase(),
-          vehicleType: (fields.vehicleType || "").toUpperCase(),
+
           ownerName: (fields.ownerName || "").toUpperCase(),
           ownerAddress: (fields.address || "").toUpperCase(),
           ownerContact: (fields.ownerContact || "").toUpperCase(),

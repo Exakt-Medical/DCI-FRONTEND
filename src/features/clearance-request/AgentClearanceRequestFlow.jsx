@@ -1138,7 +1138,7 @@ export const AgentClearanceRequestFlow = () => {
                         
                         <div>
                           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Vehicle Type</p>
-                          <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.denomination || crCr.vehicleType || "N/A"}</p>
+                          <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.denomination || "N/A"}</p>
                         </div>
                         <div>
                           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Engine Number</p>
