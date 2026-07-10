@@ -30,6 +30,7 @@ export type FormFields = {
   chassisNoStencilled: string;
   classification: string;
   series: string;
+  bodyType: string;
 };
 
 export type OcrWord = {
@@ -91,6 +92,7 @@ export const INITIAL_FIELDS: FormFields = {
   chassisNoStencilled: "",
   classification: "",
   series: "",
+  bodyType: "",
 };
 
 export const EMPTY_EXTRACTION: FieldExtractionMap = {
@@ -125,4 +127,5 @@ export const EMPTY_EXTRACTION: FieldExtractionMap = {
   chassisNoStencilled: { label: "CHASSIS / FRAME NO. (STENCILLED)", candidates: {}, selected: "", valid: false, source: "none", confidence: 0 },
   classification: { label: "CLASSIFICATION", candidates: {}, selected: "", valid: false, source: "none", confidence: 0 },
   series: { label: "SERIES", candidates: {}, selected: "", valid: false, source: "none", confidence: 0 },
+  bodyType: { label: "BODY TYPE", candidates: {}, selected: "", valid: false, source: "none", confidence: 0 },
 };

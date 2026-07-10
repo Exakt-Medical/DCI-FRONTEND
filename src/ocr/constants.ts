@@ -134,6 +134,7 @@ export const FIELD_ALIASES = {
   color: ["COLOR", "COLOUR", "VEHICLE COLOR"],
   classification: ["CLASSIFICATION", "CLASSIFCATION", "CLASSFICATION", "CLASS", "CLASSIFICAT1ON"],
   series: ["SERIES"],
+  bodyType: ["BODY TYPE", "BODYTYPE", "BODY"],
   vehicleType: ["VEHICLE TYPE", "VEHICLE CATEGORY"],
   plateNo: [
     "C.S NO./PLATE NO.",

@@ -116,6 +116,7 @@ const buildVehiclePayload = (fields, extras = {}) => ({
   color: (fields.color || "").toUpperCase(),
   ownerName: (fields.ownerName || "").toUpperCase(),
   ownerAddress: (fields.address || "").toUpperCase(),
+  bodyType: (fields.bodyType || "").toUpperCase(),
 });
 
 const buildTextExtras = (normalizedText) => ({

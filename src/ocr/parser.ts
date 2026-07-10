@@ -36,6 +36,7 @@ import {
   isLikelyFuelType,
   isLikelyWeight,
   isLikelyMvFileNo,
+  isLikelyBodyType,
 } from "./validators";
 import {
   extractAroundLabel,
@@ -694,6 +695,9 @@ export function parseFields(
     series:
       extractAroundLabel(lines, FIELD_ALIASES.series, (v) => v.length >= 2) ||
       extractInlineAfterLabel(lines, FIELD_ALIASES.series, (v) => v.length >= 2),
+    bodyType:
+      extractAroundLabel(lines, FIELD_ALIASES.bodyType, isLikelyBodyType) ||
+      extractInlineAfterLabel(lines, FIELD_ALIASES.bodyType, isLikelyBodyType),
     remarks: extractAroundLabel(lines, FIELD_ALIASES.remarks, (v) => v.length >= 3),
     orNumber:
       extractAroundLabel(lines, FIELD_ALIASES.orNumber, isLikelyReceiptNo) ||
@@ -790,6 +794,9 @@ export function parseFields(
     series:
       findRightText(FIELD_ALIASES.series, words) ||
       findBelowText(FIELD_ALIASES.series, words),
+    bodyType:
+      findBelowText(FIELD_ALIASES.bodyType, words, isLikelyBodyType) ||
+      findRightText(FIELD_ALIASES.bodyType, words, isLikelyBodyType),
     remarks:
       findRightText(FIELD_ALIASES.remarks, words) ||
       findBelowText(FIELD_ALIASES.remarks, words),
@@ -912,6 +919,10 @@ export function parseFields(
     ]),
     series: extractByPatterns(flat, [
       /(?:SERIES)\s*[:\-]?\s*([A-Z0-9\s.,'-]+)/im,
+    ]),
+    bodyType: extractByPatterns(flat, [
+      /(?:BODY\s*TYPE)\s*[\r\n]+([A-Z0-9\s.,'-]+)/im,
+      /(?:BODY\s*TYPE)\s*[:\-]?\s*([A-Z0-9\s.,'-]+)/im,
     ]),
     fuelType: extractByPatterns(flat, [
       /(?:TYPE\s*OF\s*FUEL|FUEL\s*TYPE)\s*[:\-]?\s*([A-Z]{3,15})/im,
@@ -1065,6 +1076,11 @@ export function parseFields(
       lineScan: stripPaymentBreakdown(lineScan.series),
       coord: stripPaymentBreakdown(coord.series),
       regex: stripPaymentBreakdown(regex.series),
+    }, false, isTable),
+    bodyType: pickField("BODY TYPE", isLikelyBodyType, {
+      lineScan: stripPaymentBreakdown(lineScan.bodyType),
+      coord: stripPaymentBreakdown(coord.bodyType),
+      regex: stripPaymentBreakdown(regex.bodyType),
     }, false, isTable),
     remarks: pickField("REMARKS", (v) => v.length >= 3, {
       lineScan: lineScan.remarks,
@@ -1329,6 +1345,7 @@ export function parseFields(
     mvFileNo: cleanFieldValue("mvFileNo", extraction.mvFileNo.selected),
     classification: cleanFieldValue("classification", extraction.classification.selected),
     series: cleanFieldValue("series", extraction.series.selected),
+    bodyType: cleanFieldValue("bodyType", extraction.bodyType.selected),
     hpgOffice: cleanFieldValue("hpgOffice", extraction.hpgOffice.selected),
     purpose: cleanFieldValue("purpose", extraction.purpose.selected),
     hpgTechnician: cleanFieldValue(

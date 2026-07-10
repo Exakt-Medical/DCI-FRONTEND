@@ -13,7 +13,6 @@ const OR_FIELD_CONFIG = [
   { key: "yearModel", label: "Year", required: true },
   { key: "ownerName", label: "Received From", required: true },
   { key: "ownerAddress", label: "Owner's Address", required: true },
-  { key: "bodyType", label: "Body Type", required: true },
 ];
 
 const CR_FIELD_CONFIG = [

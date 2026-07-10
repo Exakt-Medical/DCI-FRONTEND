@@ -251,3 +251,31 @@ export function isLikelyPersonName(value: string): boolean {
 
   return true;
 }
+
+export function isLikelyBodyType(value: string): boolean {
+  const v = value.trim().toUpperCase();
+  if (!v || v.length < 2 || v.length > 30) return false;
+  
+  // Reject pure numbers (e.g. 500, 1400)
+  if (/^[\d.,\s]+$/.test(v)) return false;
+
+  if (BOILERPLATE_REGEX.test(v)) return false;
+  if (/(CLASSIFICATION|COLOR|YEAR|MODEL|MAKE|BRAND|OWNER|ENGINE|CHASSIS|PLATE|FILE|DATE|RECEIPT)/.test(v)) return false;
+
+  const knownTypes = [
+    "SEDAN", "HATCHBACK", "SUV", "AUV", "VAN", "WAGON", "PICK-UP", "PICKUP",
+    "TRUCK", "BUS", "MOTORCYCLE", "TRICYCLE", "JEEPNEY", "JEEP", "TRAILER",
+    "CAB", "CHASSIS", "CLOSED VAN", "DROPSIDE", "FLATBED", "CARGO", "MULTICAB",
+    "MTC", "MC", "DOOR"
+  ];
+  
+  if (knownTypes.some(t => v.includes(t))) return true;
+
+  const wordCount = v.split(/\s+/).length;
+  if (wordCount > 4) return false;
+
+  // Reject if no letters are present
+  if (!/[A-Z]/.test(v)) return false;
+
+  return true;
+}

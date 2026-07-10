@@ -69,7 +69,6 @@ export const OR_EXPECTED_FIELDS = [
   "yearModel",
   "ownerName",
   "ownerAddress",
-  "bodyType",
 ];
 
 export const CR_EXPECTED_FIELDS = [
