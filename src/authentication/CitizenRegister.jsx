@@ -295,6 +295,7 @@ export const CitizenRegister = () => {
                     }}
                     placeholder="Enter username"
                     className={inputClass("username")}
+                    autoComplete="off"
                   />
                 </div>
                 {errors.username && <p className="text-xs text-red-500 mt-1">{errors.username}</p>}
@@ -310,6 +311,7 @@ export const CitizenRegister = () => {
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
                     placeholder="Enter password"
                     className={`w-full bg-white border ${errors.password ? "border-red-300" : "border-gray-300"} rounded-lg px-4 py-2.5 pl-10 pr-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all`}
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"
@@ -347,6 +349,7 @@ export const CitizenRegister = () => {
                     onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
                     placeholder="Confirm password"
                     className={`w-full bg-white border ${errors.confirmPassword ? "border-red-300" : "border-gray-300"} rounded-lg px-4 py-2.5 pl-10 pr-10 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 transition-all`}
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"

@@ -5,6 +5,7 @@ import { Modal } from "../../components/Modal";
 import { Spinner } from "../../components/Spinner";
 import { CheckCircle, AlertTriangle, Download, Plus, ChevronRight, ChevronLeft, Trash2, Shield, Search, Car, X } from "lucide-react";
 import { VehicleDocumentUploadCard } from "./components/FlowFormCards";
+import { UploadDocumentGuidelineModal } from "./components/UploadDocumentGuidelineModal";
 import { useAlert } from "../../hooks/useAlert";
 import { emptyVehicle } from "./utils/clearanceRequestUtils";
 import { useOrCrOcr } from "./hooks/useOrCrOcr";
@@ -46,6 +47,17 @@ export const AgentBulkClearanceRequestFlow = () => {
   const [step, setStep] = useState(1);
   const [queue, setQueue] = useState([]);
   const [availableVouchers, setAvailableVouchers] = useState([]);
+  const [showGuidelineModal, setShowGuidelineModal] = useState(false);
+  const [hasShownGuideline, setHasShownGuideline] = useState(false);
+  const [guidelineRevisitedHint, setGuidelineRevisitedHint] = useState(false);
+
+  useEffect(() => {
+    if (step === 1 && !hasShownGuideline) {
+      setShowGuidelineModal(true);
+      setHasShownGuideline(true);
+      setGuidelineRevisitedHint(true);
+    }
+  }, [step, hasShownGuideline]);
 
   // Fetch available vouchers on mount
   useEffect(() => {
@@ -544,7 +556,27 @@ export const AgentBulkClearanceRequestFlow = () => {
 
               {/* Document Upload */}
               <div className="max-w-4xl mx-auto mt-8 pt-8 border-t border-gray-200">
-                <h3 className="text-lg font-bold text-[#001b3b] text-center mb-6">Upload Vehicle Documents</h3>
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-6 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                  <div>
+                    <h3 className="text-base font-bold text-[#001b3b]">Upload Vehicle Documents</h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Upload OR and CR documents to extract vehicle details for the queue.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowGuidelineModal(true);
+                      setGuidelineRevisitedHint(false);
+                    }}
+                    className={`text-xs font-semibold underline px-3.5 py-2 rounded-lg border transition-all shrink-0 ${
+                      guidelineRevisitedHint
+                        ? "bg-amber-50 border-amber-200 text-amber-700 font-bold"
+                        : "bg-white border-gray-200 text-[#0059b5] hover:bg-gray-50"
+                    }`}
+                  >
+                    Need Help? View Upload Guidelines
+                  </button>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   <VehicleDocumentUploadCard
                     title="OR"
@@ -922,6 +954,10 @@ export const AgentBulkClearanceRequestFlow = () => {
           ownerData={{}}
         />
       )}
+      <UploadDocumentGuidelineModal
+        isOpen={showGuidelineModal}
+        onClose={() => setShowGuidelineModal(false)}
+      />
     </div>
   );
 };

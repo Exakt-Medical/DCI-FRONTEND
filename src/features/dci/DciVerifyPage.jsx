@@ -23,7 +23,7 @@ export const DciVerifyPage = () => {
   const [markedVerified, setMarkedVerified] = useState(false);
   
   
-  const { error: showErrorAlert } = useAlert();
+  const { error: showErrorAlert, success: showSuccessAlert } = useAlert();
 
   const {
     formData,
@@ -134,6 +134,7 @@ export const DciVerifyPage = () => {
     api.post(`/certificate-requests/by-voucher/${voucherCode.trim()}/verify`, payload, { headers })
       .then(() => {
         setMarkedVerified(true);
+        showSuccessAlert("Verification Complete", "Vehicle successfully verified by DCI.");
       })
       .catch((err) => {
         const msg = err.response?.data?.error || "Failed to mark as verified";
