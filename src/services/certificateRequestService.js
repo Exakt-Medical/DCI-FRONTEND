@@ -1,7 +1,13 @@
 import api from "./api";
 
-export const fetchMyRequests = async () => {
-  const response = await api.get("/certificate-requests");
+export const fetchMyRequests = async (page = 0, size = 10, search = "", filter = "all") => {
+  const params = new URLSearchParams();
+  params.append("page", page);
+  params.append("size", size);
+  if (search) params.append("search", search);
+  if (filter) params.append("filter", filter);
+  
+  const response = await api.get(`/certificate-requests?${params.toString()}`);
   return response.data;
 };
 

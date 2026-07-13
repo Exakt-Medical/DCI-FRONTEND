@@ -7,7 +7,7 @@ import { CertificateActionButtons } from "../clearance-request/components/Certif
 import { useAuth } from "../../context/AuthContext";
 import { fetchMyRequests } from "../../services/certificateRequestService";
 import {
-  FileText, Plus, Eye, Search, CheckCircle, Clock, CreditCard,
+  FileText, Plus, Eye, Search, CheckCircle, Clock, CreditCard, ChevronLeft, ChevronRight, Loader2
 } from "lucide-react";
 
 const getVoucherStatus = (request) => {
@@ -102,64 +102,74 @@ export const MyRequestsPage = () => {
   const [activeFilter, setActiveFilter] = useState("all");
   const { role } = useAuth();
   const [requests, setRequests] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
+  const [counts, setCounts] = useState({ all: 0, completed: 0, voucher: 0, clearance: 0 });
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 500);
+    return () => clearTimeout(handler);
+  }, [search]);
 
   const loadAllRequests = async () => {
+    setIsLoading(true);
     try {
-      const data = await fetchMyRequests();
-      setRequests(data || []);
+      const data = await fetchMyRequests(currentPage - 1, itemsPerPage, debouncedSearch, activeFilter);
+      setRequests(data.content || []);
+      setTotalPages(data.totalPages || 1);
+      setTotalElements(data.totalElements || 0);
+      if (data.counts) {
+        setCounts(data.counts);
+      }
     } catch (error) {
       console.error("Failed to load requests:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   useEffect(() => {
     loadAllRequests();
-  }, []);
+  }, [currentPage, itemsPerPage, debouncedSearch, activeFilter]);
 
   const navigate = useNavigate();
   const isAgent = role === "agent_fixer";
-
-  const filtered = useMemo(() => {
-    return requests
-      .filter(
-        (request) =>
-          matchesFilter(request, activeFilter) &&
-          ((request.voucherReferenceNo || "").toLowerCase().includes(search.toLowerCase()) ||
-            (request.clearanceReferenceNo || "").toLowerCase().includes(search.toLowerCase()) ||
-            (request.plateNumber || "").toLowerCase().includes(search.toLowerCase()) ||
-            (request.id || "").toLowerCase().includes(search.toLowerCase())),
-      )
-      .sort((left, right) => getDateValue(right.dateCreated) - getDateValue(left.dateCreated));
-  }, [requests, search, activeFilter]);
 
   const summaryCards = useMemo(
     () => [
       {
         id: "all",
         label: "All Requests",
-        value: requests.length,
+        value: counts.all,
         description: "Show every request in one list",
       },
       {
         id: "completed",
         label: "Completed Requests",
-        value: requests.filter((request) => isCompletedRequest(request)).length,
+        value: counts.completed,
         description: "Transaction code and clearance already issued",
       },
       {
         id: "voucher",
         label: "In Progress Transaction Code",
-        value: requests.filter((request) => !voucherDone(request)).length,
+        value: counts.voucher,
         description: "Still waiting on transaction code issuance",
       },
       {
         id: "clearance",
         label: "Awaiting Clearance",
-        value: requests.filter((request) => voucherDone(request) && !clearanceDone(request)).length,
+        value: counts.clearance,
         description: "Transaction code done, clearance still in progress",
       },
     ],
-    [requests],
+    [counts],
   );
 
   const activeCard = summaryCards.find((card) => card.id === activeFilter);
@@ -198,7 +208,10 @@ export const MyRequestsPage = () => {
             <button
               key={card.id}
               type="button"
-              onClick={() => setActiveFilter(card.id)}
+              onClick={() => {
+                setActiveFilter(card.id);
+                setCurrentPage(1);
+              }}
               className={[
                 "bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-100 shadow-lg p-6 text-left transition-all",
                 isActive ? styles.active : "hover:shadow-xl hover:scale-[1.02]",
@@ -225,7 +238,7 @@ export const MyRequestsPage = () => {
           <h3 className="text-base font-bold text-gray-900">All Requests</h3>
           <span className="text-xs text-gray-400 ml-auto">Showing {activeCard?.label?.toLowerCase()}</span>
           {activeFilter !== "all" && (
-            <Button variant="ghost" size="sm" onClick={() => setActiveFilter("all")}>
+            <Button variant="ghost" size="sm" onClick={() => { setActiveFilter("all"); setCurrentPage(1); }}>
               Show All
             </Button>
           )}
@@ -235,12 +248,20 @@ export const MyRequestsPage = () => {
           <Input
             placeholder="Search by reference or plate number..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
             icon={<Search size={16} />}
           />
         </div>
 
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <div className="flex flex-col justify-center items-center py-16">
+            <Loader2 className="animate-spin text-blue-600 mb-3" size={32} />
+            <p className="text-gray-500 text-sm font-medium">Loading requests...</p>
+          </div>
+        ) : requests.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
             <FileText size={32} className="mx-auto mb-2 opacity-50" />
             <p className="text-sm">No requests yet</p>
@@ -260,7 +281,7 @@ export const MyRequestsPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((req) => (
+                {requests.map((req) => (
                   <tr key={req.id || req.voucherReferenceNo || req.clearanceReferenceNo} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-3">
                       {clearanceDone(req) && req.certificateNo ? (
@@ -303,6 +324,32 @@ export const MyRequestsPage = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-6 px-2">
+            <span className="text-sm text-gray-500">
+              Showing {totalElements === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, totalElements)} of {totalElements} entries
+            </span>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft size={16} /> Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+              >
+                Next <ChevronRight size={16} />
+              </Button>
+            </div>
           </div>
         )}
       </Card>
