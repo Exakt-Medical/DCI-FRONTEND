@@ -179,7 +179,7 @@ export const MyRequestsPage = () => {
   };
 
   const handleOpenRequest = (req) => {
-    navigate("/dci-access/new-clearance-request", { state: { request: req } });
+    navigate(`/dci-access/new-clearance-request?id=${req.id}`);
   };
 
   return (

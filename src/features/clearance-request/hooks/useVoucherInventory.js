@@ -16,18 +16,33 @@ export const useVoucherInventory = ({
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
   const [lastBatch, setLastBatch] = useState(null);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
+  const [serverCounts, setServerCounts] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
+
   const fetchInventory = async () => {
+    setIsLoading(true);
     const profile = JSON.parse(localStorage.getItem("userProfile") || "{}");
     const userId = localStorage.getItem("userId") || profile.id;
     if (userId) {
-      const data = await voucherInventoryService.fetchAgentInventory(userId);
-      onInventoryChange?.(data);
+      const data = await voucherInventoryService.fetchAgentInventory(userId, currentPage, pageSize, searchTerm, statusFilter);
+      onInventoryChange?.(data.content || []);
+      setTotalPages(data.totalPages || 1);
+      setTotalElements(data.totalElements || 0);
+      setServerCounts(data.counts || {});
     }
+    setIsLoading(false);
   };
 
   useEffect(() => {
     fetchInventory();
+  }, [currentPage, statusFilter, searchTerm]);
+
+  useEffect(() => {
     
     const handlePaymentCallback = async () => {
       const urlParams = new URLSearchParams(window.location.search);
@@ -87,31 +102,31 @@ export const useVoucherInventory = ({
     handlePaymentCallback();
   }, []);
 
-  const summary = useMemo(() => voucherInventoryService.getSummary(inventory), [inventory]);
-
-  const filteredRows = useMemo(() => {
-    return inventory.filter((item) => {
-      const statusMatch =
-        statusFilter === "ALL" ? true : item.inventoryStatus === statusFilter;
-
-      const text = `${item.voucherCode} ${item.batchId} ${item.assignedToPlate}`.toLowerCase();
-      const searchMatch = searchTerm ? text.includes(searchTerm.toLowerCase()) : true;
-
-      return statusMatch && searchMatch;
-    });
-  }, [inventory, searchTerm, statusFilter]);
+  const summary = useMemo(() => {
+    return {
+      all: serverCounts.all || 0,
+      available: serverCounts.available || 0,
+      assigned: serverCounts.assigned || 0,
+      used: serverCounts.used || 0,
+      expired: serverCounts.expired || 0,
+    };
+  }, [serverCounts]);
 
   const filterOptions = useMemo(
     () =>
       VOUCHER_INVENTORY_FILTERS.map((filter) => ({
         ...filter,
-        count:
-          filter.id === "ALL"
-            ? summary.all
-            : inventory.filter((item) => item.inventoryStatus === filter.id).length,
+        count: summary[filter.id.toLowerCase()] || 0,
       })),
-    [inventory, summary.all],
+    [summary],
   );
+
+  // Reset to first page when search or filter changes (debounced search would be better but this works for now)
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+
+
 
   const handlePurchase = async () => {
     if (isProcessingPayment) return;
@@ -198,8 +213,14 @@ export const useVoucherInventory = ({
     setStatusFilter,
     searchTerm,
     setSearchTerm,
-    filteredRows,
+    filteredRows: inventory,
     filterOptions,
     lastBatch,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    totalElements,
+    pageSize,
+    isLoading,
   };
 };

@@ -70,25 +70,10 @@ export const AgentClearanceRequestFlow = () => {
     handleClearanceRequestComplete: onComplete,
   } = useRequest();
 
-  const [availableVoucherRequests, setAvailableVoucherRequests] = useState([]);
-  const [isLoadingRequests, setIsLoadingRequests] = useState(true);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
   const [availableVoucherCount, setAvailableVoucherCount] = useState(null);
 
-  const loadAllRequests = async () => {
-    try {
-      setIsLoadingRequests(true);
-      const data = await fetchMyRequests();
-      setAvailableVoucherRequests(data || []);
-    } catch (error) {
-      console.error("Failed to load requests:", error);
-    } finally {
-      setIsLoadingRequests(false);
-    }
-  };
-
   useEffect(() => {
-    loadAllRequests();
-
     // Fetch available voucher count on mount
     const fetchVoucherCount = async () => {
       try {
@@ -115,12 +100,30 @@ export const AgentClearanceRequestFlow = () => {
     [location.search],
   );
   const idFromQuery = searchParams.get("id") || "";
-  const selectedRequest =
-    location.state?.request ||
-    availableVoucherRequests.find(
-      (item) => String(item.id) === String(idFromQuery),
-    ) ||
-    null;
+  const [fetchedRequest, setFetchedRequest] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    if (idFromQuery && !location.state?.request) {
+      setIsLoadingRequests(true);
+      fetchRequestById(idFromQuery)
+        .then((data) => {
+          if (active) {
+            setFetchedRequest(data);
+            setIsLoadingRequests(false);
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to fetch request", err);
+          if (active) setIsLoadingRequests(false);
+        });
+    } else {
+      setIsLoadingRequests(false);
+    }
+    return () => { active = false; };
+  }, [idFromQuery, location.state]);
+
+  const selectedRequest = location.state?.request || fetchedRequest || null;
 
   const onCancel = () => navigate("/dci-access/requests");
   const flowSteps = AGENT_STEPS;
@@ -275,8 +278,7 @@ export const AgentClearanceRequestFlow = () => {
     if (step === 4 && !hpgVerified && id) {
       interval = setInterval(async () => {
         try {
-          const requests = await fetchMyRequests();
-          const currentReq = requests.find((r) => String(r.id) === String(id));
+          const currentReq = await fetchRequestById(id);
           if (currentReq && (currentReq.hpgVerified || currentReq.status === "HPG_VERIFIED")) {
             setHpgVerified(true);
             setRequestStatus(currentReq.status);
@@ -295,8 +297,7 @@ export const AgentClearanceRequestFlow = () => {
     if (step === 5 && requestStatus !== "CERTIFICATE_ISSUED" && !certificateNo && id) {
       interval = setInterval(async () => {
         try {
-          const requests = await fetchMyRequests();
-          const currentReq = requests.find((r) => String(r.id) === String(id));
+          const currentReq = await fetchRequestById(id);
           if (currentReq) {
             if (currentReq.status === "CERTIFICATE_ISSUED") {
               setRequestStatus("CERTIFICATE_ISSUED");

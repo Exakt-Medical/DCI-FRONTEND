@@ -10,6 +10,12 @@ export const InventoryTab = ({
   searchTerm,
   onSearchChange,
   rows,
+  currentPage,
+  setCurrentPage,
+  totalPages,
+  totalElements,
+  pageSize,
+  isLoading,
 }) => {
   return (
     <div className="space-y-4">
@@ -21,7 +27,15 @@ export const InventoryTab = ({
         searchTerm={searchTerm}
         onSearchChange={onSearchChange}
       />
-      <VoucherInventoryTable rows={rows} />
+      <VoucherInventoryTable 
+        rows={rows} 
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        totalPages={totalPages}
+        totalElements={totalElements}
+        pageSize={pageSize}
+        isLoading={isLoading}
+      />
     </div>
   );
 };

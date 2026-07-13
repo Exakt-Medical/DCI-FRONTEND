@@ -6,41 +6,29 @@ import {
 import api from "./api";
 
 export const voucherInventoryService = {
-  async fetchAgentInventory(userId) {
-    if (!userId) return [];
+  async fetchAgentInventory(userId, page = 1, size = 10, search = "", filter = "ALL") {
+    if (!userId) return { content: [], counts: {}, totalPages: 0, totalElements: 0 };
     try {
-      const [inventoryRes, requestsRes] = await Promise.all([
-        api.get(`/voucher-transfer/by-user/${userId}`),
-        api.get(`/certificate-requests`)
-      ]);
-
-      const requests = requestsRes.data || [];
-      const plateMap = {};
-      const claimedVouchers = new Set();
-      requests.forEach(req => {
-        if (req.voucherCode) {
-          claimedVouchers.add(req.voucherCode);
-          if (req.plateNumber) {
-            plateMap[req.voucherCode] = req.plateNumber;
-          }
+      const res = await api.get(`/voucher-transfer/by-user/${userId}/paginated`, {
+        params: {
+          page: page - 1, // backend is 0-indexed
+          size,
+          search,
+          filter: filter === "ALL" ? "" : filter,
         }
       });
 
-      return (inventoryRes.data || []).map(v => {
-        let computedStatus = v.status;
-        // If it's AVAILABLE in DB but attached to a request, treat it as ASSIGNED in the UI
-        if (computedStatus === "AVAILABLE" && claimedVouchers.has(v.voucherCode)) {
-          computedStatus = "ASSIGNED";
-        }
+      const { content, totalPages, totalElements, counts } = res.data;
 
+      const mappedContent = (content || []).map(v => {
         return {
           voucherId: String(v.id),
           voucherCode: v.voucherCode,
-          inventoryStatus: computedStatus,
+          inventoryStatus: v.computedStatus || v.status,
           dateCreated: v.createdAt,
           batchId: v.orderId ? `ORDER-${v.orderId}` : "N/A",
-          assignedToPlate: plateMap[v.voucherCode] || v.voucherReference || "",
-          assignedToId: null,
+          assignedToPlate: v.assignedToPlate || v.voucherReference || "",
+          assignedToId: v.assignedToId || null,
           assignedBy: "agent_fixer",
           role: "agent_fixer",
           dateAssigned: v.updatedAt || "",
@@ -48,9 +36,16 @@ export const voucherInventoryService = {
           dateExpired: v.expiresAt || "",
         };
       });
+
+      return {
+        content: mappedContent,
+        totalPages,
+        totalElements,
+        counts
+      };
     } catch (error) {
       console.error("Failed to fetch agent inventory", error);
-      return [];
+      return { content: [], counts: {}, totalPages: 0, totalElements: 0 };
     }
   },
 

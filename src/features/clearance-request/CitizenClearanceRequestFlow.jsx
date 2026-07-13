@@ -73,24 +73,7 @@ export const CitizenClearanceRequestFlow = () => {
     handleClearanceRequestComplete: onComplete,
   } = useRequest();
 
-  const [availableVoucherRequests, setAvailableVoucherRequests] = useState([]);
-  const [isLoadingRequests, setIsLoadingRequests] = useState(true);
-
-  const loadAllRequests = async () => {
-    try {
-      setIsLoadingRequests(true);
-      const data = await fetchMyRequests();
-      setAvailableVoucherRequests(data || []);
-    } catch (error) {
-      console.error("Failed to load requests:", error);
-    } finally {
-      setIsLoadingRequests(false);
-    }
-  };
-
-  useEffect(() => {
-    loadAllRequests();
-  }, []);
+  const [isLoadingRequests, setIsLoadingRequests] = useState(false);
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -104,12 +87,30 @@ export const CitizenClearanceRequestFlow = () => {
   const paymentTransactionId =
     searchParams.get("transaction_id") || searchParams.get("transactionId") || "";
 
-  const selectedRequest =
-    location.state?.request ||
-    availableVoucherRequests.find(
-      (item) => String(item.id) === String(idFromQuery),
-    ) ||
-    null;
+  const [fetchedRequest, setFetchedRequest] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    if (idFromQuery && !location.state?.request) {
+      setIsLoadingRequests(true);
+      fetchRequestById(idFromQuery)
+        .then((data) => {
+          if (active) {
+            setFetchedRequest(data);
+            setIsLoadingRequests(false);
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to fetch request", err);
+          if (active) setIsLoadingRequests(false);
+        });
+    } else {
+      setIsLoadingRequests(false);
+    }
+    return () => { active = false; };
+  }, [idFromQuery, location.state]);
+
+  const selectedRequest = location.state?.request || fetchedRequest || null;
 
   const onCancel = () => navigate("/dci-access/requests");
   const flowSteps = CITIZEN_STEPS;
@@ -266,8 +267,7 @@ export const CitizenClearanceRequestFlow = () => {
     if (step === 5 && !hpgVerified && id) {
       interval = setInterval(async () => {
         try {
-          const requests = await fetchMyRequests();
-          const currentReq = requests.find((r) => String(r.id) === String(id));
+          const currentReq = await fetchRequestById(id);
           if (currentReq && (currentReq.hpgVerified || currentReq.status === "HPG_VERIFIED")) {
             setHpgVerified(true);
             setRequestStatus(currentReq.status);
@@ -286,8 +286,7 @@ export const CitizenClearanceRequestFlow = () => {
     if (step === 6 && requestStatus !== "CERTIFICATE_ISSUED" && !certificateNo && id) {
       interval = setInterval(async () => {
         try {
-          const requests = await fetchMyRequests();
-          const currentReq = requests.find((r) => String(r.id) === String(id));
+          const currentReq = await fetchRequestById(id);
           if (currentReq) {
             if (currentReq.status === "CERTIFICATE_ISSUED") {
               setRequestStatus("CERTIFICATE_ISSUED");
@@ -524,7 +523,6 @@ export const CitizenClearanceRequestFlow = () => {
     paymentTransactionId, selectedRequest,
     setPaymentDone, setVoucherCode, setVoucherAssigned,
     setHpgVerified, setRequestStatus, setStep,
-    setAvailableVoucherRequests,
     saveCitizenRequest,
     showError, navigate,
   });

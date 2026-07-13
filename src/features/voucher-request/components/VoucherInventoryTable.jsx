@@ -1,5 +1,7 @@
 import { Card } from "../../../components/Card";
+import { Button } from "../../../components/Button";
 import { voucherInventoryService } from "../../../services/voucherInventoryService";
+import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 
 const statusStyles = {
   AVAILABLE: "bg-emerald-50 text-emerald-700 border border-emerald-200",
@@ -8,10 +10,23 @@ const statusStyles = {
   EXPIRED: "bg-rose-50 text-rose-700 border border-rose-200",
 };
 
-export const VoucherInventoryTable = ({ rows }) => {
+export const VoucherInventoryTable = ({ 
+  rows,
+  currentPage,
+  setCurrentPage,
+  totalPages,
+  totalElements,
+  pageSize,
+  isLoading
+}) => {
   return (
     <Card className="p-4">
-      {rows.length === 0 ? (
+      {isLoading ? (
+        <div className="flex flex-col justify-center items-center py-16">
+          <Loader2 className="animate-spin text-blue-600 mb-3" size={32} />
+          <p className="text-gray-500 text-sm font-medium">Loading vouchers...</p>
+        </div>
+      ) : rows.length === 0 ? (
         <div className="py-10 text-center text-sm text-gray-500">
           No transaction credits found for this filter.
         </div>
@@ -43,6 +58,32 @@ export const VoucherInventoryTable = ({ rows }) => {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6 px-2">
+          <span className="text-sm text-gray-500">
+            Showing {totalElements === 0 ? 0 : (currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalElements)} of {totalElements} entries
+          </span>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft size={16} /> Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages}
+            >
+              Next <ChevronRight size={16} />
+            </Button>
+          </div>
         </div>
       )}
     </Card>

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import paymentsService from "../../../services/paymentsService";
 import merchantCallbackService from "../../../services/merchantCallbackService";
 import { transferVoucherService } from "../../../services/transferVoucherService";
-import { fetchMyRequests } from "../../../services/certificateRequestService";
+import { fetchRequestById } from "../../../services/certificateRequestService";
 
 /**
  * useCitizenPayment
@@ -30,7 +30,6 @@ export const useCitizenPayment = ({
   setHpgVerified,
   setRequestStatus,
   setStep,
-  setAvailableVoucherRequests,
   saveCitizenRequest,
   showError,
   navigate,
@@ -273,9 +272,8 @@ export const useCitizenPayment = ({
 
     const pollRequestStatus = async () => {
       try {
-        const records = await fetchMyRequests();
+        const currentRecord = await fetchRequestById(id);
         if (!isActive) return;
-        const currentRecord = records.find((r) => String(r.id) === String(id));
         if (currentRecord) {
           const isVerified = Boolean(
             currentRecord.hpgVerified || currentRecord.status === "HPG_VERIFIED"
@@ -283,7 +281,6 @@ export const useCitizenPayment = ({
           if (isVerified) {
             setHpgVerified(true);
             setRequestStatus("HPG_VERIFIED");
-            setAvailableVoucherRequests(records);
           }
         }
       } catch (err) {
@@ -298,7 +295,7 @@ export const useCitizenPayment = ({
       isActive = false;
       clearInterval(intervalId);
     };
-  }, [id, step, hpgVerified, setAvailableVoucherRequests]);
+  }, [id, step, hpgVerified, setHpgVerified, setRequestStatus]);
 
 
 

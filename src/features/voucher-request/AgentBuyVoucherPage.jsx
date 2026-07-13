@@ -23,6 +23,12 @@ export const AgentBuyVoucherPage = () => {
     filteredRows,
     filterOptions,
     lastBatch,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    totalElements,
+    pageSize,
+    isLoading,
   } = useVoucherInventory({
     inventory: voucherInventory,
     onInventoryChange: setVoucherInventory,
@@ -57,6 +63,12 @@ export const AgentBuyVoucherPage = () => {
           searchTerm={searchTerm}
           onSearchChange={setSearchTerm}
           rows={filteredRows}
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          totalPages={totalPages}
+          totalElements={totalElements}
+          pageSize={pageSize}
+          isLoading={isLoading}
         />
       )}
     </div>
