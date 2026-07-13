@@ -35,6 +35,7 @@ import { fetchMyRequests, fetchRequestById } from "../../services/certificateReq
 import { CreateTicketModal } from "../Tickets/CreateTicketModal";
 import { DataMismatchModal } from "./components/DataMismatchModal";
 import { OrCrMismatchModal } from "./components/OrCrMismatchModal";
+import { UploadDocumentGuidelineModal } from "./components/UploadDocumentGuidelineModal";
 import { ticketService } from "../../services/ticketService";
 import { voucherInventoryService } from "../../services/voucherInventoryService";
 import {
@@ -65,6 +66,10 @@ export const AgentClearanceRequestFlow = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [orCrMismatches, setOrCrMismatches] = useState([]);
   const [isOrCrMismatchModalOpen, setIsOrCrMismatchModalOpen] = useState(false);
+  const [showGuidelineModal, setShowGuidelineModal] = useState(false);
+  const [hasShownGuideline, setHasShownGuideline] = useState(false);
+  const [guidelineRevisitedHint, setGuidelineRevisitedHint] = useState(false);
+
   const {
     handleRequestSave: onSaveRequest,
     handleClearanceRequestComplete: onComplete,
@@ -158,6 +163,14 @@ export const AgentClearanceRequestFlow = () => {
     if (params.get("step") !== String(step)) { params.set("step", String(step)); changed = true; }
     if (changed) navigate({ search: params.toString() }, { replace: true });
   }, [id, step, location.search, navigate]);
+
+  useEffect(() => {
+    if (step === 2 && !hasShownGuideline) {
+      setShowGuidelineModal(true);
+      setHasShownGuideline(true);
+      setGuidelineRevisitedHint(true);
+    }
+  }, [step, hasShownGuideline]);
 
   const [requestStatus, setRequestStatus] = useState(
     () => selectedRequest?.status || "DRAFT",
@@ -1066,6 +1079,27 @@ export const AgentClearanceRequestFlow = () => {
 
             {step === 2 && (
               <div>
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 mb-5 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Upload Documents</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Upload your OR and CR documents to extract vehicle details.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowGuidelineModal(true);
+                      setGuidelineRevisitedHint(false);
+                    }}
+                    className={`text-xs font-semibold underline px-3.5 py-2 rounded-lg border transition-all shrink-0 ${
+                      guidelineRevisitedHint
+                        ? "bg-amber-50 border-amber-200 text-amber-700 font-bold"
+                        : "bg-white border-gray-200 text-[#0059b5] hover:bg-gray-50"
+                    }`}
+                  >
+                    Need Help? View Upload Guidelines
+                  </button>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
                   <VehicleDocumentUploadCard
                     title="OR"
@@ -1461,6 +1495,10 @@ export const AgentClearanceRequestFlow = () => {
           </div>
         </Modal>
       )}
+      <UploadDocumentGuidelineModal
+        isOpen={showGuidelineModal}
+        onClose={() => setShowGuidelineModal(false)}
+      />
     </div>
   );
 };

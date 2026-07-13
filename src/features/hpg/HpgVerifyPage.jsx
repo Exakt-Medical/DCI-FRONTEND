@@ -6,6 +6,7 @@ import { Spinner } from "../../components/Spinner";
 import { Shield, Search, CheckCircle, Car, User, ScanLine } from "lucide-react";
 import { QrScannerModal } from "../../components/QrScannerModal";
 import api from "../../services/api";
+import { useAlert } from "../../hooks/useAlert";
 
 export const HpgVerifyPage = () => {
   const [voucherCode, setVoucherCode] = useState("");
@@ -15,6 +16,8 @@ export const HpgVerifyPage = () => {
   const [vehicleData, setVehicleData] = useState(null);
   const [error, setError] = useState("");
   const [markedVerified, setMarkedVerified] = useState(false);
+
+  const { success: showSuccessAlert } = useAlert();
 
   const handleQrScan = (scannedVoucherCode) => {
     setVoucherCode(scannedVoucherCode);
@@ -66,6 +69,7 @@ export const HpgVerifyPage = () => {
     api.post(`/certificate-requests/by-voucher/${voucherCode.trim()}/verify`)
       .then(() => {
         setMarkedVerified(true);
+        showSuccessAlert("Verification Complete", "Vehicle successfully verified by HPG.");
       })
       .catch((err) => {
         const msg = err.response?.data?.error || "Failed to mark as verified";
