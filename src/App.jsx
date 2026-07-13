@@ -30,6 +30,7 @@ import { AccountPage } from "./features/accounts/AccountPage";
 import { PlaceholderPage } from "./features/placeholder/PlaceholderPage";
 import { MaintenancePage } from "./features/Maintenance/MaintenancePage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { LtoLookupPage } from "./features/lto/LtoLookupPage";
 
 // Redirect already-authenticated users away from the login page
 const LoginRedirect = () => {
@@ -40,6 +41,7 @@ const LoginRedirect = () => {
     agent_fixer: "/dci-access/requests",
     hpg: "/dci-access/hpg-verification",
     dci: "/dci-access/dci-verification",
+    lto: "/dci-access/lto-lookup",
   };
   const dest = landingMap[(role || "").toLowerCase()] || "/dci-access/dashboard";
   return <Navigate to={dest} replace />;
@@ -84,8 +86,9 @@ function App() {
           
           <Route path="/dci-access/hpg-verification" element={<ProtectedRoute allowedRoles={["hpg", "dci"]}><HpgVerifyPage /></ProtectedRoute>} />
           <Route path="/dci-access/dci-verification" element={<ProtectedRoute allowedRoles={["dci"]}><DciVerifyPage /></ProtectedRoute>} />
+          <Route path="/dci-access/lto-lookup" element={<ProtectedRoute allowedRoles={["lto"]}><LtoLookupPage /></ProtectedRoute>} />
           
-          <Route path="/dci-access/tickets" element={<ProtectedRoute allowedRoles={["admin", "hpg", "dci"]}><TicketPage /></ProtectedRoute>} />
+          <Route path="/dci-access/tickets" element={<ProtectedRoute allowedRoles={["admin", "hpg", "dci", "lto"]}><TicketPage /></ProtectedRoute>} />
           
           <Route path="/dci-access/accounts" element={<ProtectedRoute allowedRoles={["admin"]}><AccountPage /></ProtectedRoute>} />
           <Route path="/dci-access/transactions" element={<ProtectedRoute allowedRoles={["admin"]}><TransactionLogsPage /></ProtectedRoute>} />

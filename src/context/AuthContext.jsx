@@ -91,6 +91,7 @@ export function AuthProvider({ children }) {
     if (role === "citizen" || role === "agent" || role === "agent_fixer") return "requests";
     if (role === "hpg") return "hpg-verification";
     if (role === "dci") return "dci-verification";
+    if (role === "lto") return "lto-lookup";
     // admin, agent_fixer, agent, and any other roles → dashboard
     return "dashboard";
   };

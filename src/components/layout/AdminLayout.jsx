@@ -52,6 +52,10 @@ export const AdminLayout = () => {
       { id: "accesslogs", label: "Access Logs", icon: LogIn, section: "LOGS", disabled: false },
       { id: "transactions", label: "Transaction Logs", icon: ListTodo, section: "LOGS", disabled: false },
     ],
+    lto: [
+      { id: "lto-lookup", label: "Lookup Page", icon: Search, section: "VERIFICATION", disabled: false },
+      { id: "tickets", label: "Tickets", icon: Ticket, section: "SUPPORT", disabled: false },
+    ],
   };
 
   const currentNav = navConfig[role] || navConfig.admin;
@@ -62,6 +66,7 @@ export const AdminLayout = () => {
     hpg: { label: "HPG Officer", initial: "HPG", color: "bg-blue-600" },
     dci: { label: "DCI Officer", initial: "DCI", color: "bg-green-600" },
     admin: { label: "Admin", initial: "A", color: "bg-red-600" },
+    lto: { label: "LTO Officer", initial: "LTO", color: "bg-blue-600" },
   };
 
   const currentUser = userInfo[role] || userInfo.admin;
