@@ -864,7 +864,7 @@ export const AgentClearanceRequestFlow = () => {
 
   const handleDataMismatchSubmit = async ({ crAttachment }) => {
     const referenceNumber = generateRefNumber();
-    const userName = [localStorage.getItem("firstName"), localStorage.getItem("lastName")].filter(Boolean).join(" ");
+    const userName = [localStorage.getItem("firstname"), localStorage.getItem("lastname")].filter(Boolean).join(" ");
     try {
       await ticketService.create({
         referenceNumber,

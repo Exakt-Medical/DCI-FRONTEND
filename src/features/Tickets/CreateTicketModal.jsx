@@ -110,7 +110,7 @@ export const CreateTicketModal = ({
           ...prev,
           ...prefilledData,
           requestedBy: {
-            name: prefilledData.requestedBy?.name || prev.requestedBy?.name || [localStorage.getItem("firstName"), localStorage.getItem("lastName")].filter(Boolean).join(" "),
+            name: prefilledData.requestedBy?.name || prev.requestedBy?.name || [localStorage.getItem("firstname"), localStorage.getItem("lastname")].filter(Boolean).join(" "),
             email: prefilledData.requestedBy?.email || prev.requestedBy?.email || localStorage.getItem("email") || "",
           },
           vehicleInfo: {
