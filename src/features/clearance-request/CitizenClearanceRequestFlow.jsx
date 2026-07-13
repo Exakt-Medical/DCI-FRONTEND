@@ -225,6 +225,7 @@ export const CitizenClearanceRequestFlow = () => {
     () => selectedRequest?.status === "VERIFICATION_FAILED" ? "Verification failed." : ""
   );
   const [vvsOwnerName, setVvsOwnerName] = useState(selectedRequest?.vvsOwnerName || "");
+  const [vvsOwnerAddress, setVvsOwnerAddress] = useState(selectedRequest?.vvsOwnerAddress || "");
   const [vvsVehicleDetails, setVvsVehicleDetails] = useState(
     selectedRequest?.vvsVehicleDetails || null,
   );
@@ -267,6 +268,7 @@ export const CitizenClearanceRequestFlow = () => {
       setVerificationError("No matching vehicle record found in VVS for the provided identifiers.");
     }
     if (selectedRequest.vvsOwnerName) setVvsOwnerName(selectedRequest.vvsOwnerName);
+    if (selectedRequest.vvsOwnerAddress) setVvsOwnerAddress(selectedRequest.vvsOwnerAddress);
     if (selectedRequest.vvsVehicleDetails) setVvsVehicleDetails(selectedRequest.vvsVehicleDetails);
     if (selectedRequest.mvcMecValidationState) setCitizenValidationState(selectedRequest.mvcMecValidationState);
     if (selectedRequest.mvcMecValidationMessage) setCitizenValidationMessage(selectedRequest.mvcMecValidationMessage);
@@ -673,9 +675,15 @@ export const CitizenClearanceRequestFlow = () => {
         vvsData.ownerName ||
         "Unknown Owner";
 
+      const ownerAddress = vvsData.ownerAddress || [
+        vvsData.houseBldgNo, vvsData.streetName, vvsData.barangay,
+        vvsData.municipality, vvsData.province, vvsData.region, vvsData.zipCode
+      ].filter(Boolean).join(", ") || "N/A";
+
       setTransactionVerified(true);
       setVerificationId(vvsData.verificationId || "");
       setVvsOwnerName(ownerName);
+      setVvsOwnerAddress(ownerAddress);
       setVvsVehicleDetails(vvsData);
 
       await saveCitizenRequest({
@@ -683,6 +691,7 @@ export const CitizenClearanceRequestFlow = () => {
         status: "DOCUMENTS_VERIFIED",
         verificationId: vvsData.verificationId || "",
         vvsOwnerName: ownerName,
+        vvsOwnerAddress: ownerAddress,
         vvsVehicleDetails: vvsData,
       });
       setRequestStatus("DOCUMENTS_VERIFIED");
@@ -1185,6 +1194,7 @@ export const CitizenClearanceRequestFlow = () => {
                         <h3 className="text-lg font-bold text-gray-900">LTO Vehicle Found</h3>
                       </div>
                       
+                      <h4 className="text-sm font-bold text-gray-900 mb-6">Vehicle Details</h4>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-y-8 gap-x-6">
                         <div>
                           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Make</p>
@@ -1197,8 +1207,7 @@ export const CitizenClearanceRequestFlow = () => {
                         <div>
                           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Year Model</p>
                           <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.yearModel || crCr.yearModel || "N/A"}</p>
-                        </div>
-                        
+                        </div>                    
                         <div>
                           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Color</p>
                           <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.color || crCr.color || "N/A"}</p>
@@ -1208,11 +1217,6 @@ export const CitizenClearanceRequestFlow = () => {
                           <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.bodyType || crCr?.bodyType || "N/A"}</p>
                         </div>
                         <div>
-                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Owner</p>
-                          <p className="text-sm font-semibold text-gray-900 uppercase">{vvsOwnerName.replace(/(?!^)[A-Za-z](?!$)/g, "*")}</p>
-                        </div>
-                        
-                        <div>
                           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Classification</p>
                           <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.classification || crCr.classification || "N/A"}</p>
                         </div>
@@ -1220,7 +1224,6 @@ export const CitizenClearanceRequestFlow = () => {
                           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Vehicle Type</p>
                           <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.denomination || "N/A"}</p>
                         </div>
-
                         <div>
                           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Engine Number</p>
                           <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.engineNumber || crCr.engineNumber || "N/A"}</p>
@@ -1229,10 +1232,24 @@ export const CitizenClearanceRequestFlow = () => {
                           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Chassis No.</p>
                           <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.chassisNumber || crCr.chassisNumber || "N/A"}</p>
                         </div>
-                        
                         <div>
                           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Plate Number</p>
                           <p className="text-sm font-semibold text-gray-900 uppercase">{vvsVehicleDetails?.plateNumber || crCr.plateNumber || "N/A"}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-8 pt-6 border-t border-gray-200">
+                        <h4 className="text-sm font-bold text-gray-900 mb-6">Owner Details</h4>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-y-8 gap-x-6">
+                          <div>
+                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Owner</p>
+                            <p className="text-sm font-semibold text-gray-900 uppercase">{vvsOwnerName.replace(/(?!^)[A-Za-z](?!$)/g, "*")}</p>
+                          </div>
+                          <div className="md:col-span-2">
+                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Owner's Address</p>
+                            <p className="text-sm font-semibold text-gray-900 uppercase">{vvsOwnerAddress}</p>
+                          </div>
                         </div>
                       </div>
 

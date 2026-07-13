@@ -49,6 +49,11 @@ export const VehicleFields = ({ values, onChange, fieldSet = "cr", errors = {}, 
         required={true}
         error={errors[field.key]}
         maxLength={field.key === "mvFileNumber" ? 15 : undefined}
+        className={
+          field.key === "ownerName" || field.key === "ownerAddress"
+            ? "md:col-span-2"
+            : ""
+        }
       />
     ))}
   </div>
