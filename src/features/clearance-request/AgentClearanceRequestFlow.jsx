@@ -864,14 +864,15 @@ export const AgentClearanceRequestFlow = () => {
 
   const handleDataMismatchSubmit = async ({ crAttachment }) => {
     const referenceNumber = generateRefNumber();
+    const userName = [localStorage.getItem("firstName"), localStorage.getItem("lastName")].filter(Boolean).join(" ");
     try {
       await ticketService.create({
         referenceNumber,
-        requestedBy: role || "Agent",
+        requestedBy: userName,
         type: "Data Mismatch",
         status: "PENDING",
         address: crAttachment,
-        name: role || "Agent",
+        name: userName,
         processedBy: null,
         dateRequested: new Date().toISOString(),
         dateUpdated: new Date().toISOString(),
