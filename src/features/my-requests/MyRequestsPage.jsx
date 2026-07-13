@@ -7,7 +7,7 @@ import { CertificateActionButtons } from "../clearance-request/components/Certif
 import { useAuth } from "../../context/AuthContext";
 import { fetchMyRequests } from "../../services/certificateRequestService";
 import {
-  FileText, Plus, Eye, Search, CheckCircle, Clock, CreditCard, ChevronLeft, ChevronRight, Loader2
+  FileText, Plus, Eye, Search, CheckCircle, Clock, CreditCard, ChevronLeft, ChevronRight, Loader2, XCircle
 } from "lucide-react";
 
 const getVoucherStatus = (request) => {
@@ -309,14 +309,25 @@ export const MyRequestsPage = () => {
                       )}
                     </td>
                     <td className="py-3 text-gray-700">{req.plateNumber || "-"}</td>
-                    <td className="py-3">
-                      <StatusBadge done={voucherDone(req)} />
-                    </td>
-                    <td className="py-3">
-                      <div className="flex items-center gap-2">
-                        <StatusBadge done={clearanceDone(req)} />
-                      </div>
-                    </td>
+                    {req.status === "VERIFICATION_FAILED" ? (
+                      <td colSpan={2} className="py-3 pr-4">
+                        <div className="flex items-center justify-center gap-2 rounded-full px-3 py-1 text-xs font-medium bg-red-50 border border-red-500 w-full">
+                          <XCircle size={14} className="text-red-600 shrink-0" />
+                          <span className="text-red-700">VERIFICATION FAILED REQUEST</span>
+                        </div>
+                      </td>
+                    ) : (
+                      <>
+                        <td className="py-3">
+                          <StatusBadge done={voucherDone(req)} />
+                        </td>
+                        <td className="py-3">
+                          <div className="flex items-center gap-2">
+                            <StatusBadge done={clearanceDone(req)} />
+                          </div>
+                        </td>
+                      </>
+                    )}
                     <td className="py-3 text-gray-500 text-xs">
                       {req.dateCreated ? new Date(req.dateCreated).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : "-"}
                     </td>

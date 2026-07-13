@@ -66,8 +66,8 @@ export const AgentBulkClearanceRequestFlow = () => {
         const profile = JSON.parse(localStorage.getItem("userProfile") || "{}");
         const userId = localStorage.getItem("userId") || profile.id;
         if (userId) {
-          const inventory = await voucherInventoryService.fetchAgentInventory(userId);
-          const available = inventory.filter(v => v.inventoryStatus === "AVAILABLE" || v.status === "AVAILABLE");
+          const inventory = await voucherInventoryService.fetchAgentInventory(userId, 1, 1000);
+          const available = (inventory.content || []).filter(v => v.inventoryStatus === "AVAILABLE" || v.status === "AVAILABLE");
           setAvailableVouchers(available);
         }
       } catch (err) {

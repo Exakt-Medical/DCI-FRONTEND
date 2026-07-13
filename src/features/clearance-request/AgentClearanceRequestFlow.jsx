@@ -85,8 +85,8 @@ export const AgentClearanceRequestFlow = () => {
         const profile = JSON.parse(localStorage.getItem("userProfile") || "{}");
         const userId = localStorage.getItem("userId") || profile.id;
         if (userId) {
-          const inventory = await voucherInventoryService.fetchAgentInventory(userId);
-          const available = inventory.filter(v => v.inventoryStatus === "AVAILABLE" || v.status === "AVAILABLE").length;
+          const inventory = await voucherInventoryService.fetchAgentInventory(userId, 1, 1000);
+          const available = (inventory.content || []).filter(v => v.inventoryStatus === "AVAILABLE" || v.status === "AVAILABLE").length;
           setAvailableVoucherCount(available);
         }
       } catch (err) {
@@ -638,8 +638,8 @@ export const AgentClearanceRequestFlow = () => {
       if (!voucherAssigned) {
         const profile = JSON.parse(localStorage.getItem("userProfile") || "{}");
         const userId = localStorage.getItem("userId") || profile.id;
-        const inventory = await voucherInventoryService.fetchAgentInventory(userId);
-        const available = inventory.find(
+        const inventory = await voucherInventoryService.fetchAgentInventory(userId, 1, 1000);
+        const available = (inventory.content || []).find(
           (v) => v.inventoryStatus === "AVAILABLE" || v.status === "AVAILABLE",
         );
         if (!available) {
@@ -675,8 +675,8 @@ export const AgentClearanceRequestFlow = () => {
       if (!voucherAssigned) {
         const profile = JSON.parse(localStorage.getItem("userProfile") || "{}");
         const userId = localStorage.getItem("userId") || profile.id;
-        const inventory = await voucherInventoryService.fetchAgentInventory(userId);
-        const available = inventory.find(
+        const inventory = await voucherInventoryService.fetchAgentInventory(userId, 1, 1000);
+        const available = (inventory.content || []).find(
           (v) => v.inventoryStatus === "AVAILABLE" || v.status === "AVAILABLE",
         );
         if (!available) {

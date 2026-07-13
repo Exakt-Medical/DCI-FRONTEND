@@ -16,7 +16,7 @@ export function RequestProvider({ children }) {
     if (isAuthenticated) {
       fetchMyRequests()
         .then((data) => {
-          setRequestRecords(data || []);
+          setRequestRecords(data?.content || []);
           setIsInitializing(false);
         })
         .catch((err) => {

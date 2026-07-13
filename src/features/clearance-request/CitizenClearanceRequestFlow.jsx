@@ -1353,9 +1353,11 @@ export const CitizenClearanceRequestFlow = () => {
                     <X size={16} /> Cancel
                   </Button>
                 ) : (
-                  <Button variant="ghost" onClick={prevStep}>
-                    <ChevronLeft size={16} /> Back
-                  </Button>
+                  step > 1 && step !== 4 && (
+                    <Button variant="ghost" onClick={prevStep}>
+                      <ChevronLeft size={16} /> Back
+                    </Button>
+                  )
                 )}
                 {step === 4 && verificationFailed && (
                   <Button
