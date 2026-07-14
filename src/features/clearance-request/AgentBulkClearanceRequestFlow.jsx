@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Card } from "../../components/Card";
 import { Modal } from "../../components/Modal";
 import { Spinner } from "../../components/Spinner";
-import { CheckCircle, AlertTriangle, Download, Plus, ChevronRight, ChevronLeft, Trash2, Shield, Search, Car, X } from "lucide-react";
-import { VehicleDocumentUploadCard } from "./components/FlowFormCards";
+import { CheckCircle, AlertTriangle, Download, Plus, ChevronRight, ChevronLeft, Trash2, Shield, Search, Car, X, FileText } from "lucide-react";
+import { VehicleDocumentUploadCard, VehicleFields } from "./components/FlowFormCards";
 import { UploadDocumentGuidelineModal } from "./components/UploadDocumentGuidelineModal";
 import { useAlert } from "../../hooks/useAlert";
-import { emptyVehicle } from "./utils/clearanceRequestUtils";
+import { emptyVehicle, OR_EXPECTED_FIELDS, mergeVehicleFields } from "./utils/clearanceRequestUtils";
 import { useOrCrOcr } from "./hooks/useOrCrOcr";
 import { useAuth } from "../../context/AuthContext";
 import DCI_LOGO from "../../assets/DCI-LOGO.png";
@@ -183,6 +183,8 @@ export const AgentBulkClearanceRequestFlow = () => {
     };
   }, [queue.length, step]);
 
+  const [validationErrors, setValidationErrors] = useState({});
+
   const {
     ocrUploadState,
     handleOrUpload,
@@ -191,7 +193,13 @@ export const AgentBulkClearanceRequestFlow = () => {
     orCr, crCr,
     setOrCr, setCrCr,
     setOrPreview, setCrPreview,
-    setValidationErrors: () => {},
+    setValidationErrors,
+    onOrExtracted: (parsedVehicle) => {
+      setCrCr((prev) => mergeVehicleFields(prev, parsedVehicle));
+    },
+    onCrExtracted: (parsedVehicle) => {
+      setOrCr((prev) => mergeVehicleFields(prev, parsedVehicle));
+    }
   });
 
   // Backend integration states
@@ -222,6 +230,7 @@ export const AgentBulkClearanceRequestFlow = () => {
     setCrCr({ ...emptyVehicle });
     setOrPreview(null);
     setCrPreview(null);
+    setValidationErrors({});
     showSuccessAlert("Added", "Vehicle added to bulk queue.");
   };
 
@@ -583,17 +592,15 @@ export const AgentBulkClearanceRequestFlow = () => {
                     Need Help? View Upload Guidelines
                   </button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
                   <VehicleDocumentUploadCard
                     title="OR"
                     uploadLabel="Upload Official Receipt"
                     onFile={handleOrUpload}
                     preview={orPreview}
                     uploadHint={formatOcrHint(ocrUploadState.or)}
-                    vehicleLabel="Vehicle Details (from OR)"
-                    vehicleValues={orCr}
-                    vehicleFieldSet="or"
-                    onVehicleChange={updateOrCr}
+                    errors={validationErrors}
+                    hideFields={true}
                   />
                   <VehicleDocumentUploadCard
                     title="CR"
@@ -601,13 +608,33 @@ export const AgentBulkClearanceRequestFlow = () => {
                     onFile={handleCrUpload}
                     preview={crPreview}
                     uploadHint={formatOcrHint(ocrUploadState.cr)}
-                    vehicleLabel="Vehicle Details (from CR)"
-                    vehicleValues={crCr}
-                    vehicleFieldSet="cr"
-                    onVehicleChange={updateCrCr}
+                    errors={validationErrors}
                     disabled={ocrUploadState.or.status === OCR_STATUS.IDLE || ocrUploadState.or.status === OCR_STATUS.EXTRACTING}
+                    hideFields={true}
                   />
                 </div>
+
+                <Card className="p-5">
+                  <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
+                    <FileText size={18} className="text-[#0059b5]" />
+                    <h3 className="text-base font-bold text-gray-900">Vehicle Details</h3>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mb-4">
+                    Please review and complete the vehicle details below.
+                  </p>
+                  <VehicleFields
+                    values={crCr}
+                    onChange={(field, value) => {
+                      updateCrCr(field, value);
+                      if (OR_EXPECTED_FIELDS.includes(field)) {
+                        updateOrCr(field, value);
+                      }
+                    }}
+                    fieldSet="cr"
+                    errors={validationErrors}
+                    isExtracting={ocrUploadState.cr.status === OCR_STATUS.EXTRACTING || ocrUploadState.or.status === OCR_STATUS.EXTRACTING}
+                  />
+                </Card>
                 
                 <div className="mt-6 flex justify-center">
                   <button 

@@ -24,7 +24,7 @@ export const VoucherInventoryTable = ({
       {isLoading ? (
         <div className="flex flex-col justify-center items-center py-16">
           <Loader2 className="animate-spin text-blue-600 mb-3" size={32} />
-          <p className="text-gray-500 text-sm font-medium">Loading vouchers...</p>
+          <p className="text-gray-500 text-sm font-medium">Loading transaction credits...</p>
         </div>
       ) : rows.length === 0 ? (
         <div className="py-10 text-center text-sm text-gray-500">
@@ -35,7 +35,7 @@ export const VoucherInventoryTable = ({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 text-left">
-                <th className="py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Voucher Code</th>
+                <th className="py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Transaction Code</th>
                 <th className="py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Assigned To</th>
                 <th className="py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Batch</th>
