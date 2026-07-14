@@ -216,7 +216,6 @@ export const CitizenRegister = () => {
                 <img src={DciLogo} alt="DCI Logo" className="h-16 w-auto object-contain" />
               </div>
               <h1 className="text-xl font-bold text-gray-900">DCI Clearance Verification System</h1>
-              <h1 className="text-xl font-bold text-gray-900">Mindanao</h1>
             </div>
 
             <h2 className="text-base font-semibold text-gray-800 mb-5">Create Citizen Account</h2>
