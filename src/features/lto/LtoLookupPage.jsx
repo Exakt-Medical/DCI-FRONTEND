@@ -3,7 +3,8 @@ import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
 import { Spinner } from "../../components/Spinner";
-import { Search, FileText, CheckCircle, Car, User, Calendar } from "lucide-react";
+import { Search, FileText, CheckCircle, Car, User, Calendar, ScanLine } from "lucide-react";
+import { QrScannerModal } from "../../components/QrScannerModal";
 
 const MOCK_CERTIFICATE = {
   referenceNo: "DCI-CLR-2026-0003",
@@ -29,9 +30,43 @@ export const LtoLookupPage = () => {
   const [certificate, setCertificate] = useState(null);
   const [error, setError] = useState("");
   const [searched, setSearched] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
-  const handleSearch = () => {
-    if (!certNo.trim()) {
+  const extractCode = (str) => {
+    if (!str) return "";
+    const trimmed = str.trim();
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.includes("/verify/")) {
+      try {
+        const urlStr = trimmed.startsWith("http") ? trimmed : `http://dummy.com${trimmed.startsWith("/") ? "" : "/"}${trimmed}`;
+        const url = new URL(urlStr);
+        const parts = url.pathname.split("/");
+        const lastSegment = parts[parts.length - 1];
+        if (lastSegment) return lastSegment.toUpperCase();
+      } catch (e) {
+        // Fallback
+      }
+    }
+    if (trimmed.includes("/")) {
+      const parts = trimmed.split("/");
+      const lastSegment = parts[parts.length - 1];
+      if (lastSegment) return lastSegment.toUpperCase();
+    }
+    return trimmed.toUpperCase();
+  };
+
+  const handleQrScan = (scannedValue) => {
+    const extracted = extractCode(scannedValue);
+    setCertNo(extracted);
+    setError("");
+    setCertificate(null);
+    setSearched(false);
+    setIsScannerOpen(false);
+    handleSearch(extracted);
+  };
+
+  const handleSearch = (codeToSearch) => {
+    const code = typeof codeToSearch === "string" ? codeToSearch : certNo;
+    if (!code.trim()) {
       setError("Please enter a certificate number");
       return;
     }
@@ -41,7 +76,7 @@ export const LtoLookupPage = () => {
     setTimeout(() => {
       setIsSearching(false);
       setSearched(true);
-      if (certNo === "DCI-CERT-12345678") {
+      if (code.trim() === "DCI-CERT-12345678" || code.trim() === "DCI-CLR-2026-0003") {
         setCertificate(MOCK_CERTIFICATE);
         setError("");
       } else {
@@ -84,13 +119,21 @@ export const LtoLookupPage = () => {
         <div className="flex gap-3 items-end">
           <div className="flex-1">
             <Input
-          label="Certificate Number"
+              label="Certificate Number"
               value={certNo}
               onChange={(e) => setCertNo(e.target.value.toUpperCase())}
               placeholder="Enter certificate number (e.g., DCI-CERT-XXXXXXXX)"
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
             />
           </div>
+          <Button
+            variant="outline"
+            onClick={() => setIsScannerOpen(true)}
+            disabled={isSearching}
+          >
+            <ScanLine size={16} />
+            Scan QR
+          </Button>
           <Button
             onClick={handleSearch}
             disabled={isSearching || !certNo.trim()}
@@ -99,7 +142,7 @@ export const LtoLookupPage = () => {
             {isSearching ? "Searching..." : "Search"}
           </Button>
         </div>
-
+ 
         {error && (
           <p className="text-xs text-red-500 mt-2">{error}</p>
         )}
@@ -240,6 +283,12 @@ export const LtoLookupPage = () => {
           </div>
         </>
       )}
+
+      <QrScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onScan={handleQrScan}
+      />
     </div>
   );
 };
