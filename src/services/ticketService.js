@@ -25,12 +25,18 @@ const parseManilaDate = (raw) => {
   return raw + "+08:00";
 };
 
-// ✅ Returns current time adjusted to Philippine Time (UTC+8)
+// ✅ Returns current time adjusted to Philippine Time (UTC+8) without timezone identifier
 const toManilaISO = () => {
   const now = new Date();
   const offset = 8 * 60; // UTC+8 in minutes
   const manila = new Date(now.getTime() + offset * 60 * 1000);
-  return manila.toISOString();
+  return manila.toISOString().replace("Z", "");
+};
+
+// ✅ Strips timezone info (Z or +08:00) before sending to Java LocalDateTime
+const stripTimezone = (dateStr) => {
+  if (!dateStr) return dateStr;
+  return dateStr.replace(/Z$/, "").replace(/[+-]\d{2}:\d{2}$/, "");
 };
 
 // ─── Mappers ─────────────────────────────────────────────────────────────────
@@ -89,8 +95,8 @@ const mapToRequest = (formData) => ({
   type: formData.type ?? null,
   processedBy: formData.processedBy ?? null,
   // ✅ Use toManilaISO() so the saved time reflects Philippine Time (UTC+8)
-  dateUpdated: formData.dateUpdated ?? toManilaISO(),
-  dateRequested: formData.dateRequested ?? toManilaISO(),
+  dateUpdated: stripTimezone(formData.dateUpdated ?? toManilaISO()),
+  dateRequested: stripTimezone(formData.dateRequested ?? toManilaISO()),
   escalated: formData.escalated ?? "NO",
   roleBased: formData.roleBased ?? null,
 
@@ -154,7 +160,7 @@ export const ticketService = {
 
   async update(id, formData) {
     const res = await api.put(
-      `/api/support-ticket/${id}`,
+      `/support-ticket/${id}`,
       mapToRequest(formData),
     );
     return mapTicket(res.data);
