@@ -38,6 +38,7 @@ import { DataMismatchModal } from "./components/DataMismatchModal";
 import { OrCrMismatchModal } from "./components/OrCrMismatchModal";
 import { UploadDocumentGuidelineModal } from "./components/UploadDocumentGuidelineModal";
 import { ticketService } from "../../services/ticketService";
+import { useSubmittedTicket } from "./hooks/useSubmittedTicket";
 import {
   emptyVehicle,
   emptyMvc,
@@ -214,6 +215,8 @@ export const CitizenClearanceRequestFlow = () => {
     selectedRequest?.mvcMecValidationMessage || "",
   );
   const [validationErrors, setValidationErrors] = useState({});
+  const plate = crCr?.plateNumber || orCr?.plateNumber || mvcData?.plateNo;
+  const [submittedTicket, setSubmittedTicket] = useSubmittedTicket(id, plate);
 
   const [transactionVerified, setTransactionVerified] = useState(
     Boolean(selectedRequest?.verificationId),
@@ -322,14 +325,14 @@ export const CitizenClearanceRequestFlow = () => {
   useEffect(() => {
     const handleBeforeUnload = (e) => {
       if (window.bypassBeforeUnload) return;
-      if (step >= 2 && step !== 5 && step !== 6 && !certificateNo) {
+      if (step >= 2 && step < 4 && !certificateNo) {
         e.preventDefault();
         e.returnValue = "";
       }
     };
 
     const handleLinkClick = (e) => {
-      if (step >= 2 && step !== 5 && step !== 6 && !certificateNo) {
+      if (step >= 2 && step < 4 && !certificateNo) {
         const anchor = e.target.closest("a");
         if (anchor) {
           const targetHref = anchor.getAttribute("href");
@@ -836,6 +839,7 @@ export const CitizenClearanceRequestFlow = () => {
     });
     if (created) {
       showSuccessAlert("Ticket Submitted", `Your support ticket has been submitted. Reference: ${referenceNumber}`);
+      setSubmittedTicket(created);
       setIsTicketModalOpen(false);
     }
     return created;
@@ -845,7 +849,7 @@ export const CitizenClearanceRequestFlow = () => {
     const referenceNumber = generateRefNumber();
     const userName = [localStorage.getItem("firstname"), localStorage.getItem("lastname")].filter(Boolean).join(" ");
     try {
-      await ticketService.create({
+      const created = await ticketService.create({
         referenceNumber,
         requestedBy: userName,
         type: "Data Mismatch",
@@ -869,8 +873,11 @@ export const CitizenClearanceRequestFlow = () => {
         yearModel: vvsDetails?.year_model ?? null,
         classification: vvsDetails?.classification ?? null,
       });
-      showSuccessAlert("Ticket Submitted", `Data Mismatch ticket ${referenceNumber} has been created.`);
-      setIsDataMismatchModalOpen(false);
+      if (created) {
+        showSuccessAlert("Ticket Submitted", `Data Mismatch ticket ${referenceNumber} has been created.`);
+        setSubmittedTicket(created);
+        setIsDataMismatchModalOpen(false);
+      }
     } catch {
       showError("Submission Failed", "There was an error creating your ticket.");
     }
@@ -1271,13 +1278,23 @@ export const CitizenClearanceRequestFlow = () => {
                       </div>
 
                       <div className="mt-8 flex justify-end">
-                        <Button
-                          variant="secondary"
-                          onClick={() => setIsDataMismatchModalOpen(true)}
-                          className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-solid border-2"
-                        >
-                          Report Data Mismatch
-                        </Button>
+                        {submittedTicket ? (
+                          <Button
+                            variant="outline"
+                            onClick={() => setIsTicketModalOpen(true)}
+                            className="text-primary-700 border-primary-300 hover:bg-primary-50"
+                          >
+                            View Submitted Ticket
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="secondary"
+                            onClick={() => setIsDataMismatchModalOpen(true)}
+                            className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-solid border-2"
+                          >
+                            Report Data Mismatch
+                          </Button>
+                        )}
                       </div>
                     </div>
                   )}
@@ -1394,13 +1411,23 @@ export const CitizenClearanceRequestFlow = () => {
                   )
                 )}
                 {step === 4 && verificationFailed && (
-                  <Button
-                    variant="ghost"
-                    onClick={() => setIsTicketModalOpen(true)}
-                    className="text-gray-500 hover:text-gray-700 font-medium"
-                  >
-                    Report an Issue
-                  </Button>
+                  submittedTicket ? (
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsTicketModalOpen(true)}
+                      className="text-primary-700 border-primary-300 hover:bg-primary-50 font-medium"
+                    >
+                      View Submitted Ticket
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      onClick={() => setIsTicketModalOpen(true)}
+                      className="text-gray-500 hover:text-gray-700 font-medium"
+                    >
+                      Report an Issue
+                    </Button>
+                  )
                 )}
               </div>
               {step < flowSteps.length ? (
@@ -1432,6 +1459,7 @@ export const CitizenClearanceRequestFlow = () => {
         onClose={() => setIsTicketModalOpen(false)}
         onSubmit={handleCreateTicket}
         prefilledData={getTicketPrefilledData()}
+        previewTicket={submittedTicket}
       />
       {isDataMismatchModalOpen && (
         <DataMismatchModal

@@ -1,11 +1,12 @@
 // components/CreateTicketModal.jsx
 import { useState, useEffect } from "react";
-import { X, Send, User, FileText, AlertCircle, Paperclip } from "lucide-react";
+import { X, Send, User, FileText, AlertCircle, Paperclip, Car } from "lucide-react";
 import { Card } from "../../components/Card";
 import { ConcernTypeSelector } from "./components/modals/ConcernTypeSelector";
 import { RequestorInfoSection } from "./components/modals/RequestorInfoSection";
 import { VehicleSection } from "./components/modals/VehicleSection";
 import { OtherConcernSection } from "./components/modals/OtherConcernSection";
+import { attachmentService } from "../../services/attachmentService";
 
 // Get the API base URL from environment or use default
 const API_BASE_URL = import.meta.env?.VITE_API_URL || "http://localhost:8080";
@@ -69,6 +70,7 @@ export const CreateTicketModal = ({
   onSubmit,
   isLoginPageMode = false,
   prefilledData = null,
+  previewTicket = null,
 }) => {
   const [formData, setFormData] = useState({
     requestedBy: { name: "", email: "" },
@@ -102,6 +104,36 @@ export const CreateTicketModal = ({
   const [error, setError] = useState("");
   const [activeSection, setActiveSection] = useState("requestor");
   const [uploadProgress, setUploadProgress] = useState(null);
+  const [attachments, setAttachments] = useState([]);
+  const [loadingAttachments, setLoadingAttachments] = useState(false);
+
+  useEffect(() => {
+    if (previewTicket) {
+      const fetchAttachments = async () => {
+        setLoadingAttachments(true);
+        try {
+          const all = await attachmentService.getAll();
+          const filtered = all.filter(att => att.referenceNumber === previewTicket.referenceNumber);
+          setAttachments(filtered.map(att => ({
+            id: att.id,
+            crAttachmentUrl: att.crAttachment && att.crAttachment.length > 0 ? `${API_BASE_URL}/attachment/${att.id}/image/cr` : null,
+            plateCertificationUrl: att.plateCertificationAttachment && att.plateCertificationAttachment.length > 0 ? `${API_BASE_URL}/attachment/${att.id}/image/plate` : null,
+            actualPlateUrl: att.actualPlateAttachment && att.actualPlateAttachment.length > 0 ? `${API_BASE_URL}/attachment/${att.id}/image/actual` : null,
+            crAttachmentName: att.crAttachmentName || "CR Attachment",
+            plateCertificationName: att.plateCertificationName || "Plate Certification",
+            actualPlateName: att.actualPlateName || "Actual Plate",
+          })));
+        } catch (e) {
+          console.error("Failed to load ticket attachments", e);
+        } finally {
+          setLoadingAttachments(false);
+        }
+      };
+      fetchAttachments();
+    } else {
+      setAttachments([]);
+    }
+  }, [previewTicket]);
 
   useEffect(() => {
     if (isOpen && prefilledData) {
@@ -172,57 +204,57 @@ export const CreateTicketModal = ({
     }
   };
 
-const uploadAttachments = async (referenceNumber, requestedBy) => {
-  const hasFiles =
-    formData.attachment ||
-    Object.values(formData.attachments).some(
-      (file) => file !== null,
-    );
+  const uploadAttachments = async (referenceNumber, requestedBy) => {
+    const hasFiles =
+      formData.attachment ||
+      Object.values(formData.attachments).some(
+        (file) => file !== null,
+      );
 
-  if (!hasFiles) {
-    console.log("No files to upload");
-    return;
-  }
+    if (!hasFiles) {
+      console.log("No files to upload");
+      return;
+    }
 
-  const uploadFormData = new FormData();
+    const uploadFormData = new FormData();
 
-  uploadFormData.append("referenceNumber", referenceNumber);
-  uploadFormData.append("requestedBy", requestedBy);
+    uploadFormData.append("referenceNumber", referenceNumber);
+    uploadFormData.append("requestedBy", requestedBy);
 
   // General attachment
-  if (formData.attachment) {
+    if (formData.attachment) {
     uploadFormData.append(
       "generalAttachment",
       formData.attachment,
     );
-  }
+    }
 
   // Vehicle attachments
-  if (formData.attachments.crAttachment) {
+    if (formData.attachments.crAttachment) {
     uploadFormData.append(
       "crAttachment",
       formData.attachments.crAttachment,
     );
-  }
+    }
 
-  if (formData.attachments.plateCertificationAttachment) {
+    if (formData.attachments.plateCertificationAttachment) {
     uploadFormData.append(
       "plateCertificationAttachment",
       formData.attachments.plateCertificationAttachment,
     );
-  }
+    }
 
-  if (formData.attachments.actualPlateAttachment) {
+    if (formData.attachments.actualPlateAttachment) {
     uploadFormData.append(
       "actualPlateAttachment",
       formData.attachments.actualPlateAttachment,
     );
-  }
+    }
 
-  await attachmentApi.upload(uploadFormData);
+    await attachmentApi.upload(uploadFormData);
 
-  console.log("All attachments uploaded successfully");
-};
+    console.log("All attachments uploaded successfully");
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -254,7 +286,7 @@ const uploadAttachments = async (referenceNumber, requestedBy) => {
       setUploadProgress("Creating ticket...");
       const { attachment, attachments, ...ticketOnlyData } = formData;
 
-const ticketResult = await onSubmit(ticketOnlyData);
+      const ticketResult = await onSubmit(ticketOnlyData);
 
       const referenceNumber =
         ticketResult?.referenceNumber ||
@@ -319,7 +351,186 @@ const ticketResult = await onSubmit(ticketOnlyData);
 
   if (!isOpen) return null;
 
-  // Rest of your component remains the same...
+  // ── Read-Only Preview Mode Layout ───────────────────────────────────────────
+  if (previewTicket) {
+    const v = previewTicket.vehicleInfo || {};
+    const getStatusColor = (status) => {
+      const s = String(status).toLowerCase();
+      if (s === "pending") return "bg-amber-100 text-amber-800 border-amber-200 animate-pulse";
+      if (s === "resolved" || s === "closed") return "bg-green-100 text-green-800 border-green-200";
+      return "bg-blue-100 text-blue-800 border-blue-200";
+    };
+
+    return (
+      <div className="fixed inset-0 z-50 overflow-y-auto">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+          onClick={onClose}
+        />
+        <div className="relative min-h-screen flex items-center justify-center p-4">
+          <div className="relative bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+            <div className="flex-shrink-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-xl">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <FileText size={20} className="text-primary-500" />
+                  Ticket Preview
+                </h2>
+                <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                  <X size={20} />
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Viewing details of support ticket {previewTicket.referenceNumber || `#${previewTicket.id}`}
+              </p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-gray-50 rounded-lg border border-gray-150">
+                  <span className="text-[10px] uppercase font-bold text-gray-400">Reference No.</span>
+                  <p className="text-sm font-bold text-gray-800 mt-0.5">{previewTicket.referenceNumber || "—"}</p>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-lg border border-gray-150">
+                  <span className="text-[10px] uppercase font-bold text-gray-400">Status</span>
+                  <div className="mt-1">
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusColor(previewTicket.status)}`}>
+                      {previewTicket.statusLabel || previewTicket.status || "Pending"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-xs font-semibold text-gray-400">Date Created</span>
+                    <p className="text-sm font-medium text-gray-800 mt-0.5">
+                      {previewTicket.dateRequested ? new Date(previewTicket.dateRequested).toLocaleString("en-PH") : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-xs font-semibold text-gray-400">Concern Type</span>
+                    <p className="text-sm font-medium text-gray-800 mt-0.5">{previewTicket.type || "—"}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-xs font-semibold text-gray-400">Requested By</span>
+                  <p className="text-sm font-medium text-gray-800 mt-0.5">{previewTicket.requestedBy || previewTicket.customer || "—"}</p>
+                </div>
+
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                  <span className="text-xs font-semibold text-gray-400">Description of Issue</span>
+                  <p className="text-sm text-gray-700 whitespace-pre-line mt-1.5 leading-relaxed font-normal">
+                    {previewTicket.description || previewTicket.address || "No description provided."}
+                  </p>
+                </div>
+              </div>
+
+              {v.plateNo && v.plateNo !== "N/A" && (
+                <div className="space-y-3 pt-4 border-t border-gray-150">
+                  <h3 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                    <Car size={16} className="text-[#0059b5]" />
+                    Associated Vehicle Details
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 bg-gray-50/50 p-4 rounded-xl border border-gray-200">
+                    <div>
+                      <span className="text-[10px] text-gray-400 uppercase font-bold">Plate No.</span>
+                      <p className="text-sm font-semibold text-gray-800 uppercase">{v.plateNo}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-gray-400 uppercase font-bold">MV File No.</span>
+                      <p className="text-sm font-semibold text-gray-800 uppercase">{v.mvFileNo}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-gray-400 uppercase font-bold">Make</span>
+                      <p className="text-sm font-medium text-gray-800 uppercase">{v.make}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-gray-400 uppercase font-bold">Model/Series</span>
+                      <p className="text-sm font-medium text-gray-800 uppercase">{v.model}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-gray-400 uppercase font-bold">Engine No.</span>
+                      <p className="text-sm font-semibold text-gray-800 uppercase">{v.engineNo}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-gray-400 uppercase font-bold">Chassis No.</span>
+                      <p className="text-sm font-semibold text-gray-800 uppercase">{v.chassisNo}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Attachments Section */}
+              {(loadingAttachments || attachments.length > 0) && (
+                <div className="space-y-3 pt-4 border-t border-gray-150">
+                  <h3 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                    <Paperclip size={16} className="text-[#0059b5]" />
+                    Attachments
+                  </h3>
+                  {loadingAttachments ? (
+                    <div className="flex justify-center py-4">
+                      <div className="w-6 h-6 border-2 border-[#0059b5] border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-2">
+                      {attachments.map((att) => (
+                        <div key={att.id} className="flex flex-col gap-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                          {att.crAttachmentUrl && (
+                            <a
+                              href={att.crAttachmentUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-semibold text-primary-600 hover:text-primary-800 hover:underline flex items-center gap-1.5"
+                            >
+                              <Paperclip size={14} /> {att.crAttachmentName}
+                            </a>
+                          )}
+                          {att.plateCertificationUrl && (
+                            <a
+                              href={att.plateCertificationUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-semibold text-primary-600 hover:text-primary-800 hover:underline flex items-center gap-1.5"
+                            >
+                              <Paperclip size={14} /> {att.plateCertificationName}
+                            </a>
+                          )}
+                          {att.actualPlateUrl && (
+                            <a
+                              href={att.actualPlateUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-semibold text-primary-600 hover:text-primary-800 hover:underline flex items-center gap-1.5"
+                            >
+                              <Paperclip size={14} /> {att.actualPlateName}
+                            </a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex-shrink-0 bg-white border-t border-gray-200 px-6 py-4 rounded-b-xl flex justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-6 py-2.5 text-sm font-medium text-white bg-[#0059b5] hover:bg-[#004a96] rounded-xl transition-colors shadow-sm"
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Standard Create / Edit Mode Layout ──────────────────────────────────────
   const sections = [
     { id: "requestor", label: "Requestor Information", icon: User },
     { id: "details", label: "Ticket Details", icon: FileText },
@@ -482,6 +693,11 @@ const ticketResult = await onSubmit(ticketOnlyData);
           {/* Form with footer inside */}
           <form
             onSubmit={handleSubmit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && e.target.tagName === "INPUT") {
+                e.preventDefault();
+              }
+            }}
             className="flex-1 overflow-y-auto flex flex-col"
           >
             <div className="px-6 py-6 space-y-6 flex-1">
@@ -551,23 +767,36 @@ const ticketResult = await onSubmit(ticketOnlyData);
               >
                 Cancel
               </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-5 py-2.5 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors flex items-center gap-2 disabled:opacity-50"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    {isLoginPageMode ? "Reporting..." : "Creating..."}
-                  </>
-                ) : (
-                  <>
-                    <Send size={14} />
-                    {isLoginPageMode ? "Report Issue" : "Create Ticket"}
-                  </>
-                )}
-              </button>
+              {activeSection === "requestor" ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setActiveSection("details");
+                  }}
+                  className="px-6 py-2.5 text-sm font-medium text-white bg-[#0059b5] hover:bg-[#004a96] rounded-xl transition-colors shadow-sm"
+                >
+                  Next
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-5 py-2.5 text-sm font-medium text-white bg-primary-500 hover:bg-primary-600 rounded-xl transition-colors flex items-center gap-2 disabled:opacity-50 animate-fade-in"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      {isLoginPageMode ? "Reporting..." : "Creating..."}
+                    </>
+                  ) : (
+                    <>
+                      <Send size={14} />
+                      {isLoginPageMode ? "Report Issue" : "Create Ticket"}
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </form>
         </div>
