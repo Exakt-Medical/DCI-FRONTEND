@@ -143,7 +143,7 @@ export const AgentBulkClearanceRequestFlow = () => {
   const [selectedMismatchItem, setSelectedMismatchItem] = useState(null);
 
   useEffect(() => {
-    const shouldBlock = queue.length > 0 && step < 5;
+    const shouldBlock = queue.length > 0 && step < 3;
 
     const handleBeforeUnload = (e) => {
       if (window.bypassBeforeUnload) return;
@@ -205,6 +205,112 @@ export const AgentBulkClearanceRequestFlow = () => {
   // Backend integration states
   const [isVerifying, setIsVerifying] = useState(false);
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
+
+  useEffect(() => {
+    const matchTicketsToQueue = async () => {
+      if (queue.length === 0) return;
+      try {
+        const tickets = await ticketService.getAll();
+        setQueue(prevQueue => {
+          let hasChanges = false;
+          const updated = prevQueue.map(item => {
+            const plate = item.crCr?.plateNumber || item.orCr?.plateNumber;
+            const matched = tickets.find(t => 
+              plate && String(t.plateNo || t.vehicleInfo?.plateNo).toUpperCase() === String(plate).toUpperCase()
+            );
+            if (matched && (!item.submittedTicket || item.submittedTicket.id !== matched.id || item.submittedTicket.status !== matched.status)) {
+              hasChanges = true;
+              return { ...item, submittedTicket: matched };
+            }
+            return item;
+          });
+          return hasChanges ? updated : prevQueue;
+        });
+      } catch (e) {
+        console.error("Failed to match tickets to queue", e);
+      }
+    };
+    matchTicketsToQueue();
+  }, [queue.length]);
+
+  const getTicketPrefilledData = () => {
+    const vehicleInfo = {
+      plateNo: "",
+      make: "",
+      model: "",
+      mvFileNo: "",
+      engineNo: "",
+      chassisNo: "",
+      color: "",
+      denomination: "",
+      yearModel: "",
+      classification: "",
+    };
+    if (selectedMismatchItem) {
+      const item = selectedMismatchItem;
+      vehicleInfo.plateNo = item.crCr?.plateNumber || item.orCr?.plateNumber || "";
+      vehicleInfo.make = item.crCr?.makeBrand || item.orCr?.makeBrand || "";
+      vehicleInfo.model = item.crCr?.series || item.orCr?.series || "";
+      vehicleInfo.mvFileNo = item.crCr?.mvFileNumber || item.orCr?.mvFileNumber || "";
+      vehicleInfo.engineNo = item.crCr?.engineNumber || item.orCr?.engineNumber || "";
+      vehicleInfo.chassisNo = item.crCr?.chassisNumber || item.orCr?.chassisNumber || "";
+      vehicleInfo.color = item.crCr?.color || item.orCr?.color || "";
+      vehicleInfo.denomination = item.crCr?.denomination || item.orCr?.denomination || "";
+      vehicleInfo.yearModel = item.crCr?.yearModel || item.orCr?.yearModel || "";
+      vehicleInfo.classification = item.crCr?.classification || item.orCr?.classification || "";
+    }
+    return {
+      concernType: "vehicle",
+      vehicleSubType: "dataMismatch",
+      subject: `Issue in Bulk Clearance Request`,
+      description: `Encountered an issue during Step 2 (Verify Vehicles) of the Bulk Clearance Request Flow.`,
+      vehicleInfo,
+    };
+  };
+
+  const handleCreateTicket = async (formData) => {
+    const { vehicleSubType, concernType } = formData;
+    const typeLabel =
+      vehicleSubType === "dataMismatch" ? "Data Mismatch"
+        : vehicleSubType === "vehicleNotFound" ? "Vehicle Not Found"
+        : concernType === "other" ? "Other"
+        : concernType
+          ? concernType.charAt(0).toUpperCase() + concernType.slice(1)
+          : "General";
+
+    const referenceNumber = generateRefNumber();
+    const created = await ticketService.create({
+      referenceNumber,
+      requestedBy: formData.requestedBy?.name ?? "",
+      type: typeLabel,
+      status: "PENDING",
+      address: null,
+      name: formData.requestedBy?.name ?? "",
+      processedBy: null,
+      dateRequested: new Date().toISOString(),
+      dateUpdated: new Date().toISOString(),
+      escalated: "NO",
+      roleBased: role?.toUpperCase() ?? null,
+      plateNo: formData.vehicleInfo?.plateNo ?? null,
+      mvFileNo: formData.vehicleInfo?.mvFileNo ?? null,
+      make: formData.vehicleInfo?.make ?? null,
+      series: formData.vehicleInfo?.model ?? null,
+      engineNo: formData.vehicleInfo?.engineNo ?? null,
+      chassisNo: formData.vehicleInfo?.chassisNo ?? null,
+      vehicleColor: formData.vehicleInfo?.color ?? null,
+      vehicleTypeDenomination: formData.vehicleInfo?.denomination ?? null,
+      yearModel: formData.vehicleInfo?.yearModel ?? null,
+      classification: formData.vehicleInfo?.classification ?? null,
+    });
+    if (created) {
+      showSuccessAlert("Ticket Submitted", `Your support ticket has been submitted. Reference: ${referenceNumber}`);
+      setQueue(prev => prev.map(item => 
+        item.id === selectedMismatchItem.id ? { ...item, submittedTicket: created } : item
+      ));
+      setIsTicketModalOpen(false);
+    }
+    return created;
+  };
 
   const handleAddToQueue = () => {
     // Basic validation
@@ -374,7 +480,7 @@ export const AgentBulkClearanceRequestFlow = () => {
     const referenceNumber = generateRefNumber();
     const userName = [localStorage.getItem("firstname"), localStorage.getItem("lastname")].filter(Boolean).join(" ");
     try {
-      await ticketService.create({
+      const created = await ticketService.create({
         referenceNumber,
         requestedBy: userName,
         type: "Data Mismatch",
@@ -398,9 +504,14 @@ export const AgentBulkClearanceRequestFlow = () => {
         yearModel: vvsDetails?.year_model ?? null,
         classification: vvsDetails?.classification ?? null,
       });
-      showSuccessAlert("Ticket Submitted", `Data Mismatch ticket ${referenceNumber} has been created.`);
-      setIsDataMismatchModalOpen(false);
-      setSelectedMismatchItem(null);
+      if (created) {
+        showSuccessAlert("Ticket Submitted", `Data Mismatch ticket ${referenceNumber} has been created.`);
+        setQueue(prev => prev.map(item => 
+          item.id === selectedMismatchItem.id ? { ...item, submittedTicket: created } : item
+        ));
+        setIsDataMismatchModalOpen(false);
+        setSelectedMismatchItem(null);
+      }
     } catch {
       showError("Submission Failed", "There was an error creating your ticket.");
     }
@@ -785,25 +896,43 @@ export const AgentBulkClearanceRequestFlow = () => {
                       </div>
 
                       <div className="mt-8 flex justify-end gap-3">
-                        {item.status === "FAILED" && (
+                        {item.submittedTicket ? (
                           <Button
                             variant="outline"
-                            onClick={() => setIsTicketModalOpen(true)}
-                            className="text-gray-500 hover:text-gray-700 font-medium border-gray-300"
+                            onClick={() => {
+                              setSelectedMismatchItem(item);
+                              setIsTicketModalOpen(true);
+                            }}
+                            className="text-primary-700 border-primary-300 hover:bg-primary-50 font-medium"
                           >
-                            Report an Issue
+                            View Submitted Ticket
                           </Button>
+                        ) : (
+                          <>
+                            {item.status === "FAILED" && (
+                              <Button
+                                variant="outline"
+                                onClick={() => {
+                                  setSelectedMismatchItem(item);
+                                  setIsTicketModalOpen(true);
+                                }}
+                                className="text-gray-500 hover:text-gray-700 font-medium border-gray-300"
+                              >
+                                Report an Issue
+                              </Button>
+                            )}
+                            <Button
+                              variant="secondary"
+                              onClick={() => {
+                                setSelectedMismatchItem(item);
+                                setIsDataMismatchModalOpen(true);
+                              }}
+                              className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-solid border-2"
+                            >
+                              Report Data Mismatch
+                            </Button>
+                          </>
                         )}
-                        <Button
-                          variant="secondary"
-                          onClick={() => {
-                            setSelectedMismatchItem(item);
-                            setIsDataMismatchModalOpen(true);
-                          }}
-                          className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-solid border-2"
-                        >
-                          Report Data Mismatch
-                        </Button>
                       </div>
                     </div>
                   ))}
@@ -990,6 +1119,16 @@ export const AgentBulkClearanceRequestFlow = () => {
       <UploadDocumentGuidelineModal
         isOpen={showGuidelineModal}
         onClose={() => setShowGuidelineModal(false)}
+      />
+      <CreateTicketModal
+        isOpen={isTicketModalOpen}
+        onClose={() => {
+          setIsTicketModalOpen(false);
+          setSelectedMismatchItem(null);
+        }}
+        onSubmit={handleCreateTicket}
+        prefilledData={getTicketPrefilledData()}
+        previewTicket={selectedMismatchItem?.submittedTicket}
       />
     </div>
   );

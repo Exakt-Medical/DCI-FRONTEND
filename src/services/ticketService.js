@@ -105,7 +105,7 @@ const mapToRequest = (formData) => ({
   yearModel: formData.yearModel ?? null,
   classification: formData.classification ?? null,
   name: formData.name ?? null,
-  address: formData.address ?? null,
+  address: formData.address || formData.description || null,
 
   certificateOfRegistration: formData.certificateOfRegistration ?? null,
   plateCertification: formData.plateCertification ?? null,
