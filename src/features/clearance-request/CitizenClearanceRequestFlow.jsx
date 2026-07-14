@@ -770,6 +770,10 @@ export const CitizenClearanceRequestFlow = () => {
       mvFileNo: "",
       engineNo: "",
       chassisNo: "",
+      color: "",
+      denomination: "",
+      yearModel: "",
+      classification: "",
     };
     if (step === 1) {
       vehicleInfo.plateNo = orCr?.plateNumber || crCr?.plateNumber || "";
@@ -778,6 +782,10 @@ export const CitizenClearanceRequestFlow = () => {
       vehicleInfo.mvFileNo = orCr?.mvFileNumber || crCr?.mvFileNumber || "";
       vehicleInfo.engineNo = orCr?.engineNumber || crCr?.engineNumber || "";
       vehicleInfo.chassisNo = orCr?.chassisNumber || crCr?.chassisNumber || "";
+      vehicleInfo.color = orCr?.color || crCr?.color || "";
+      vehicleInfo.denomination = orCr?.denomination || crCr?.denomination || "";
+      vehicleInfo.yearModel = orCr?.yearModel || crCr?.yearModel || "";
+      vehicleInfo.classification = orCr?.classification || crCr?.classification || "";
     } else if (step === 5) {
       vehicleInfo.plateNo = mvcData?.plateNo || "";
       vehicleInfo.engineNo = mvcData?.engineNo || mecData?.engineNoStencilled || "";
@@ -808,7 +816,7 @@ export const CitizenClearanceRequestFlow = () => {
       requestedBy: formData.requestedBy?.name ?? "",
       type: typeLabel,
       status: "PENDING",
-      address: formData.description ?? "",
+      address: null,
       name: formData.requestedBy?.name ?? "",
       processedBy: null,
       dateRequested: new Date().toISOString(),
@@ -821,6 +829,10 @@ export const CitizenClearanceRequestFlow = () => {
       series: formData.vehicleInfo?.model ?? null,
       engineNo: formData.vehicleInfo?.engineNo ?? null,
       chassisNo: formData.vehicleInfo?.chassisNo ?? null,
+      vehicleColor: formData.vehicleInfo?.color ?? null,
+      vehicleTypeDenomination: formData.vehicleInfo?.denomination ?? null,
+      yearModel: formData.vehicleInfo?.yearModel ?? null,
+      classification: formData.vehicleInfo?.classification ?? null,
     });
     if (created) {
       showSuccessAlert("Ticket Submitted", `Your support ticket has been submitted. Reference: ${referenceNumber}`);
@@ -838,8 +850,9 @@ export const CitizenClearanceRequestFlow = () => {
         requestedBy: userName,
         type: "Data Mismatch",
         status: "PENDING",
-        address: crAttachment,
-        name: userName,
+        crAttachment,
+        name: orCr?.ownerName || crCr?.ownerName || null,
+        address: orCr?.ownerAddress || crCr?.ownerAddress || null,
         processedBy: null,
         dateRequested: new Date().toISOString(),
         dateUpdated: new Date().toISOString(),
@@ -847,10 +860,14 @@ export const CitizenClearanceRequestFlow = () => {
         roleBased: role?.toUpperCase() ?? null,
         plateNo: orCr.plateNumber ?? null,
         mvFileNo: crCr.mvFileNumber ?? null,
-        make: orCr.make ?? null,
-        series: orCr.series ?? null,
+        make: crCr.makeBrand ?? null,
+        series: crCr.series ?? null,
         engineNo: orCr.engineNumber ?? null,
         chassisNo: crCr.chassisNumber ?? null,
+        vehicleColor: crCr.color ?? null,
+        vehicleTypeDenomination: crCr.denomination ?? null,
+        yearModel: crCr.yearModel ?? null,
+        classification: crCr.classification ?? null,
       });
       showSuccessAlert("Ticket Submitted", `Data Mismatch ticket ${referenceNumber} has been created.`);
       setIsDataMismatchModalOpen(false);

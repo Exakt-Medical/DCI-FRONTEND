@@ -370,8 +370,9 @@ export const AgentBulkClearanceRequestFlow = () => {
         requestedBy: userName,
         type: "Data Mismatch",
         status: "PENDING",
-        address: crAttachment,
-        name: userName,
+        crAttachment,
+        name: selectedMismatchItem?.orCr?.ownerName || selectedMismatchItem?.crCr?.ownerName || null,
+        address: selectedMismatchItem?.orCr?.ownerAddress || selectedMismatchItem?.crCr?.ownerAddress || null,
         processedBy: null,
         dateRequested: new Date().toISOString(),
         dateUpdated: new Date().toISOString(),
@@ -379,10 +380,14 @@ export const AgentBulkClearanceRequestFlow = () => {
         roleBased: role?.toUpperCase() ?? null,
         plateNo: selectedMismatchItem?.plateNumber ?? null,
         mvFileNo: selectedMismatchItem?.crCr?.mvFileNumber ?? null,
-        make: selectedMismatchItem?.crCr?.make ?? null,
+        make: selectedMismatchItem?.crCr?.makeBrand ?? null,
         series: selectedMismatchItem?.crCr?.series ?? null,
         engineNo: selectedMismatchItem?.crCr?.engineNumber ?? null,
         chassisNo: selectedMismatchItem?.crCr?.chassisNumber ?? null,
+        vehicleColor: selectedMismatchItem?.crCr?.color ?? null,
+        vehicleTypeDenomination: selectedMismatchItem?.crCr?.denomination ?? null,
+        yearModel: selectedMismatchItem?.crCr?.yearModel ?? null,
+        classification: selectedMismatchItem?.crCr?.classification ?? null,
       });
       showSuccessAlert("Ticket Submitted", `Data Mismatch ticket ${referenceNumber} has been created.`);
       setIsDataMismatchModalOpen(false);
