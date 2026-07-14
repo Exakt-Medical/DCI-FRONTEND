@@ -128,9 +128,6 @@ export const CreateTicketModal = ({
       if (prefilledData.concernType) {
         handleConcernTypeChange(prefilledData.concernType);
       }
-      if (prefilledData.vehicleSubType) {
-        handleVehicleSubTypeChange(prefilledData.vehicleSubType);
-      }
     }
   }, [isOpen, prefilledData]);
 
@@ -165,23 +162,14 @@ export const CreateTicketModal = ({
     setFormData((prev) => ({
       ...prev,
       concernType: typeId,
-      vehicleSubType: "",
+      vehicleSubType: typeId === "vehicle" ? "vehicleNotFound" : "",
     }));
 
     if (typeId === "vehicle") {
-      setFormData((prev) => ({ ...prev, subject: "Vehicle Issue" }));
+      setFormData((prev) => ({ ...prev, subject: "Vehicle Not Found" }));
     } else if (typeId === "other") {
       setFormData((prev) => ({ ...prev, subject: "Other Concern" }));
     }
-  };
-
-  const handleVehicleSubTypeChange = (subTypeId) => {
-    setFormData((prev) => ({ ...prev, vehicleSubType: subTypeId }));
-    const subjectText =
-      subTypeId === "dataMismatch"
-        ? "Vehicle Data Mismatch"
-        : "Vehicle Not Found";
-    setFormData((prev) => ({ ...prev, subject: subjectText }));
   };
 
 const uploadAttachments = async (referenceNumber, requestedBy) => {
@@ -253,16 +241,7 @@ const uploadAttachments = async (referenceNumber, requestedBy) => {
 
     if (!isLoginPageMode && formData.concernType === "vehicle") {
       if (!formData.vehicleSubType) {
-        setError(
-          "Please select whether this is a Data Mismatch or Vehicle Not Found issue.",
-        );
-        return;
-      }
-      if (
-        formData.vehicleSubType === "dataMismatch" &&
-        !formData.vehicleInfo.mismatchedField
-      ) {
-        setError("Please select which field has a mismatch.");
+        setError("Please ensure this is a Vehicle Not Found issue.");
         return;
       }
     }
@@ -363,7 +342,6 @@ const ticketResult = await onSubmit(ticketOnlyData);
           <VehicleSection
             formData={formData}
             onChange={handleChange}
-            onVehicleSubTypeChange={handleVehicleSubTypeChange}
           />
         );
       case "other":

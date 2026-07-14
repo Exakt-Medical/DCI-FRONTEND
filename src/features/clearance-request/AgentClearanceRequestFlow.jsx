@@ -883,7 +883,7 @@ export const AgentClearanceRequestFlow = () => {
     return created;
   };
 
-  const handleDataMismatchSubmit = async ({ crAttachment }) => {
+  const handleDataMismatchSubmit = async ({ crAttachment, vvsDetails, vvsOwnerDetails }) => {
     const referenceNumber = generateRefNumber();
     const userName = [localStorage.getItem("firstname"), localStorage.getItem("lastname")].filter(Boolean).join(" ");
     try {
@@ -893,23 +893,23 @@ export const AgentClearanceRequestFlow = () => {
         type: "Data Mismatch",
         status: "PENDING",
         crAttachment,
-        name: orCr?.ownerName || crCr?.ownerName || null,
-        address: orCr?.ownerAddress || crCr?.ownerAddress || null,
+        name: vvsOwnerDetails?.fullName ?? null,
+        address: vvsOwnerDetails?.address ?? null,
         processedBy: null,
         dateRequested: new Date().toISOString(),
         dateUpdated: new Date().toISOString(),
         escalated: "NO",
         roleBased: role?.toUpperCase() ?? null,
-        plateNo: orCr.plateNumber ?? null,
-        mvFileNo: crCr.mvFileNumber ?? null,
-        make: crCr.makeBrand ?? null,
-        series: crCr.series ?? null,
-        engineNo: orCr.engineNumber ?? null,
-        chassisNo: crCr.chassisNumber ?? null,
-        vehicleColor: crCr.color ?? null,
-        vehicleTypeDenomination: crCr.denomination ?? null,
-        yearModel: crCr.yearModel ?? null,
-        classification: crCr.classification ?? null,
+        plateNo: vvsDetails?.plate_number ?? null,
+        mvFileNo: vvsDetails?.mv_file_number ?? null,
+        make: vvsDetails?.make ?? null,
+        series: vvsDetails?.series ?? null,
+        engineNo: vvsDetails?.engine_number ?? null,
+        chassisNo: vvsDetails?.chassis_number ?? null,
+        vehicleColor: vvsDetails?.color ?? null,
+        vehicleTypeDenomination: vvsDetails?.denomination ?? null,
+        yearModel: vvsDetails?.year_model ?? null,
+        classification: vvsDetails?.classification ?? null,
       });
       showSuccessAlert("Ticket Submitted", `Data Mismatch ticket ${referenceNumber} has been created.`);
       setIsDataMismatchModalOpen(false);
@@ -1446,13 +1446,8 @@ export const AgentClearanceRequestFlow = () => {
             classification: vvsVehicleDetails.classification || "",
           } : {}}
           ownerData={vvsVehicleDetails ? {
-            firstName: vvsVehicleDetails.ownerFirstName || "",
-            lastName: vvsVehicleDetails.ownerLastName || "",
-            middleName: vvsVehicleDetails.ownerMiddleName || "",
-            address: vvsVehicleDetails.ownerAddress || "",
-            contactNo: "",
-            email: "",
-            tin: "",
+            fullName: vvsOwnerName || "",
+            address: vvsOwnerAddress || "",
           } : {}}
           onSubmit={handleDataMismatchSubmit}
           onClose={() => setIsDataMismatchModalOpen(false)}

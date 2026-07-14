@@ -361,7 +361,7 @@ export const AgentBulkClearanceRequestFlow = () => {
     }
   };
 
-  const handleDataMismatchSubmit = async ({ crAttachment }) => {
+  const handleDataMismatchSubmit = async ({ crAttachment, vvsDetails, vvsOwnerDetails }) => {
     const referenceNumber = generateRefNumber();
     const userName = [localStorage.getItem("firstname"), localStorage.getItem("lastname")].filter(Boolean).join(" ");
     try {
@@ -371,23 +371,23 @@ export const AgentBulkClearanceRequestFlow = () => {
         type: "Data Mismatch",
         status: "PENDING",
         crAttachment,
-        name: selectedMismatchItem?.orCr?.ownerName || selectedMismatchItem?.crCr?.ownerName || null,
-        address: selectedMismatchItem?.orCr?.ownerAddress || selectedMismatchItem?.crCr?.ownerAddress || null,
+        name: vvsOwnerDetails?.fullName ?? null,
+        address: vvsOwnerDetails?.address ?? null,
         processedBy: null,
         dateRequested: new Date().toISOString(),
         dateUpdated: new Date().toISOString(),
         escalated: "NO",
         roleBased: role?.toUpperCase() ?? null,
-        plateNo: selectedMismatchItem?.plateNumber ?? null,
-        mvFileNo: selectedMismatchItem?.crCr?.mvFileNumber ?? null,
-        make: selectedMismatchItem?.crCr?.makeBrand ?? null,
-        series: selectedMismatchItem?.crCr?.series ?? null,
-        engineNo: selectedMismatchItem?.crCr?.engineNumber ?? null,
-        chassisNo: selectedMismatchItem?.crCr?.chassisNumber ?? null,
-        vehicleColor: selectedMismatchItem?.crCr?.color ?? null,
-        vehicleTypeDenomination: selectedMismatchItem?.crCr?.denomination ?? null,
-        yearModel: selectedMismatchItem?.crCr?.yearModel ?? null,
-        classification: selectedMismatchItem?.crCr?.classification ?? null,
+        plateNo: vvsDetails?.plate_number ?? null,
+        mvFileNo: vvsDetails?.mv_file_number ?? null,
+        make: vvsDetails?.make ?? null,
+        series: vvsDetails?.series ?? null,
+        engineNo: vvsDetails?.engine_number ?? null,
+        chassisNo: vvsDetails?.chassis_number ?? null,
+        vehicleColor: vvsDetails?.color ?? null,
+        vehicleTypeDenomination: vvsDetails?.denomination ?? null,
+        yearModel: vvsDetails?.year_model ?? null,
+        classification: vvsDetails?.classification ?? null,
       });
       showSuccessAlert("Ticket Submitted", `Data Mismatch ticket ${referenceNumber} has been created.`);
       setIsDataMismatchModalOpen(false);

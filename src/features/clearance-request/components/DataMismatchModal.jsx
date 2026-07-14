@@ -29,13 +29,8 @@ const VEHICLE_MISMATCH_FIELDS = [
 ];
 
 const OWNER_MISMATCH_FIELDS = [
-  { key: "owner_firstName", label: "First Name", dataKey: "firstName" },
-  { key: "owner_lastName", label: "Last Name", dataKey: "lastName" },
-  { key: "owner_middleName", label: "Middle Name", dataKey: "middleName" },
+  { key: "owner_fullName", label: "Full Name", dataKey: "fullName" },
   { key: "owner_address", label: "Address", dataKey: "address" },
-  { key: "owner_contactNo", label: "Contact No.", dataKey: "contactNo" },
-  { key: "owner_email", label: "Email", dataKey: "email" },
-  { key: "owner_tin", label: "TIN", dataKey: "tin" },
 ];
 
 const ALL_MISMATCH_FIELDS = [
@@ -98,6 +93,8 @@ export const DataMismatchModal = ({
     onSubmit({
       crAttachment: JSON.stringify(mismatches),
       attachmentFile,
+      vvsDetails: vehicleData,
+      vvsOwnerDetails: ownerData,
     });
   };
 
