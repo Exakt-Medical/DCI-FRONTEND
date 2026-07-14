@@ -31,6 +31,7 @@ export type FormFields = {
   classification: string;
   series: string;
   bodyType: string;
+  vehicleType: string;
 };
 
 export type OcrWord = {
@@ -93,6 +94,7 @@ export const INITIAL_FIELDS: FormFields = {
   classification: "",
   series: "",
   bodyType: "",
+  vehicleType: "",
 };
 
 export const EMPTY_EXTRACTION: FieldExtractionMap = {
@@ -128,4 +130,5 @@ export const EMPTY_EXTRACTION: FieldExtractionMap = {
   classification: { label: "CLASSIFICATION", candidates: {}, selected: "", valid: false, source: "none", confidence: 0 },
   series: { label: "SERIES", candidates: {}, selected: "", valid: false, source: "none", confidence: 0 },
   bodyType: { label: "BODY TYPE", candidates: {}, selected: "", valid: false, source: "none", confidence: 0 },
+  vehicleType: { label: "VEHICLE TYPE", candidates: {}, selected: "", valid: false, source: "none", confidence: 0 },
 };

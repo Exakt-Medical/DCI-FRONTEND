@@ -26,6 +26,7 @@ const CR_FIELD_CONFIG = [
   { key: "classification", label: "Classification", required: true },
   { key: "series", label: "Series", required: true },
   { key: "bodyType", label: "Body Type", required: true },
+  { key: "denomination", label: "Vehicle Type", required: true },
   { key: "yearModel", label: "Year Model", required: true },
   { key: "ownerName", label: "Owner's Name", required: true },
   { key: "ownerAddress", label: "Owner's Address", required: true },
@@ -50,7 +51,7 @@ export const VehicleFields = ({ values, onChange, fieldSet = "cr", errors = {}, 
         error={errors[field.key]}
         maxLength={field.key === "mvFileNumber" ? 15 : undefined}
         className={
-          field.key === "ownerName" || field.key === "ownerAddress"
+          field.key === "ownerAddress"
             ? "md:col-span-2"
             : ""
         }

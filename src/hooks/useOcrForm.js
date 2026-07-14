@@ -117,6 +117,7 @@ const buildVehiclePayload = (fields, extras = {}) => ({
   ownerName: (fields.ownerName || "").toUpperCase(),
   ownerAddress: (fields.address || "").toUpperCase(),
   bodyType: (fields.bodyType || "").toUpperCase(),
+  denomination: (fields.vehicleType || "").toUpperCase(),
 });
 
 const buildTextExtras = (normalizedText) => ({
@@ -129,14 +130,14 @@ const buildTextExtras = (normalizedText) => ({
   netWeight: matchFirst(normalizedText, OCR_REGEX.netWeight),
 });
 
-export async function runSharedLocalOcr(file) {
+export async function runSharedLocalOcr(file, documentType) {
   try {
     const canvas = await fileToCanvas(file);
     const items = await runOcr(canvas);
     const words = buildWords(items);
     const normalizedText = repairOcrText(words.map((w) => w.text).join("\n"));
     return {
-      ...parseFields(normalizedText, words, canvas.width),
+      ...parseFields(normalizedText, words, canvas.width, documentType),
       normalizedText,
     };
   } catch (err) {
@@ -151,7 +152,7 @@ export async function runSharedLocalOcr(file) {
 }
 
 export async function extractClearanceDocumentData(file, documentType) {
-  const result = await runSharedLocalOcr(file);
+  const result = await runSharedLocalOcr(file, documentType);
   const extras = buildTextExtras(result.normalizedText);
   const { fields, extraction, layoutText } = result;
 

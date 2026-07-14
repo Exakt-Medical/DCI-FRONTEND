@@ -628,13 +628,14 @@ export function parseFields(
   normalizedText: string,
   words: OcrWord[],
   pageWidth: number,
+  expectedDocType?: string,
 ): ParseResult {
   const lines = normalizedText
     .split("\n")
     .map((l) => l.trim())
     .filter(Boolean);
   const flat = lines.join("\n");
-  const docType = detectDocumentType(flat);
+  const docType = expectedDocType ? expectedDocType.toUpperCase() : detectDocumentType(flat);
 
   const pageHeight = words.length ? Math.max(...words.map(w => w.y + w.height)) : 0;
 
@@ -698,6 +699,9 @@ export function parseFields(
     bodyType:
       extractAroundLabel(lines, FIELD_ALIASES.bodyType, isLikelyBodyType) ||
       extractInlineAfterLabel(lines, FIELD_ALIASES.bodyType, isLikelyBodyType),
+    vehicleType:
+      extractAroundLabel(lines, FIELD_ALIASES.vehicleType, isLikelyVehicleType) ||
+      extractInlineAfterLabel(lines, FIELD_ALIASES.vehicleType, isLikelyVehicleType),
     remarks: extractAroundLabel(lines, FIELD_ALIASES.remarks, (v) => v.length >= 3),
     orNumber:
       extractAroundLabel(lines, FIELD_ALIASES.orNumber, isLikelyReceiptNo) ||
@@ -797,6 +801,9 @@ export function parseFields(
     bodyType:
       findBelowText(FIELD_ALIASES.bodyType, words, isLikelyBodyType) ||
       findRightText(FIELD_ALIASES.bodyType, words, isLikelyBodyType),
+    vehicleType:
+      findBelowText(FIELD_ALIASES.vehicleType, words, isLikelyVehicleType) ||
+      findRightText(FIELD_ALIASES.vehicleType, words, isLikelyVehicleType),
     remarks:
       findRightText(FIELD_ALIASES.remarks, words) ||
       findBelowText(FIELD_ALIASES.remarks, words),
@@ -923,6 +930,10 @@ export function parseFields(
     bodyType: extractByPatterns(flat, [
       /(?:BODY\s*TYPE)\s*[\r\n]+([A-Z0-9\s.,'-]+)/im,
       /(?:BODY\s*TYPE)\s*[:\-]?\s*([A-Z0-9\s.,'-]+)/im,
+    ]),
+    vehicleType: extractByPatterns(flat, [
+      /(?:VEHICLE\s*TYPE)\s*[\r\n]+([A-Z0-9\s.,'-]+)/im,
+      /(?:VEHICLE\s*TYPE)\s*[:\-]?\s*([A-Z0-9\s.,'-]+)/im,
     ]),
     fuelType: extractByPatterns(flat, [
       /(?:TYPE\s*OF\s*FUEL|FUEL\s*TYPE)\s*[:\-]?\s*([A-Z]{3,15})/im,
@@ -1077,11 +1088,20 @@ export function parseFields(
       coord: stripPaymentBreakdown(coord.series),
       regex: stripPaymentBreakdown(regex.series),
     }, false, isTable),
-    bodyType: pickField("BODY TYPE", isLikelyBodyType, {
-      lineScan: stripPaymentBreakdown(lineScan.bodyType),
-      coord: stripPaymentBreakdown(coord.bodyType),
-      regex: stripPaymentBreakdown(regex.bodyType),
-    }, false, isTable),
+    bodyType: docType === "OR" 
+      ? { label: "BODY TYPE", candidates: {}, selected: "", valid: false, source: "none", confidence: 0 } 
+      : pickField("BODY TYPE", isLikelyBodyType, {
+          lineScan: stripPaymentBreakdown(lineScan.bodyType),
+          coord: stripPaymentBreakdown(coord.bodyType),
+          regex: stripPaymentBreakdown(regex.bodyType),
+        }, false, isTable),
+    vehicleType: docType === "OR"
+      ? { label: "VEHICLE TYPE", candidates: {}, selected: "", valid: false, source: "none", confidence: 0 }
+      : pickField("VEHICLE TYPE", isLikelyVehicleType, {
+          lineScan: stripPaymentBreakdown(lineScan.vehicleType),
+          coord: stripPaymentBreakdown(coord.vehicleType),
+          regex: stripPaymentBreakdown(regex.vehicleType),
+        }, false, isTable),
     remarks: pickField("REMARKS", (v) => v.length >= 3, {
       lineScan: lineScan.remarks,
       coord: coord.remarks,
@@ -1346,6 +1366,7 @@ export function parseFields(
     classification: cleanFieldValue("classification", extraction.classification.selected),
     series: cleanFieldValue("series", extraction.series.selected),
     bodyType: cleanFieldValue("bodyType", extraction.bodyType.selected),
+    vehicleType: cleanFieldValue("vehicleType", extraction.vehicleType.selected),
     hpgOffice: cleanFieldValue("hpgOffice", extraction.hpgOffice.selected),
     purpose: cleanFieldValue("purpose", extraction.purpose.selected),
     hpgTechnician: cleanFieldValue(
