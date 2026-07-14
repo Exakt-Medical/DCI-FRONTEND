@@ -143,7 +143,11 @@ export const CitizenRegister = () => {
       setIsRegistered(true);
     } catch (err) {
       const msg = err.response?.data?.error || err.response?.data?.message || "Registration failed. Please try again.";
-      setErrors({ form: msg });
+      if (msg.toLowerCase().includes("email")) {
+        setErrors({ email: "Email already exists." });
+      } else {
+        setErrors({ form: msg });
+      }
     } finally {
       setLoading(false);
     }
