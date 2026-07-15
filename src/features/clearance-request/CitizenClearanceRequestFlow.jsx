@@ -525,12 +525,13 @@ export const CitizenClearanceRequestFlow = () => {
   const mockHandleProceedToPayment = () => {
     setMockProcessingPayment(true);
     setTimeout(() => {
-      setMockProcessingPayment(false);
+      const code = "DCI-VCH" + Math.floor(Math.random() * 10000);
       setPaymentDone(true);
-      setVoucherCode("DCI-VCH" + Math.floor(Math.random() * 10000));
+      setVoucherCode(code);
       setVoucherAssigned(true);
       showSuccessAlert("Payment Successful", "Payment completed successfully.");
-      saveCitizenRequest({ paymentDone: true });
+      saveCitizenRequest({ paymentDone: true, voucherCode: code, voucherReferenceNo: code, voucherAssigned: true, voucherStatus: "VOUCHER_ISSUED" });
+      setMockProcessingPayment(false);
     }, 1000);
   };
 
@@ -725,11 +726,17 @@ export const CitizenClearanceRequestFlow = () => {
     const interval = setInterval(() => {
       try {
         const savedRequests = JSON.parse(localStorage.getItem('dci_mock_requests') || '[]');
-        const updated = savedRequests.find(r => r.id === id);
+        const updated = savedRequests.find(r => r.id === id || r.voucherCode === voucherCode || r.voucherReferenceNo === voucherCode);
         if (updated) {
           if (updated.status === "HPG_VERIFIED" && requestStatus !== "HPG_VERIFIED") {
             setHpgVerified(true);
             setRequestStatus("HPG_VERIFIED");
+            const myIndex = savedRequests.findIndex(r => r.id === id);
+            if (myIndex >= 0) {
+              savedRequests[myIndex].status = "HPG_VERIFIED";
+              savedRequests[myIndex].hpgVerified = true;
+              localStorage.setItem('dci_mock_requests', JSON.stringify(savedRequests));
+            }
             showSuccessAlert("HPG Verified", "Vehicle cleared by HPG.");
           } else if (updated.status === "CERTIFICATE_ISSUED" || updated.status === "MVC_MEC_VALIDATED") {
             setHpgVerified(true);
@@ -737,6 +744,13 @@ export const CitizenClearanceRequestFlow = () => {
               setCertificateNo(updated.certificateNo);
             }
             setRequestStatus(updated.status);
+            const myIndex = savedRequests.findIndex(r => r.id === id);
+            if (myIndex >= 0) {
+              savedRequests[myIndex].status = updated.status;
+              savedRequests[myIndex].hpgVerified = true;
+              if (updated.certificateNo) savedRequests[myIndex].certificateNo = updated.certificateNo;
+              localStorage.setItem('dci_mock_requests', JSON.stringify(savedRequests));
+            }
             if (requestStatus !== updated.status) {
               showSuccessAlert("DCI Cleared", "DCI clearance validation complete. Certificate issued.");
             }
@@ -748,7 +762,21 @@ export const CitizenClearanceRequestFlow = () => {
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [step, id, requestStatus]);
+  }, [step, id, requestStatus, voucherCode]);
+
+  const handleMockHpgVerify = async () => {
+    setHpgVerified(true);
+    setRequestStatus("HPG_VERIFIED");
+    await saveCitizenRequest({ status: "HPG_VERIFIED", hpgVerified: true });
+    showSuccessAlert("HPG Verified", "Vehicle cleared by HPG.");
+  };
+
+  const handleMockDciVerify = async () => {
+    setRequestStatus("MVC_MEC_VALIDATED");
+    setHpgVerified(true);
+    await saveCitizenRequest({ status: "MVC_MEC_VALIDATED", hpgVerified: true });
+    showSuccessAlert("DCI Cleared", "DCI clearance validation complete.");
+  };
 
   const getTicketPrefilledData = () => {
     const vehicleInfo = {
@@ -864,9 +892,14 @@ export const CitizenClearanceRequestFlow = () => {
       if (requestStatus === "MVC_MEC_VALIDATED") {
         setIsIssuingCertificate(true);
         try {
+          const certNo = "DCI-CERT-" + Math.floor(Math.random() * 100000);
+          setCertificateNo(certNo);
           await saveCitizenRequest({
             currentStep: 5,
-            status: "CERTIFICATE_ISSUED"
+            status: "CERTIFICATE_ISSUED",
+            certificateNo: certNo,
+            clearanceReferenceNo: certNo,
+            clearanceStatus: "CERTIFICATE_ISSUED"
           });
           setRequestStatus("CERTIFICATE_ISSUED");
         } finally {
@@ -1210,7 +1243,7 @@ export const CitizenClearanceRequestFlow = () => {
                     </div>
                   )}
 
-                  {transactionVerified && (
+                      {transactionVerified && (
                     <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm mt-4">
                       <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                         <Shield className="text-[#0059b5]" size={18} />
@@ -1245,6 +1278,9 @@ export const CitizenClearanceRequestFlow = () => {
                           </div>
                           
                           <p className="text-xs text-gray-400 mt-3 animate-pulse">Waiting for HPG officer verification...</p>
+                          <Button onClick={handleMockHpgVerify} size="sm" className="mt-3 text-xs px-3 py-1">
+                            <CheckCircle size={12} /> Mark HPG Verified
+                          </Button>
                         </div>
                       )}
                     </div>
@@ -1266,6 +1302,9 @@ export const CitizenClearanceRequestFlow = () => {
                         <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
                           <p className="font-bold text-amber-700 text-lg">Awaiting DCI Clearance</p>
                           <p className="text-xs text-gray-500 mt-1">Waiting for DCI officers to clear your transaction.</p>
+                          <Button onClick={handleMockDciVerify} size="sm" className="mt-3 text-xs px-3 py-1">
+                            <CheckCircle size={12} /> Mark DCI Verified
+                          </Button>
                         </div>
                       )}
                     </div>

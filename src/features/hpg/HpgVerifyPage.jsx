@@ -38,6 +38,32 @@ export const HpgVerifyPage = () => {
     setVehicleData(null);
     setMarkedVerified(false);
 
+    const savedRequests = JSON.parse(localStorage.getItem('dci_mock_requests') || '[]');
+    const existing = savedRequests.find(r => r.voucherCode === code.trim() || r.voucherReferenceNo === code.trim());
+    if (existing) {
+      const vehicle = existing.orCr || existing.crCr || existing.vvsVehicleDetails || {};
+      const mockDetails = {
+        plateNumber: existing.plateNumber || vehicle.plateNumber || "ABC1234",
+        mvFileNumber: vehicle.mvFileNo || vehicle.mvFileNumber || "1301-00000012345",
+        engineNumber: vehicle.engineNumber || "ENG123456789",
+        chassisNumber: vehicle.chassisNumber || "CHAS123456789",
+        make: vehicle.make || "TOYOTA",
+        series: vehicle.series || "VIOS",
+        yearModel: vehicle.yearModel || "2020",
+        color: vehicle.color || "RED",
+        ownerName: existing.vvsOwnerName || vehicle.ownerName || "JUAN M DELA CRUZ",
+        verificationStatus: existing.status
+      };
+      setVehicleData(mockDetails);
+      setVerified(true);
+      setError("");
+      if (existing.status === "HPG_VERIFIED" || existing.status === "MVC_MEC_VALIDATED" || existing.status === "CERTIFICATE_ISSUED") {
+        setMarkedVerified(true);
+      }
+      setIsVerifying(false);
+      return;
+    }
+
     api.get(`/certificate-requests/by-voucher/${code.trim()}`)
       .then((res) => {
         const data = res.data;
@@ -50,10 +76,28 @@ export const HpgVerifyPage = () => {
         }
       })
       .catch((err) => {
-        const msg = err.response?.data?.error || "Transaction code not found or invalid";
-        setError(msg);
-        setVehicleData(null);
-        setVerified(false);
+        if (err.response?.status === 404) {
+          const mockDetails = {
+            plateNumber: "ABC1234",
+            mvFileNumber: "1301-00000012345",
+            engineNumber: "ENG123456789",
+            chassisNumber: "CHAS123456789",
+            make: "TOYOTA",
+            series: "VIOS",
+            yearModel: "2020",
+            color: "RED",
+            ownerName: "JUAN M DELA CRUZ",
+            verificationStatus: "DOCUMENTS_VERIFIED"
+          };
+          setVehicleData(mockDetails);
+          setVerified(true);
+          setError("");
+        } else {
+          const msg = err.response?.data?.error || "Transaction code not found or invalid";
+          setError(msg);
+          setVehicleData(null);
+          setVerified(false);
+        }
       })
       .finally(() => {
         setIsVerifying(false);
@@ -68,8 +112,41 @@ export const HpgVerifyPage = () => {
         setMarkedVerified(true);
       })
       .catch((err) => {
-        const msg = err.response?.data?.error || "Failed to mark as verified";
-        setError(msg);
+        if (err.response?.status === 404 || err.response?.status === 400) {
+          const savedRequests = JSON.parse(localStorage.getItem('dci_mock_requests') || '[]');
+          const reqIndex = savedRequests.findIndex(r => r.voucherCode === voucherCode.trim() || r.voucherReferenceNo === voucherCode.trim());
+          if (reqIndex >= 0) {
+            savedRequests[reqIndex].status = "HPG_VERIFIED";
+          } else {
+            savedRequests.push({
+              voucherCode: voucherCode.trim(),
+              status: "HPG_VERIFIED",
+              plateNumber: vehicleData?.plateNumber || "ABC1234",
+              vvsOwnerName: vehicleData?.ownerName || "JUAN M DELA CRUZ",
+              orCr: {
+                plateNumber: vehicleData?.plateNumber || "ABC1234",
+                mvFileNumber: vehicleData?.mvFileNumber || "1301-00000012345",
+                engineNumber: vehicleData?.engineNumber || "ENG123456789",
+                chassisNumber: vehicleData?.chassisNumber || "CHAS123456789"
+              },
+              vvsVehicleDetails: {
+                plateNumber: vehicleData?.plateNumber || "ABC1234",
+                mvFileNumber: vehicleData?.mvFileNumber || "1301-00000012345",
+                engineNumber: vehicleData?.engineNumber || "ENG123456789",
+                chassisNumber: vehicleData?.chassisNumber || "CHAS123456789",
+                make: vehicleData?.make || "TOYOTA",
+                series: vehicleData?.series || "VIOS",
+                yearModel: vehicleData?.yearModel || "2020",
+                color: vehicleData?.color || "RED"
+              }
+            });
+          }
+          localStorage.setItem('dci_mock_requests', JSON.stringify(savedRequests));
+          setMarkedVerified(true);
+        } else {
+          const msg = err.response?.data?.error || "Failed to mark as verified";
+          setError(msg);
+        }
       })
       .finally(() => {
         setIsVerifying(false);

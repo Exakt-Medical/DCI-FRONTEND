@@ -18,6 +18,7 @@ export const CLEARANCE_OCR_DOCUMENT_TYPE = Object.freeze({
   CR: "cr",
   MVC: "mvc",
   MEC: "mec",
+  ID: "id",
 });
 
 const OCR_HELP_TEXT = "Supports PDF and image OCR extraction.";
@@ -240,10 +241,124 @@ export async function extractClearanceDocumentData(file, documentType) {
           extraction.hpgTechnician?.confidence || extraction.examinedBy?.confidence,
         ]),
       };
+    case CLEARANCE_OCR_DOCUMENT_TYPE.ID: {
+      const idNorm = result.normalizedText || "";
+      return {
+        fields: {
+          ownerName: extractIdName(idNorm) || (fields.ownerName || "").toUpperCase(),
+          address: extractIdAddress(idNorm) || (fields.address || "").toUpperCase(),
+          email: extractIdEmail(idNorm) || "",
+          dateOfBirth: extractIdDateOfBirth(idNorm) || "",
+          gender: extractIdGender(idNorm) || "",
+          nationality: extractIdNationality(idNorm) || "",
+          idNumber: extractIdNumber(idNorm) || "",
+        },
+        extraction,
+        layoutText,
+        normalizedText: idNorm,
+        confidence: averageConfidence([
+          extraction.ownerName?.confidence,
+          extraction.address?.confidence,
+          fields.date ? 0.7 : 0,
+        ]),
+      };
+    }
     default:
       throw new Error(`Unsupported OCR document type: ${documentType}`);
   }
 }
+
+const extractIdName = (text) => {
+  if (!text) return "";
+  const m = text.match(/(?:NAME|FULL\s*NAME|FULLNAME|COMPLETE\s*NAME)\s*[:\-]?\s*([A-Z][A-Z\s.,'-]{3,60})/i);
+  if (m?.[1]) return m[1].trim().toUpperCase().replace(/\s{2,}/g, " ");
+  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+  const excludeNames = /^(GIVEN|SURNAME|LAST|FIRST|MIDDLE|NAME|ADDRESS|DATE|BIRTH|SEX|GENDER|NATIONALITY|CITIZENSHIP|ID|REFERENCE|TIN|SSS|PAG-IBIG|PHILHEALTH|PRC|PASSPORT|DRIVER|VOTER|POSTAL|UMID|SIGNATURE|HEIGHT|WEIGHT|BLOOD|EYES|HAIR|PLACE|STATUS|FATHER|MOTHER|SPOUSE|EMPLOYER|OCCUPATION|VALID|ISSUED|EXPIRY|MUNICIPALITY|PROVINCE|BARANGAY|DISTRICT|ZONE|PUROK|LN|FN|MN|DL|DOB|EXP|ISS|HGT|WGT|DONOR|CLASS)/i;
+  const candidates = lines.filter(l => /^[A-Z][A-Z\s.,'-]{3,}$/.test(l) && !excludeNames.test(l) && !/\d/.test(l));
+  if (candidates.length > 0) {
+    const sorted = candidates.sort((a, b) => b.length - a.length);
+    return sorted[0].replace(/\s{2,}/g, " ");
+  }
+  return "";
+};
+
+const extractIdAddress = (text) => {
+  if (!text) return "";
+  const m = text.match(/(?:ADDRESS|ADDR|HOME\s*ADDRESS|RESIDENTIAL\s*ADDRESS|PERMANENT\s*ADDRESS)\s*[:\-]?\s*([A-Z0-9][A-Z0-9\s.,'#\-]{5,100})/i);
+  if (m?.[1]) return m[1].trim().toUpperCase();
+  return "";
+};
+
+const extractIdEmail = (text) => {
+  if (!text) return "";
+  const m = text.match(/(?:EMAIL|E-?MAIL|EMAIL\s*ADDRESS)\s*[:\-]?\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+  if (m?.[1]) return m[1].trim().toLowerCase();
+  return "";
+};
+
+const extractIdDateOfBirth = (text) => {
+  if (!text) return "";
+  const patterns = [
+    /(?:DATE\s*OF\s*BIRTH|DOB|BIRTH\s*DATE|DATE\s*OF\s*BIRTH\s*[:\-])\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/im,
+    /(?:BIRTH\s*DATE|DOB)\s*[:\-]?\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/im,
+    /DOB(\d{1,2}\/\d{1,2}\/\d{4})/im,
+    /\b(\d{1,2}\/\d{1,2}\/\d{4})\b/,
+  ];
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (m?.[1]) {
+      const val = m[1].trim();
+      const slashMatch = val.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+      if (slashMatch) {
+        const month = slashMatch[1].padStart(2, "0");
+        const day = slashMatch[2].padStart(2, "0");
+        const year = slashMatch[3].length === 2 ? `20${slashMatch[3]}` : slashMatch[3];
+        return `${month}/${day}/${year}`;
+      }
+      return val;
+    }
+  }
+  return "";
+};
+
+const extractIdGender = (text) => {
+  if (!text) return "";
+  const m = text.match(/(?:SEX|GENDER)\s*[:\-]?\s*(MALE|FEMALE|M|F)\b/i);
+  if (m?.[1]) return m[1].toUpperCase() === "M" ? "MALE" : m[1].toUpperCase() === "F" ? "FEMALE" : m[1].toUpperCase();
+  const merged = text.match(/SEX(M|F)\b/i);
+  if (merged?.[1]) return merged[1].toUpperCase() === "M" ? "MALE" : "FEMALE";
+  return "";
+};
+
+const extractIdNationality = (text) => {
+  if (!text) return "";
+  const m = text.match(/(?:NATIONALITY|CITIZENSHIP)\s*[:\-]?\s*([A-Z][A-Z\s]{2,30})/i);
+  return m?.[1]?.toUpperCase() || "";
+};
+
+const extractIdNumber = (text) => {
+  if (!text) return "";
+  const patterns = [
+    /(?:ID\s*NO\.?|ID\s*NUMBER|IDENTIFICATION\s*NUMBER|ID#)\s*[:\-]?\s*([A-Z0-9\-]{4,30})/im,
+    /^DL\s+([A-Z0-9\-]{4,30})/im,
+    /(?:REFERENCE\s*NO\.?|REFERENCE\s*NUMBER)\s*[:\-]?\s*([A-Z0-9\-]{4,30})/im,
+    /(?:DRIVER'?S?\s*LICENSE\s*NO\.?|DL\s*NO\.?)\s*[:\-]?\s*([A-Z0-9\-]{4,20})/im,
+    /(?:PASSPORT\s*NO\.?|PASSPORT\s*NUMBER)\s*[:\-]?\s*([A-Z0-9\-]{4,20})/im,
+    /(?:SSS\s*NO\.?|SSS\s*NUMBER)\s*[:\-]?\s*(\d{2}-\d{7}-\d{1}|\d{10})/im,
+    /(?:TIN|TAX\s*ID)\s*[:\-]?\s*(\d{3}-\d{3}-\d{3}(?:-\d{1,3})?|\d{9,12})/im,
+    /(?:PRC\s*NO\.?|PRC\s*NUMBER|PROFESSIONAL\s*REGULATION\s*COMMISSION)\s*[:\-]?\s*([A-Z0-9\-]{4,20})/im,
+    /(?:PHILHEALTH\s*NO\.?|PHILHEALTH\s*NUMBER)\s*[:\-]?\s*(\d{2}-\d{9}-\d{1})/im,
+    /(?:PAG-IBIG|HDMF)\s*(?:NO\.?|NUMBER)?\s*[:\-]?\s*(\d{4}-\d{4}-\d{4})/im,
+    /(?:POSTAL\s*ID|POSTAL)\s*(?:NO\.?|NUMBER)?\s*[:\-]?\s*([A-Z0-9\-]{4,20})/im,
+    /(?:VOTER'?S?\s*ID|VOTER)\s*(?:NO\.?|NUMBER)?\s*[:\-]?\s*([A-Z0-9\-]{4,20})/im,
+    /(?:UMID|UNIFIED\s*MULTI-PURPOSE\s*ID)\s*(?:NO\.?|NUMBER)?\s*[:\-]?\s*([A-Z0-9\-]{4,20})/im,
+  ];
+  for (const p of patterns) {
+    const m = text.match(p);
+    if (m?.[1]) return m[1].trim().toUpperCase();
+  }
+  return "";
+};
 
 export function useOcrForm(type = "mvcc") {
   const isMvcc = type === "mvcc";

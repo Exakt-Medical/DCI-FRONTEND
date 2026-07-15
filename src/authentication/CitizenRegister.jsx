@@ -6,13 +6,19 @@ import { useAlert } from "../hooks/useAlert";
 import DciLogo from "../assets/DCI-LOGO.png";
 import { authService } from "../services/authService";
 import { FileUpload } from "../components/FileUpload";
-import { runSharedLocalOcr } from "../hooks/useOcrForm";
+import { runSharedLocalOcr, extractClearanceDocumentData, CLEARANCE_OCR_DOCUMENT_TYPE } from "../hooks/useOcrForm";
 
 export const CitizenRegister = () => {
   const [form, setForm] = useState({
     username: "",
     firstName: "",
     lastName: "",
+    middleName: "",
+    dateOfBirth: "",
+    gender: "",
+    nationality: "",
+    idNumber: "",
+    address: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -36,7 +42,7 @@ export const CitizenRegister = () => {
     const cleanFirst = first.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
     const cleanLast = last.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
     const initial = cleanFirst.charAt(0) || "";
-    const randomSuffix = Math.floor(100 + Math.random() * 900);
+    const randomSuffix = String(Math.floor(10 + Math.random() * 90));
     return `${initial}${cleanLast}${randomSuffix}`;
   };
 
@@ -58,22 +64,55 @@ export const CitizenRegister = () => {
     setOcrLoading(true);
     setOcrHint("Extracting details from ID...");
     try {
-      const result = await runSharedLocalOcr(file);
+      const result = await extractClearanceDocumentData(file, CLEARANCE_OCR_DOCUMENT_TYPE.ID);
+      const parsed = result.fields || {};
       const upperText = result.normalizedText || "";
-      
-      let firstName = "";
+
+      console.log("=== ID OCR RAW TEXT ===");
+      console.log(upperText);
+      console.log("=== ID OCR PARSED FIELDS ===", parsed);
+
+      let firstName = parsed.ownerName || "";
       let lastName = "";
-      
-      const givenMatch = upperText.match(/(?:GIVEN\s*NAME|FIRST\s*NAME|GIVEN|FIRST)\s*[:\-]?\s*([A-Z\s.,'-]{2,40})/i);
-      if (givenMatch?.[1]) firstName = givenMatch[1].trim();
-      
-      const surnameMatch = upperText.match(/(?:SURNAME|LAST\s*NAME|FAMILY\s*NAME|SUR|LAST)\s*[:\-]?\s*([A-Z\s.,'-]{2,40})/i);
-      if (surnameMatch?.[1]) lastName = surnameMatch[1].trim();
+      let middleName = parsed.middleName || "";
+
+      const givenMatch = upperText.match(/(?:GIVEN\s*NAMES?|FIRST\s*NAMES?|GIVEN|FIRST|FN)\s*[:\-]?\s*([A-Z][A-Z\s.,'-]{1,50})/i);
+      if (givenMatch?.[1] && givenMatch[1].trim()) firstName = givenMatch[1].trim().toUpperCase().replace(/^FN/i, "").trim();
+
+      const surnameMatch = upperText.match(/(?:SURNAME|LAST\s*NAME|FAMILY\s*NAME|SUR|LAST|LN)\s*[:\-]?\s*([A-Z][A-Z\s.,'-]{1,60})/i);
+      if (surnameMatch?.[1] && surnameMatch[1].trim()) lastName = surnameMatch[1].trim().toUpperCase().replace(/^LN/i, "").trim();
+
+      const middleMatch = upperText.match(/(?:MIDDLE\s*NAME|MIDDLE|MID|MN)\s*[:\-]?\s*([A-Z][A-Z\s.,'-]{1,50})/i);
+      if (middleMatch?.[1] && middleMatch[1].trim()) middleName = middleMatch[1].trim().toUpperCase();
+
+      if (!firstName && !lastName && parsed.ownerName) {
+        const parts = parsed.ownerName.split(/\s+/);
+        if (parts.length >= 2) {
+          lastName = parts[parts.length - 1];
+          firstName = parts.slice(0, parts.length - 1).join(" ");
+        }
+      }
+
+      if (!firstName && !lastName) {
+        const lines = upperText.split("\n").map(l => l.trim()).filter(Boolean);
+        const joined = lines.find(l => /^[A-Z]{4,}$/.test(l) && !/^(DRIVER|GIVEN|SURNAME|LAST|FIRST|MIDDLE|NAME|ADDRESS|DATE|BIRTH|SEX|GENDER|NATIONALITY|CITIZENSHIP|DONOR|CLASS|EXP|ISS|HGT|WGT)/i.test(l));
+        if (joined) {
+          const m = joined.match(/^([A-Z]{3,})([A-Z]{3,})$/);
+          if (m) { firstName = m[1]; lastName = m[2]; }
+        }
+      }
 
       const updatedForm = { ...form };
       if (firstName) updatedForm.firstName = firstName;
       if (lastName) updatedForm.lastName = lastName;
-      
+      if (middleName) updatedForm.middleName = middleName;
+      if (parsed.email) updatedForm.email = parsed.email;
+      if (parsed.dateOfBirth) updatedForm.dateOfBirth = parsed.dateOfBirth;
+      if (parsed.gender) updatedForm.gender = parsed.gender;
+      if (parsed.nationality) updatedForm.nationality = parsed.nationality;
+      if (parsed.idNumber) updatedForm.idNumber = parsed.idNumber;
+      if (parsed.address) updatedForm.address = parsed.address;
+
       if (firstName || lastName) {
         if (!usernameEdited) {
           updatedForm.username = suggestUsername(updatedForm.firstName, updatedForm.lastName);
@@ -141,6 +180,12 @@ export const CitizenRegister = () => {
         confirmPassword: form.confirmPassword,
         firstName: form.firstName,
         lastName: form.lastName,
+        middleName: form.middleName || undefined,
+        dateOfBirth: form.dateOfBirth || undefined,
+        gender: form.gender || undefined,
+        nationality: form.nationality || undefined,
+        idNumber: form.idNumber || undefined,
+        address: form.address || undefined,
         email: form.email,
       });
       setIsRegistered(true);

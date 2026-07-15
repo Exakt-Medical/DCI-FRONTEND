@@ -30,6 +30,9 @@ import { AccountPage } from "./features/accounts/AccountPage";
 import { PlaceholderPage } from "./features/placeholder/PlaceholderPage";
 import { MaintenancePage } from "./features/Maintenance/MaintenancePage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { NewVehicleRegistrationPage } from "./features/new-vehicle-registration/NewVehicleRegistrationPage";
+import { NewVehicleRegistrationFlow } from "./features/new-vehicle-registration/NewVehicleRegistrationFlow";
+import { AgentNewVehicleRegistrationFlow } from "./features/new-vehicle-registration/AgentNewVehicleRegistrationFlow";
 
 // Redirect already-authenticated users away from the login page
 const LoginRedirect = () => {
@@ -82,6 +85,8 @@ function App() {
           <Route path="/dci-access/new-certificate-request" element={<ProtectedRoute allowedRoles={AGENT_ROLES}>{isAgent(role) ? <AgentClearanceRequestFlow role={role} /> : <CitizenClearanceRequestFlow role={role} />}</ProtectedRoute>} />
           <Route path="/dci-access/bulk-clearance-request" element={<ProtectedRoute allowedRoles={["agent_fixer", "agent"]}><AgentBulkClearanceRequestFlow role={role} /></ProtectedRoute>} />
           
+          <Route path="/dci-access/new-vehicle-registration" element={<ProtectedRoute allowedRoles={AGENT_ROLES}>{isAgent(role) ? <AgentNewVehicleRegistrationFlow role={role} /> : <NewVehicleRegistrationFlow role={role} />}</ProtectedRoute>} />
+          <Route path="/dci-access/vehicle-registrations" element={<ProtectedRoute allowedRoles={AGENT_ROLES}><NewVehicleRegistrationPage role={role} /></ProtectedRoute>} />
           <Route path="/dci-access/hpg-verification" element={<ProtectedRoute allowedRoles={["hpg", "dci"]}><HpgVerifyPage /></ProtectedRoute>} />
           <Route path="/dci-access/dci-verification" element={<ProtectedRoute allowedRoles={["dci"]}><DciVerifyPage /></ProtectedRoute>} />
           

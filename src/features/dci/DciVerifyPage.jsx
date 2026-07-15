@@ -180,24 +180,48 @@ export const DciVerifyPage = () => {
     setTimeout(() => {
       try {
         const savedRequests = JSON.parse(localStorage.getItem('dci_mock_requests') || '[]');
-        const reqIndex = savedRequests.findIndex(r => r.voucherCode === voucherCode.trim() || r.voucherReferenceNo === voucherCode.trim());
+        let reqIndex = savedRequests.findIndex(r => r.voucherCode === voucherCode.trim() || r.voucherReferenceNo === voucherCode.trim());
+        const isAgent = savedRequests[reqIndex]?.role === "agent_fixer";
+        const mockCertNo = "DCI-CERT" + Math.floor(Math.random() * 10000);
+        const entry = {
+          voucherCode: voucherCode.trim(),
+          status: "CERTIFICATE_ISSUED",
+          currentStep: isAgent ? 4 : 5,
+          certificateNo: mockCertNo,
+          clearanceReferenceNo: mockCertNo,
+          clearanceStatus: "CERTIFICATE_ISSUED",
+          mvcData: mvcPayload,
+          mecData: mecPayload,
+          mvcMecValidationState: "PASSED",
+          mvcMecValidationMessage: "Validated by DCI portal.",
+          plateNumber: vehicleData?.plateNumber || "ABC1234",
+          vvsOwnerName: vehicleData?.ownerName || "JUAN M DELA CRUZ",
+          vvsVehicleDetails: {
+            plateNumber: vehicleData?.plateNumber || "ABC1234",
+            mvFileNumber: vehicleData?.mvFileNumber || "1301-00000012345",
+            engineNumber: vehicleData?.engineNumber || "ENG123456789",
+            chassisNumber: vehicleData?.chassisNumber || "CHAS123456789",
+            make: vehicleData?.make || "TOYOTA",
+            series: vehicleData?.series || "VIOS",
+            yearModel: vehicleData?.yearModel || "2020",
+            color: vehicleData?.color || "RED"
+          },
+          ...(savedRequests[reqIndex] || {})
+        };
+        entry.status = "CERTIFICATE_ISSUED";
+        entry.certificateNo = mockCertNo;
+        entry.clearanceReferenceNo = mockCertNo;
+        entry.clearanceStatus = "CERTIFICATE_ISSUED";
+        entry.mvcData = mvcPayload;
+        entry.mecData = mecPayload;
+        entry.mvcMecValidationState = "PASSED";
+        entry.mvcMecValidationMessage = "Validated by DCI portal.";
         if (reqIndex >= 0) {
-          const isAgent = savedRequests[reqIndex].role === "agent_fixer";
-          const mockCertNo = "DCI-CERT" + Math.floor(Math.random() * 10000);
-          savedRequests[reqIndex] = {
-            ...savedRequests[reqIndex],
-            status: "CERTIFICATE_ISSUED",
-            currentStep: isAgent ? 4 : 5,
-            certificateNo: mockCertNo,
-            clearanceReferenceNo: mockCertNo,
-            clearanceStatus: "CERTIFICATE_ISSUED",
-            mvcData: mvcPayload,
-            mecData: mecPayload,
-            mvcMecValidationState: "PASSED",
-            mvcMecValidationMessage: "Validated by DCI portal."
-          };
-          localStorage.setItem('dci_mock_requests', JSON.stringify(savedRequests));
+          savedRequests[reqIndex] = entry;
+        } else {
+          savedRequests.push(entry);
         }
+        localStorage.setItem('dci_mock_requests', JSON.stringify(savedRequests));
 
         setMarkedVerified(true);
       } catch (err) {
