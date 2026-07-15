@@ -13,6 +13,7 @@ import { useAuth } from "../../context/AuthContext";
 import DCI_LOGO from "../../assets/DCI-LOGO.png";
 import { formatOcrHint, OCR_STATUS } from "../../hooks/useOcrForm";
 import { DataMismatchModal } from "./components/DataMismatchModal";
+import { OrCrMismatchModal } from "./components/OrCrMismatchModal";
 import { ticketService } from "../../services/ticketService";
 import { Button } from "../../components/Button";
 import { useRequest } from "../../context/RequestContext";
@@ -53,6 +54,9 @@ export const AgentBulkClearanceRequestFlow = () => {
   const [guidelineRevisitedHint, setGuidelineRevisitedHint] = useState(false);
   const [extractedFields, setExtractedFields] = useState({});
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [orCrMismatches, setOrCrMismatches] = useState([]);
+  const [isOrCrMismatchModalOpen, setIsOrCrMismatchModalOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
 
   useEffect(() => {
     if (step === 1 && !hasShownGuideline) {
@@ -213,6 +217,32 @@ export const AgentBulkClearanceRequestFlow = () => {
         if (parsedVehicle[k]) extracted[k] = true;
       });
       setExtractedFields((prev) => ({ ...prev, ...extracted }));
+
+      const newMismatches = [];
+      const fieldsToCheck = [
+        { field: "plateNumber", label: "Plate Number" },
+        { field: "mvFileNumber", label: "MV File Number" },
+        { field: "color", label: "Color" },
+        { field: "yearModel", label: "Year Model" },
+        { field: "ownerName", label: "Owner's Name" },
+        { field: "classification", label: "Classification" },
+      ];
+      fieldsToCheck.forEach(({ field, label }) => {
+        const orVal = orCr[field];
+        const crVal = parsedVehicle[field];
+        if (orVal && crVal && orVal.toUpperCase() !== crVal.toUpperCase()) {
+          newMismatches.push({
+            field,
+            label,
+            orValue: orVal.toUpperCase(),
+            crValue: crVal.toUpperCase(),
+          });
+        }
+      });
+      if (newMismatches.length > 0) {
+        setOrCrMismatches(newMismatches);
+        setIsOrCrMismatchModalOpen(true);
+      }
     }
   });
 
@@ -380,6 +410,7 @@ export const AgentBulkClearanceRequestFlow = () => {
         showError("No Verified Vehicles", "There are no successfully verified vehicles to proceed with.");
         return;
       }
+      setConfirmAction("proceed");
       setShowConfirmModal(true);
     } else if (step === 3) {
       setStep(4);
@@ -393,6 +424,12 @@ export const AgentBulkClearanceRequestFlow = () => {
     const successfulItems = queue.filter(item => item.status === "VERIFIED");
     setQueue(successfulItems);
     setStep(3);
+  };
+
+  const handleOrCrMismatchSubmit = (resolvedValues) => {
+    setOrCr((prev) => ({ ...prev, ...resolvedValues }));
+    setCrCr((prev) => ({ ...prev, ...resolvedValues }));
+    setIsOrCrMismatchModalOpen(false);
   };
 
   const handleVerifyQueue = async () => {
@@ -830,7 +867,10 @@ export const AgentBulkClearanceRequestFlow = () => {
                         You are about to verify <span className="font-bold">{queue.length}</span> vehicles.
                       </p>
                       <button 
-                        onClick={handleVerifyQueue} 
+                        onClick={() => {
+                          setConfirmAction("verify");
+                          setShowConfirmModal(true);
+                        }} 
                         className="mt-4 px-8 py-3 bg-[#0059b5] text-white rounded-full font-bold hover:bg-[#004a96] transition-colors shadow-md"
                       >
                         Verify All Now
@@ -1157,24 +1197,40 @@ export const AgentBulkClearanceRequestFlow = () => {
       {showConfirmModal && (
         <Modal
           isOpen={showConfirmModal}
-          onClose={() => setShowConfirmModal(false)}
+          onClose={() => {
+            setShowConfirmModal(false);
+            setConfirmAction(null);
+          }}
           size="sm"
           hideHeader
         >
           <div className="p-8 text-center space-y-5">
             <h3 className="text-2xl font-bold text-gray-900">Are you sure?</h3>
             <p className="text-gray-500 text-lg leading-relaxed max-w-[340px] mx-auto">
-              Please confirm that all uploaded data is accurate and final for this bulk transaction.
+              {confirmAction === "verify"
+                ? "Please confirm that you want to submit this queue of OR/CR uploads for VVS verification."
+                : "Please confirm that all uploaded data is accurate and final for this bulk transaction."}
             </p>
             <div className="flex justify-center gap-4 pt-3">
               <button
-                onClick={() => setShowConfirmModal(false)}
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  setConfirmAction(null);
+                }}
                 className="px-8 py-2.5 rounded-2xl border-2 border-[#0059b5] text-[#0059b5] font-semibold hover:bg-blue-50/50 transition-colors min-w-[120px]"
               >
                 Cancel
               </button>
               <button
-                onClick={handleConfirmNext}
+                onClick={() => {
+                  setShowConfirmModal(false);
+                  if (confirmAction === "verify") {
+                    handleVerifyQueue();
+                  } else {
+                    handleConfirmNext();
+                  }
+                  setConfirmAction(null);
+                }}
                 className="px-8 py-2.5 rounded-2xl bg-[#0059b5] text-white font-semibold hover:bg-[#004bb0] transition-colors shadow-lg shadow-blue-500/10 min-w-[120px]"
               >
                 Proceed
@@ -1210,6 +1266,13 @@ export const AgentBulkClearanceRequestFlow = () => {
             setCrCr(emptyVehicle);
           }
         }}
+      />
+
+      <OrCrMismatchModal
+        isOpen={isOrCrMismatchModalOpen}
+        onClose={() => setIsOrCrMismatchModalOpen(false)}
+        mismatches={orCrMismatches}
+        onSubmit={handleOrCrMismatchSubmit}
       />
     </div>
   );

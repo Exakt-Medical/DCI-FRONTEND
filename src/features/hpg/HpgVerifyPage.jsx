@@ -8,6 +8,29 @@ import { QrScannerModal } from "../../components/QrScannerModal";
 import api from "../../services/api";
 import { useAlert } from "../../hooks/useAlert";
 
+const maskPlateNumber = (str) => {
+  if (!str) return "";
+  const s = str.trim();
+  if (s.length <= 2) return s;
+  return s[0] + "*".repeat(s.length - 2) + s[s.length - 1];
+};
+
+const maskMvFileNumber = (str) => {
+  if (!str) return "";
+  const s = str.trim();
+  if (s.length <= 4) return s;
+  return "*".repeat(s.length - 4) + s.slice(-4);
+};
+
+const maskEngineOrChassis = (str) => {
+  if (!str) return "";
+  const s = str.trim();
+  if (s.length <= 8) return s;
+  const before = s.slice(0, -8);
+  const last8 = s.slice(-8);
+  return before + "****" + last8.slice(-4);
+};
+
 export const HpgVerifyPage = () => {
   const [voucherCode, setVoucherCode] = useState("");
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -158,7 +181,7 @@ export const HpgVerifyPage = () => {
                   Plate Number
                 </label>
                 <p className="text-sm font-medium text-gray-900">
-                  {vehicleData.plateNumber}
+                  {maskPlateNumber(vehicleData.plateNumber)}
                 </p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
@@ -166,7 +189,7 @@ export const HpgVerifyPage = () => {
                   MV File Number
                 </label>
                 <p className="text-sm font-medium text-gray-900">
-                  {vehicleData.mvFileNumber}
+                  {maskMvFileNumber(vehicleData.mvFileNumber)}
                 </p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
@@ -174,7 +197,7 @@ export const HpgVerifyPage = () => {
                   Engine Number
                 </label>
                 <p className="text-sm font-medium text-gray-900">
-                  {vehicleData.engineNumber}
+                  {maskEngineOrChassis(vehicleData.engineNumber)}
                 </p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3">
@@ -182,7 +205,7 @@ export const HpgVerifyPage = () => {
                   Chassis Number
                 </label>
                 <p className="text-sm font-medium text-gray-900">
-                  {vehicleData.chassisNumber}
+                  {maskEngineOrChassis(vehicleData.chassisNumber)}
                 </p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3">

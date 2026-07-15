@@ -13,6 +13,29 @@ import { evaluateMvcMecValidation } from "../clearance-request/utils/clearanceRe
 import { useAlert } from "../../hooks/useAlert";
 import { OcrProgressModal } from "../clearance-request/components/OcrProgressModal";
 
+const maskPlateNumber = (str) => {
+  if (!str) return "";
+  const s = str.trim();
+  if (s.length <= 2) return s;
+  return s[0] + "*".repeat(s.length - 2) + s[s.length - 1];
+};
+
+const maskMvFileNumber = (str) => {
+  if (!str) return "";
+  const s = str.trim();
+  if (s.length <= 4) return s;
+  return "*".repeat(s.length - 4) + s.slice(-4);
+};
+
+const maskEngineOrChassis = (str) => {
+  if (!str) return "";
+  const s = str.trim();
+  if (s.length <= 8) return s;
+  const before = s.slice(0, -8);
+  const last8 = s.slice(-8);
+  return before + "****" + last8.slice(-4);
+};
+
 export const DciVerifyPage = () => {
   const [voucherCode, setVoucherCode] = useState("");
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -254,19 +277,19 @@ export const DciVerifyPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-gray-50 rounded-lg p-3">
                   <label className="text-xs text-gray-500 block mb-1">Plate Number</label>
-                  <p className="text-sm font-medium text-gray-900">{vehicleData.plateNumber}</p>
+                  <p className="text-sm font-medium text-gray-900">{maskPlateNumber(vehicleData.plateNumber)}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
                   <label className="text-xs text-gray-500 block mb-1">MV File Number</label>
-                  <p className="text-sm font-medium text-gray-900">{vehicleData.mvFileNumber}</p>
+                  <p className="text-sm font-medium text-gray-900">{maskMvFileNumber(vehicleData.mvFileNumber)}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
                   <label className="text-xs text-gray-500 block mb-1">Engine Number</label>
-                  <p className="text-sm font-medium text-gray-900">{vehicleData.engineNumber}</p>
+                  <p className="text-sm font-medium text-gray-900">{maskEngineOrChassis(vehicleData.engineNumber)}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
                   <label className="text-xs text-gray-500 block mb-1">Chassis Number</label>
-                  <p className="text-sm font-medium text-gray-900">{vehicleData.chassisNumber}</p>
+                  <p className="text-sm font-medium text-gray-900">{maskEngineOrChassis(vehicleData.chassisNumber)}</p>
                 </div>
                 <div className="bg-gray-50 rounded-lg p-3">
                   <label className="text-xs text-gray-500 block mb-1">Make</label>
