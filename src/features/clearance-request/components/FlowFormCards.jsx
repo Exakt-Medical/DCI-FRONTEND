@@ -32,7 +32,7 @@ const CR_FIELD_CONFIG = [
   { key: "ownerAddress", label: "Owner's Address", required: true },
 ];
 
-export const VehicleFields = ({ values, onChange, fieldSet = "cr", errors = {}, isExtracting = false }) => (
+export const VehicleFields = ({ values, onChange, fieldSet = "cr", errors = {}, isExtracting = false, successFields = {} }) => (
   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-3">
     {(fieldSet === "or" ? OR_FIELD_CONFIG : CR_FIELD_CONFIG).map((field) => (
       <Input
@@ -49,6 +49,7 @@ export const VehicleFields = ({ values, onChange, fieldSet = "cr", errors = {}, 
         placeholder={isExtracting ? "Extracting..." : "Auto-extracted"}
         required={true}
         error={errors[field.key]}
+        success={successFields[field.key]}
         maxLength={field.key === "mvFileNumber" ? 15 : undefined}
         className={
           field.key === "ownerAddress"
@@ -75,6 +76,7 @@ export const VehicleDocumentUploadCard = ({
   disabled,
   hideFields = false,
   isExtracting = false,
+  successFields = {},
 }) => (
   <Card className="p-5">
     <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
@@ -103,6 +105,8 @@ export const VehicleDocumentUploadCard = ({
             onChange={onVehicleChange}
             fieldSet={vehicleFieldSet}
             errors={errors}
+            isExtracting={isExtracting}
+            successFields={successFields}
           />
         </div>
       </div>
@@ -157,6 +161,7 @@ export const MvcMecUploadCard = ({
               placeholder={isExtracting ? "Extracting..." : (field.placeholder || "Auto-extracted")}
               required={true}
               error={field.error}
+              success={field.success}
             />
           ))}
         </div>

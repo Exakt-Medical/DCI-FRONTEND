@@ -177,7 +177,7 @@ export function isLikelyMeNumber(v: string): boolean {
 }
 
 export function isLikelyNhqPid(v: string): boolean {
-  return /^[A-Z0-9\-]{3,30}$/i.test(v.trim());
+  return /^[A-Z0-9\-\s]{3,30}$/i.test(v.trim());
 }
 
 export function isLikelyOfficerName(v: string): boolean {

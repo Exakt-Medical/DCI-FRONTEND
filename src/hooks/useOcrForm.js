@@ -294,12 +294,21 @@ export function useOcrForm(type = "mvcc") {
     mecChassisNo: "",
     mecPlateNo: "",
     mecColor: "",
+    mecControlNo: "",
+    mecDateIssued: "",
   });
 
+  const [extractedFields, setExtractedFields] = useState({});
+
   const handleInputChange = (e) => {
+    const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value.toUpperCase(),
+      [name]: value.toUpperCase(),
+    }));
+    setExtractedFields((prev) => ({
+      ...prev,
+      [name]: false,
     }));
   };
 
@@ -322,7 +331,8 @@ export function useOcrForm(type = "mvcc") {
     setIsProcessingDoc1(true);
     setDoc1State({ status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
     try {
-      const { fields, extraction } = await runLocalOcr(file);
+      const docType = isMvcc ? "MVCC" : "OR";
+      const { fields, extraction } = await runLocalOcr(file, docType);
       if (seq !== seq1.current) return;
       const makeModel = buildMakeModel(fields);
       const commonUpdates = {
@@ -364,6 +374,27 @@ export function useOcrForm(type = "mvcc") {
           ltoBranch: (fields.ltoBranch || "").toUpperCase(),
         }));
       }
+      const extractedKeys = {};
+      if (isMvcc) {
+        if (fields.mvccControlNo) extractedKeys.mvccControlNo = true;
+        if (fields.date) extractedKeys.mvccDateIssued = true;
+        if (fields.mvFileNo) extractedKeys.mvFileNo = true;
+        if (fields.engineNo) extractedKeys.engineNo = true;
+        if (fields.chassisNo) extractedKeys.chassisNo = true;
+        if (fields.plateNo) extractedKeys.plateNo = true;
+        if (fields.color) extractedKeys.color = true;
+        if (fields.hpgOffice) extractedKeys.hpgOffice = true;
+        if (fields.purpose) extractedKeys.purpose = true;
+      } else {
+        if (fields.plateNo) extractedKeys.orPlateNo = true;
+        if (fields.ownerName) extractedKeys.ownerName = true;
+        if (fields.address) extractedKeys.address = true;
+        if (fields.orNumber) extractedKeys.orNumber = true;
+        if (fields.orDate || fields.date) extractedKeys.orDate = true;
+        if (fields.amountPaid) extractedKeys.amountPaid = true;
+        if (fields.ltoBranch) extractedKeys.ltoBranch = true;
+      }
+      setExtractedFields((prev) => ({ ...prev, ...extractedKeys }));
       setDoc1Extraction(extraction);
       setDoc1Uploaded(true);
       
@@ -407,11 +438,14 @@ export function useOcrForm(type = "mvcc") {
     setIsProcessingDoc2(true);
     setDoc2State({ status: OCR_STATUS.EXTRACTING, confidence: 0, error: "" });
     try {
-      const { fields, extraction } = await runLocalOcr(file);
+      const docType = isMvcc ? "MEC" : "CR";
+      const { fields, extraction } = await runLocalOcr(file, docType);
       if (seq !== seq2.current) return;
       if (isMvcc) {
         setFormData((prev) => ({
           ...prev,
+          mecControlNo: (fields.nhqPid || "").toUpperCase(),
+          mecDateIssued: normalizeDateForInput(fields.date) || "",
           mecEngineNo: (fields.engineNoStencilled || fields.engineNo || "").toUpperCase(),
           mecChassisNo: (fields.chassisNoStencilled || fields.chassisNo || "").toUpperCase(),
           mecPlateNo: (fields.plateNo || "").toUpperCase(),
@@ -421,7 +455,17 @@ export function useOcrForm(type = "mvcc") {
           ).toUpperCase(),
         }));
         setDoc2Extraction(extraction);
-        const hasData = !!(fields.engineNo || fields.chassisNo || fields.engineNoStencilled || fields.chassisNoStencilled);
+        const hasData = !!(fields.engineNo || fields.chassisNo || fields.engineNoStencilled || fields.chassisNoStencilled || fields.nhqPid || fields.date);
+        
+        const extractedKeys = {};
+        if (fields.nhqPid) extractedKeys.mecControlNo = true;
+        if (fields.date) extractedKeys.mecDateIssued = true;
+        if (fields.engineNoStencilled || fields.engineNo) extractedKeys.mecEngineNo = true;
+        if (fields.chassisNoStencilled || fields.chassisNo) extractedKeys.mecChassisNo = true;
+        if (fields.plateNo) extractedKeys.mecPlateNo = true;
+        if (fields.color) extractedKeys.mecColor = true;
+        setExtractedFields((prev) => ({ ...prev, ...extractedKeys }));
+
         setDoc2Uploaded(hasData);
         if (!hasData) {
           const msg = "MEC OCR could not extract engine or chassis number. Please try a clearer image.";
@@ -607,7 +651,6 @@ export function useOcrForm(type = "mvcc") {
     : [doc1SummaryLine, doc2SummaryLine].some((l) => l.includes("mixed"))
       ? "mixed"
       : "high";
-
   const resetForm = () => {
     seq1.current += 1;
     seq2.current += 1;
@@ -640,7 +683,10 @@ export function useOcrForm(type = "mvcc") {
       mecChassisNo: "",
       mecPlateNo: "",
       mecColor: "",
+      mecControlNo: "",
+      mecDateIssued: "",
     });
+    setExtractedFields({});
     setDoc1File(null);
     setDoc2File(null);
     setDoc1Uploaded(false);
@@ -684,5 +730,8 @@ export function useOcrForm(type = "mvcc") {
     doc2SummaryLine,
     reviewLegendTier,
     isMvcc,
+    extractedFields,
+    setDoc1State,
+    setDoc2State,
   };
 }

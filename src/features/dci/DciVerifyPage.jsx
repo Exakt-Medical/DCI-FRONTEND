@@ -11,6 +11,7 @@ import { useOcrForm, formatOcrHint, OCR_STATUS } from "../../hooks/useOcrForm";
 import { MvcMecUploadCard } from "../clearance-request/components/FlowFormCards";
 import { evaluateMvcMecValidation } from "../clearance-request/utils/clearanceRequestUtils";
 import { useAlert } from "../../hooks/useAlert";
+import { OcrProgressModal } from "../clearance-request/components/OcrProgressModal";
 
 export const DciVerifyPage = () => {
   const [voucherCode, setVoucherCode] = useState("");
@@ -38,6 +39,9 @@ export const DciVerifyPage = () => {
     resetForm,
     doc1Uploaded,
     doc2Uploaded,
+    extractedFields,
+    setDoc1State,
+    setDoc2State,
   } = useOcrForm("mvcc");
 
   const isDocumentsComplete = !!(mvccFile && mecFile);
@@ -93,6 +97,33 @@ export const DciVerifyPage = () => {
   const handleMarkVerified = () => {
     setIsVerifying(true);
     setValidationErrors({});
+
+    // Validate 4 required fields
+    if (!formData.mvccControlNo?.trim()) {
+      showErrorAlert("Validation Failed", "MVCC Number is required");
+      setValidationErrors({ mvccControlNo: true });
+      setIsVerifying(false);
+      return;
+    }
+    if (!formData.mvccDateIssued?.trim()) {
+      showErrorAlert("Validation Failed", "MVCC Issue Date is required");
+      setValidationErrors({ mvccDateIssued: true });
+      setIsVerifying(false);
+      return;
+    }
+    if (!formData.mecControlNo?.trim()) {
+      showErrorAlert("Validation Failed", "MEC Number is required");
+      setValidationErrors({ mecControlNo: true });
+      setIsVerifying(false);
+      return;
+    }
+    if (!formData.mecDateIssued?.trim()) {
+      showErrorAlert("Validation Failed", "MEC Issue Date is required");
+      setValidationErrors({ mecDateIssued: true });
+      setIsVerifying(false);
+      return;
+    }
+
     const mvcPayload = {
       mvcNo: formData.mvccControlNo,
       issueDate: formData.mvccDateIssued,
@@ -104,6 +135,8 @@ export const DciVerifyPage = () => {
     };
     
     const mecPayload = {
+      mecNo: formData.mecControlNo,
+      issueDate: formData.mecDateIssued,
       engineNoStencilled: formData.mecEngineNo,
       chassisNoStencilled: formData.mecChassisNo,
       plateNo: formData.mecPlateNo,
@@ -112,7 +145,7 @@ export const DciVerifyPage = () => {
 
     const validation = evaluateMvcMecValidation(mvcPayload, mecPayload, vehicleData);
     if (!validation.valid) {
-      showErrorAlert("Error", "Data Mismatch Found");
+      showErrorAlert("Error", validation.reason || "Data Mismatch Found");
       const errors = {};
       if (validation.mismatchedFields) {
         validation.mismatchedFields.forEach(f => {
@@ -262,34 +295,72 @@ export const DciVerifyPage = () => {
                   uploadLabel="Upload MVCC"
                   onFile={handleMvccUpload}
                   preview={doc1Uploaded ? URL.createObjectURL(mvccFile) : null}
-                  vehicleLabel="Vehicle Details (from MVCC)"
-                  fields={[
-                    { key: "mvccControlNo", label: "MVCC Number", value: formData.mvccControlNo || (doc1State.status === "extracting" ? "Extracting..." : ""), error: validationErrors["mvccControlNo"], onChange: (e) => handleInputChange({ target: { name: "mvccControlNo", value: e.target.value } }) },
-                    { key: "mvccDateIssued", label: "Issue Date", value: formData.mvccDateIssued || (doc1State.status === "extracting" ? "Extracting..." : ""), error: validationErrors["mvccDateIssued"], onChange: (e) => handleInputChange({ target: { name: "mvccDateIssued", value: e.target.value } }) },
-                    { key: "mvFileNo", label: "MV File Number", value: formData.mvFileNo || (doc1State.status === "extracting" ? "Extracting..." : ""), error: validationErrors["mvFileNo"], onChange: (e) => handleInputChange({ target: { name: "mvFileNo", value: e.target.value } }) },
-                    { key: "engineNo", label: "Engine Number", value: formData.engineNo || (doc1State.status === "extracting" ? "Extracting..." : ""), error: validationErrors["engineNo"], onChange: (e) => handleInputChange({ target: { name: "engineNo", value: e.target.value } }) },
-                    { key: "chassisNo", label: "Chassis Number", value: formData.chassisNo || (doc1State.status === "extracting" ? "Extracting..." : ""), error: validationErrors["chassisNo"], onChange: (e) => handleInputChange({ target: { name: "chassisNo", value: e.target.value } }) },
-                    { key: "plateNo", label: "Plate Number", value: formData.plateNo || (doc1State.status === "extracting" ? "Extracting..." : ""), error: validationErrors["plateNo"], onChange: (e) => handleInputChange({ target: { name: "plateNo", value: e.target.value } }) },
-                    { key: "color", label: "Color", value: formData.color || (doc1State.status === "extracting" ? "Extracting..." : ""), error: validationErrors["color"], onChange: (e) => handleInputChange({ target: { name: "color", value: e.target.value } }) },
-                  ]}
                   uploadHint={formatOcrHint(doc1State)}
+                  fields={[]}
                 />
                 <MvcMecUploadCard
                   title="MEC (Macro Etching Certificate)"
                   uploadLabel="Upload MEC"
                   onFile={handleMecUpload}
                   preview={doc2Uploaded ? URL.createObjectURL(mecFile) : null}
-                  vehicleLabel="Vehicle Details (from MEC)"
-                  fields={[
-                    { key: "mecEngineNo", label: "Engine Number", value: formData.mecEngineNo || (doc2State.status === "extracting" ? "Extracting..." : ""), error: validationErrors["mecEngineNo"], onChange: (e) => handleInputChange({ target: { name: "mecEngineNo", value: e.target.value } }) },
-                    { key: "mecChassisNo", label: "Chassis Number", value: formData.mecChassisNo || (doc2State.status === "extracting" ? "Extracting..." : ""), error: validationErrors["mecChassisNo"], onChange: (e) => handleInputChange({ target: { name: "mecChassisNo", value: e.target.value } }) },
-                    { key: "mecPlateNo", label: "Plate Number", value: formData.mecPlateNo || (doc2State.status === "extracting" ? "Extracting..." : ""), error: validationErrors["mecPlateNo"], onChange: (e) => handleInputChange({ target: { name: "mecPlateNo", value: e.target.value } }) },
-                    { key: "mecColor", label: "Color", value: formData.mecColor || (doc2State.status === "extracting" ? "Extracting..." : ""), error: validationErrors["mecColor"], onChange: (e) => handleInputChange({ target: { name: "mecColor", value: e.target.value } }) },
-                  ]}
                   uploadHint={formatOcrHint(doc2State)}
+                  fields={[]}
                 />
               </div>
             </div>
+
+            {(mvccFile || mecFile) && (
+              <div className="border-t border-gray-200 pt-6">
+                <Card className="p-5 border border-gray-200">
+                  <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
+                    <FileText size={18} className="text-[#0059b5]" />
+                    <h3 className="text-base font-bold text-gray-900">MVCC & MEC Details</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-3">
+                    <Input
+                      label="MVCC Number"
+                      name="mvccControlNo"
+                      value={formData.mvccControlNo}
+                      onChange={handleInputChange}
+                      placeholder="Auto-extracted"
+                      required
+                      error={validationErrors["mvccControlNo"]}
+                      success={extractedFields["mvccControlNo"]}
+                    />
+                    <Input
+                      label="MVCC Issue Date"
+                      name="mvccDateIssued"
+                      value={formData.mvccDateIssued}
+                      onChange={handleInputChange}
+                      placeholder="Auto-extracted"
+                      required
+                      error={validationErrors["mvccDateIssued"]}
+                      success={extractedFields["mvccDateIssued"]}
+                    />
+                    <Input
+                      label="MEC Number"
+                      name="mecControlNo"
+                      value={formData.mecControlNo}
+                      onChange={handleInputChange}
+                      placeholder="Auto-extracted"
+                      required
+                      error={validationErrors["mecControlNo"]}
+                      success={extractedFields["mecControlNo"]}
+                    />
+                    <Input
+                      label="MEC Issue Date"
+                      name="mecDateIssued"
+                      value={formData.mecDateIssued}
+                      onChange={handleInputChange}
+                      placeholder="Auto-extracted"
+                      required
+                      error={validationErrors["mecDateIssued"]}
+                      success={extractedFields["mecDateIssued"]}
+                    />
+                  </div>
+                </Card>
+              </div>
+            )}
           </Card>
 
           <div className="flex justify-between gap-3">
@@ -322,6 +393,32 @@ export const DciVerifyPage = () => {
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
         onScan={handleQrScan}
+      />
+
+      <OcrProgressModal
+        isOpen={doc1State.status === "extracting" || doc1State.status === "success" || doc1State.status === "error"}
+        status={doc1State.status}
+        documentType="mvcc"
+        errorMsg={doc1State.error}
+        onClose={() => {
+          setDoc1State({ status: OCR_STATUS.IDLE, confidence: 0, error: "" });
+          if (doc1State.status === "error") {
+            resetForm();
+          }
+        }}
+      />
+
+      <OcrProgressModal
+        isOpen={doc2State.status === "extracting" || doc2State.status === "success" || doc2State.status === "error"}
+        status={doc2State.status}
+        documentType="mec"
+        errorMsg={doc2State.error}
+        onClose={() => {
+          setDoc2State({ status: OCR_STATUS.IDLE, confidence: 0, error: "" });
+          if (doc2State.status === "error") {
+            resetForm();
+          }
+        }}
       />
     </div>
   );

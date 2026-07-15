@@ -29,6 +29,7 @@ import { formatOcrHint, OCR_STATUS } from "../../hooks/useOcrForm";
 import { generateClearanceCertificatePDF } from "./utils/generateClearanceCertificatePDF";
 import { generateDciCodeSlipPDF } from "./utils/generateDciCodeSlipPDF";
 import { verificationService } from "../../services/verificationService";
+import { OcrProgressModal } from "./components/OcrProgressModal";
 import { useAlert } from "../../hooks/useAlert";
 import { useAuth } from "../../context/AuthContext";
 import { useRequest } from "../../context/RequestContext";
@@ -68,6 +69,7 @@ export const CitizenClearanceRequestFlow = () => {
   const [isTicketModalOpen, setIsTicketModalOpen] = useState(false);
   const [isDataMismatchModalOpen, setIsDataMismatchModalOpen] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [extractedFields, setExtractedFields] = useState({});
   const [orCrMismatches, setOrCrMismatches] = useState([]);
   const [isOrCrMismatchModalOpen, setIsOrCrMismatchModalOpen] = useState(false);
   const [showGuidelineModal, setShowGuidelineModal] = useState(false);
@@ -367,14 +369,17 @@ export const CitizenClearanceRequestFlow = () => {
   const updateOrCr = (field, value) => {
     setOrCr((prev) => ({ ...prev, [field]: value ? value.toUpperCase() : "" }));
     setValidationErrors((prev) => ({ ...prev, [field]: false }));
+    setExtractedFields((prev) => ({ ...prev, [field]: false }));
   };
   const updateCrCr = (field, value) => {
     setCrCr((prev) => ({ ...prev, [field]: value ? value.toUpperCase() : "" }));
     setValidationErrors((prev) => ({ ...prev, [field]: false }));
+    setExtractedFields((prev) => ({ ...prev, [field]: false }));
   };
 
   const {
     ocrUploadState,
+    setOcrState,
     handleOrUpload,
     handleCrUpload,
     handleMvcUpload,
@@ -390,8 +395,19 @@ export const CitizenClearanceRequestFlow = () => {
     VALIDATION_STATE,
     onOrExtracted: (parsedVehicle) => {
       setCrCr((prev) => mergeVehicleFields(prev, parsedVehicle));
+      const extracted = {};
+      Object.keys(parsedVehicle).forEach((k) => {
+        if (parsedVehicle[k]) extracted[k] = true;
+      });
+      setExtractedFields((prev) => ({ ...prev, ...extracted }));
     },
     onCrExtracted: (parsedVehicle) => {
+      const extracted = {};
+      Object.keys(parsedVehicle).forEach((k) => {
+        if (parsedVehicle[k]) extracted[k] = true;
+      });
+      setExtractedFields((prev) => ({ ...prev, ...extracted }));
+
       const newMismatches = [];
       const fieldsToCheck = [
         { field: "plateNumber", label: "Plate Number" },
@@ -637,6 +653,11 @@ export const CitizenClearanceRequestFlow = () => {
       return;
     }
 
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmNext = async () => {
+    setShowConfirmModal(false);
     setIsVerifyingDocuments(true);
     try {
       await saveCitizenRequest({
@@ -1109,7 +1130,7 @@ export const CitizenClearanceRequestFlow = () => {
                     preview={crPreview}
                     uploadHint={formatOcrHint(ocrUploadState.cr)}
                     errors={validationErrors}
-                    disabled={ocrUploadState.or.status === OCR_STATUS.IDLE || ocrUploadState.or.status === OCR_STATUS.EXTRACTING}
+                    disabled={!orPreview || ocrUploadState.or.status === OCR_STATUS.EXTRACTING}
                     hideFields={true}
                   />
                 </div>
@@ -1133,6 +1154,7 @@ export const CitizenClearanceRequestFlow = () => {
                     fieldSet="cr"
                     errors={validationErrors}
                     isExtracting={ocrUploadState.cr.status === OCR_STATUS.EXTRACTING || ocrUploadState.or.status === OCR_STATUS.EXTRACTING}
+                    successFields={extractedFields}
                   />
                 </Card>
               </div>
@@ -1562,6 +1584,34 @@ export const CitizenClearanceRequestFlow = () => {
       <UploadDocumentGuidelineModal
         isOpen={showGuidelineModal}
         onClose={() => setShowGuidelineModal(false)}
+      />
+
+      <OcrProgressModal
+        isOpen={ocrUploadState.or.status === "extracting" || ocrUploadState.or.status === "success" || ocrUploadState.or.status === "error"}
+        status={ocrUploadState.or.status}
+        documentType="or"
+        errorMsg={ocrUploadState.or.error}
+        onClose={() => {
+          setOcrState("or", { status: OCR_STATUS.IDLE });
+          if (ocrUploadState.or.status === "error") {
+            setOrPreview(null);
+            setOrCr(emptyVehicle);
+          }
+        }}
+      />
+
+      <OcrProgressModal
+        isOpen={ocrUploadState.cr.status === "extracting" || ocrUploadState.cr.status === "success" || ocrUploadState.cr.status === "error"}
+        status={ocrUploadState.cr.status}
+        documentType="cr"
+        errorMsg={ocrUploadState.cr.error}
+        onClose={() => {
+          setOcrState("cr", { status: OCR_STATUS.IDLE });
+          if (ocrUploadState.cr.status === "error") {
+            setCrPreview(null);
+            setCrCr(emptyVehicle);
+          }
+        }}
       />
     </div>
   );

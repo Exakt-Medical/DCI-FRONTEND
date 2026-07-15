@@ -10,6 +10,7 @@ export const Input = ({
   icon,
   className,
   error,
+  success,
   ...props
 }) => (
   <div className={cn("flex flex-col gap-1.5", className)}>
@@ -36,7 +37,11 @@ export const Input = ({
         placeholder={placeholder}
         className={cn(
           "w-full bg-white border border-gray-300 rounded-xl px-4 py-3 text-sm text-gray-800 placeholder:text-gray-400",
-          error ? "border-red-500 ring-2 ring-red-100 focus:border-red-500 focus:ring-red-100" : "focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100",
+          error 
+            ? "border-red-500 ring-2 ring-red-100 focus:border-red-500 focus:ring-red-100" 
+            : success
+            ? "border-green-500 ring-2 ring-green-100 focus:border-green-500 focus:ring-green-100 bg-green-50/10"
+            : "focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100",
           "transition-all",
           icon && "pl-9"
         )}

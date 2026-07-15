@@ -29,10 +29,60 @@ function extractMultiLineAddress(lines: string[], aliases: readonly string[]): s
 }
 
 export function extractMECFields(lines: string[], words: OcrWord[], pageWidth: number, pageHeight: number) {
+  const flat = lines.join("\n").toUpperCase();
+
+  // Find MEC Number (above date, or matching standard pattern)
+  let mecNo = "";
+  const mecNoMatch = flat.match(/\b\d{5,8}\s*-\s*\d{1,4}\b/);
+  if (mecNoMatch) {
+    mecNo = mecNoMatch[0];
+  }
+
+  // Find Date (above DATE label)
+  let dateIndex = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const cleanLine = lines[i].trim().toUpperCase();
+    if (cleanLine === "DATE") {
+      dateIndex = i;
+      break;
+    }
+  }
+
+  let mecDate = "";
+  if (dateIndex > 0) {
+    const dateLine = lines[dateIndex - 1].trim();
+    if (/\b\d{1,2}[-/\s]+[A-Za-z]{3,}[-/\s]+\d{2,4}\b/i.test(dateLine) || /\b\d{1,2}[-/\s]+\d{1,2}[-/\s]+\d{2,4}\b/.test(dateLine)) {
+      mecDate = dateLine;
+    }
+  }
+
+  if (!mecDate) {
+    const dateMatch = flat.match(/\b\d{1,2}[-/\s]+(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC)[-/\s]+\d{4}\b/i);
+    if (dateMatch) {
+      mecDate = dateMatch[0];
+    }
+  }
+
+  if (!mecNo && dateIndex > 0) {
+    for (let offset = 2; offset <= 4; offset++) {
+      const idx = dateIndex - offset;
+      if (idx >= 0) {
+        const line = lines[idx].trim();
+        const numMatch = line.match(/\b\d{5,10}(?:\s*-\s*\d{1,4})?\b/);
+        if (numMatch) {
+          mecNo = numMatch[0];
+          break;
+        }
+      }
+    }
+  }
+
   return {
     nhqPid:
-      extractAroundLabel(lines, FIELD_ALIASES.nhqPid, isLikelyNhqPid)
+      mecNo
+      || extractAroundLabel(lines, FIELD_ALIASES.nhqPid, isLikelyNhqPid)
       || findRightText(FIELD_ALIASES.nhqPid, words, isLikelyNhqPid),
+    date: mecDate,
     ownerName:
       extractAroundLabel(lines, ["OWNER", "OWNER NAME", "REGISTERED OWNER"], isLikelyOwnerName)
       || findRightText(["OWNER", "OWNER NAME", "REGISTERED OWNER"], words, isLikelyOwnerName),
