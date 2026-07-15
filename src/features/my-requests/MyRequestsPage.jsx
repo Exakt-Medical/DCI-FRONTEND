@@ -6,6 +6,7 @@ import { Input } from "../../components/Input";
 import { CertificateActionButtons } from "../clearance-request/components/CertificateActionButtons";
 import { useAuth } from "../../context/AuthContext";
 import { fetchMyRequests } from "../../services/certificateRequestService";
+import { getClearanceStatusStyle } from "../../constants/clearanceRequestConfig";
 import {
   FileText, Plus, Eye, Search, CheckCircle, Clock, CreditCard, ChevronLeft, ChevronRight, Loader2, XCircle
 } from "lucide-react";
@@ -275,8 +276,7 @@ export const MyRequestsPage = () => {
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider"></th>
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Reference</th>
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Plate No.</th>
-                  <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Transaction Code</th>
-                  <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Clearance</th>
+                  <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Status</th>
                   <th className="pb-3 font-semibold text-gray-600 text-xs uppercase tracking-wider">Date</th>
                 </tr>
               </thead>
@@ -310,23 +310,19 @@ export const MyRequestsPage = () => {
                     </td>
                     <td className="py-3 text-gray-700">{req.plateNumber || "-"}</td>
                     {req.status === "VERIFICATION_FAILED" ? (
-                      <td colSpan={2} className="py-3 pr-4">
-                        <div className="flex items-center justify-center gap-2 rounded-full px-3 py-1 text-xs font-medium bg-red-50 border border-red-500 w-full">
-                          <XCircle size={14} className="text-red-600 shrink-0" />
-                          <span className="text-red-700">VERIFICATION FAILED REQUEST</span>
-                        </div>
+                      <td className="py-3">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                          VERIFICATION FAILED
+                        </span>
                       </td>
                     ) : (
-                      <>
-                        <td className="py-3">
-                          <StatusBadge done={voucherDone(req)} />
-                        </td>
-                        <td className="py-3">
-                          <div className="flex items-center gap-2">
-                            <StatusBadge done={clearanceDone(req)} />
-                          </div>
-                        </td>
-                      </>
+                      <td className="py-3">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${getClearanceStatusStyle(req.status).bg} ${getClearanceStatusStyle(req.status).text}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${getClearanceStatusStyle(req.status).dot}`} />
+                          {req.status?.replace(/_/g, " ") || "UNKNOWN"}
+                        </span>
+                      </td>
                     )}
                     <td className="py-3 text-gray-500 text-xs">
                       {req.dateCreated ? new Date(req.dateCreated).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : "-"}
