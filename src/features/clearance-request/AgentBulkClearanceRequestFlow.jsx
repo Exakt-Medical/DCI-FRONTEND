@@ -351,6 +351,7 @@ export const AgentBulkClearanceRequestFlow = () => {
     setOrPreview(null);
     setCrPreview(null);
     setValidationErrors({});
+    setExtractedFields({});
     showSuccessAlert("Added", "Vehicle added to bulk queue.");
   };
 
