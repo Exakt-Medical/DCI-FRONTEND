@@ -90,7 +90,8 @@ export const AgentBulkClearanceRequestFlow = () => {
     if (step >= 3 && step <= 5 && queue.length > 0) {
       interval = setInterval(async () => {
         try {
-          const requests = await fetchMyRequests();
+          const data = await fetchMyRequests();
+          const requests = data?.content || data || [];
           if (!requests || requests.length === 0) return;
 
           setQueue(prevQueue => {
@@ -271,7 +272,9 @@ export const AgentBulkClearanceRequestFlow = () => {
           return hasChanges ? updated : prevQueue;
         });
       } catch (e) {
-        console.error("Failed to match tickets to queue", e);
+        if (e.response?.status !== 403) {
+          console.error("Failed to match tickets to queue", e);
+        }
       }
     };
     matchTicketsToQueue();
