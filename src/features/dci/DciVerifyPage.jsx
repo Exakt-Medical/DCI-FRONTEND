@@ -3,7 +3,7 @@ import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
 import { Spinner } from "../../components/Spinner";
-import { Shield, Search, CheckCircle, Car, User, ScanLine, FileText, Upload } from "lucide-react";
+import { Shield, Search, CheckCircle, Car, User, ScanLine, FileText, Upload, AlertTriangle } from "lucide-react";
 import { QrScannerModal } from "../../components/QrScannerModal";
 import { FileUpload } from "../../components/FileUpload";
 import api from "../../services/api";
@@ -22,6 +22,7 @@ export const DciVerifyPage = () => {
   const [error, setError] = useState("");
   const [validationErrors, setValidationErrors] = useState({});
   const [markedVerified, setMarkedVerified] = useState(false);
+  const [mismatchCount, setMismatchCount] = useState(0);
   
   
   const { error: showErrorAlert, success: showSuccessAlert } = useAlert();
@@ -52,6 +53,7 @@ export const DciVerifyPage = () => {
     setVerified(false);
     setVehicleData(null);
     setMarkedVerified(false);
+    setMismatchCount(0);
     setValidationErrors({});
     resetForm();
     setIsScannerOpen(false);
@@ -69,6 +71,7 @@ export const DciVerifyPage = () => {
     setVerified(false);
     setVehicleData(null);
     setMarkedVerified(false);
+    setMismatchCount(0);
     setValidationErrors({});
     resetForm();
 
@@ -145,6 +148,7 @@ export const DciVerifyPage = () => {
 
     const validation = evaluateMvcMecValidation(mvcPayload, mecPayload, vehicleData);
     if (!validation.valid) {
+      setMismatchCount(prev => prev + 1);
       showErrorAlert("Error", validation.reason || "Data Mismatch Found");
       const errors = {};
       if (validation.mismatchedFields) {
@@ -184,6 +188,7 @@ export const DciVerifyPage = () => {
     setVehicleData(null);
     setError("");
     setMarkedVerified(false);
+    setMismatchCount(0);
     resetForm();
     setActiveTab("vehicle");
   };
@@ -362,6 +367,16 @@ export const DciVerifyPage = () => {
               </div>
             )}
           </Card>
+
+          {mismatchCount >= 5 && (
+            <div className="mb-5 bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+              <AlertTriangle size={20} className="text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-bold text-amber-900">DCI Notice</h4>
+                <p className="text-sm text-amber-700 font-medium">Kindly return and check with your issuing HPG Office</p>
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-between gap-3">
             <Button variant="secondary" onClick={handleReset}>
