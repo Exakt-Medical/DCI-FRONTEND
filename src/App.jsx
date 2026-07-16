@@ -7,6 +7,7 @@ import {
 import { useAuth } from "./context/AuthContext";
 import { LoginPage } from "./authentication/LoginPage";
 import { CitizenRegister } from "./authentication/CitizenRegister";
+import { VerifyEmailPage } from "./authentication/VerifyEmailPage";
 import { AdminLayout } from "./components/layout/AdminLayout";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { MyRequestsPage } from "./features/my-requests/MyRequestsPage";
@@ -69,6 +70,7 @@ function App() {
         {/* Public Routes */}
         <Route path="/dci-access" element={<LoginRedirect />} />
         <Route path="/dci-access/register" element={<CitizenRegister />} />
+        <Route path="/dci-access/verify-email" element={<VerifyEmailPage />} />
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>

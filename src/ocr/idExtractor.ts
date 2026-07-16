@@ -10,15 +10,13 @@ export type IdOcrResult = {
 
 const cleanField = (str: string): string => {
   if (!str) return "";
-  let s = str
-    .replace(/0/g, "O")
-    .replace(/1/g, "I")
-    .replace(/5/g, "S")
-    .replace(/8/g, "B")
-    .replace(/6/g, "G");
-  s = s.replace(/[^A-Za-z\s-]/g, "");
-  return s.replace(/\s+/g, " ").trim();
+  return str.replace(/[^A-Za-z\s-]/g, "").replace(/\s+/g, " ").trim();
 };
+
+const LAST_NAME_RE = /surname|last\s*name|family\s*name|apelyido/i;
+const FIRST_NAME_RE = /given\s*names?|first\s*name|pangalan/i;
+const MIDDLE_NAME_RE = /middle\s*name|gitnang/i;
+const SKIP_LINE_RE = /^(\d+|sex|birth|date|address|nationality|civil|citizenship|height|weight|blood|eye|lic\.\s*no|license|tax|id\s*no)/i;
 
 export function parseIdFields(rawText: string, words: OcrWord[]): IdOcrResult {
   let firstName = "";
@@ -43,6 +41,27 @@ export function parseIdFields(rawText: string, words: OcrWord[]): IdOcrResult {
     idType = "tin";
   }
 
+  const isLabel = (line: string): boolean =>
+    LAST_NAME_RE.test(line) || FIRST_NAME_RE.test(line) || MIDDLE_NAME_RE.test(line);
+
+  const findValueFor = (labelRe: RegExp): string => {
+    for (let i = 0; i < lines.length; i++) {
+      if (!labelRe.test(lines[i])) continue;
+
+      const parts = lines[i].split(/[:\-]/);
+      if (parts.length > 1 && parts[1].trim().length > 1) {
+        const val = parts[1].trim();
+        if (!SKIP_LINE_RE.test(val) && !isLabel(val)) return val;
+      }
+
+      if (i + 1 < lines.length) {
+        const next = lines[i + 1];
+        if (!SKIP_LINE_RE.test(next) && !isLabel(next)) return next;
+      }
+    }
+    return "";
+  };
+
   const isCombinedHeader = (line: string): boolean => {
     const l = line.toLowerCase();
     const hasLast = l.includes("last name") || l.includes("surname") || l.includes("apelyido");
@@ -51,30 +70,10 @@ export function parseIdFields(rawText: string, words: OcrWord[]): IdOcrResult {
     return (hasLast && hasFirst) || (hasLast && hasMiddle) || (hasFirst && hasMiddle);
   };
 
-  const getValueForLabel = (labelRegex: RegExp, searchBelow = true): string => {
-    for (let i = 0; i < lines.length; i++) {
-      if (isCombinedHeader(lines[i])) continue;
-      if (labelRegex.test(lines[i])) {
-        const parts = lines[i].split(/[:\-]/);
-        if (parts.length > 1 && parts[1].trim().length > 1) {
-          return parts[1].trim();
-        }
-        if (searchBelow && i + 1 < lines.length) {
-          const nextLine = lines[i + 1];
-          if (!/name|birth|sex|address|nationality|date|number|lic\.\s*no/i.test(nextLine)) {
-            return nextLine;
-          }
-        }
-      }
-    }
-    return "";
-  };
-
-  // 1. Try combined header parsing first (common on Driver's Licenses, Postal IDs)
   const combinedHeaderIndex = lines.findIndex(isCombinedHeader);
   if (combinedHeaderIndex !== -1 && combinedHeaderIndex + 1 < lines.length) {
     const nameLine = lines[combinedHeaderIndex + 1];
-    if (!/birth|sex|address|nationality|date|number|lic\.\s*no/i.test(nameLine)) {
+    if (!SKIP_LINE_RE.test(nameLine) && !isLabel(nameLine)) {
       const parts = nameLine.split(",");
       if (parts.length >= 2) {
         lastName = parts[0].trim();
@@ -111,42 +110,15 @@ export function parseIdFields(rawText: string, words: OcrWord[]): IdOcrResult {
     }
   }
 
-  // 2. If name fields are still empty, try label-based extraction (common on PhilSys National IDs)
   if (!firstName && !lastName) {
-    if (idType === "driver_license") {
-      lastName = getValueForLabel(/surname|last\s*name|apelyido/i);
-      firstName = getValueForLabel(/first\s*name|given\s*name|pangalan/i);
-      middleName = getValueForLabel(/middle\s*name|gitnang/i);
-    } else if (idType === "philid") {
-      lastName = getValueForLabel(/last\s*name|apelyido/i);
-      firstName = getValueForLabel(/given\s*names?|pangalan/i);
-      middleName = getValueForLabel(/middle\s*name|gitnang/i);
-    } else if (idType === "umid") {
-      lastName = getValueForLabel(/surname|last\s*name|apelyido/i);
-      firstName = getValueForLabel(/given\s*names?|first\s*name|pangalan/i);
-      middleName = getValueForLabel(/middle\s*name|gitnang/i);
-    } else if (idType === "tin") {
-      const nameVal = getValueForLabel(/name/i);
-      if (nameVal) {
-        const parts = nameVal.split(",");
-        if (parts.length >= 2) {
-          lastName = parts[0];
-          const givenParts = parts[1].trim().split(/\s+/);
-          if (givenParts.length > 1) {
-            middleName = givenParts[givenParts.length - 1];
-            firstName = givenParts.slice(0, -1).join(" ");
-          } else {
-            firstName = givenParts[0];
-          }
-        }
-      }
-    }
+    lastName = findValueFor(LAST_NAME_RE);
+    firstName = findValueFor(FIRST_NAME_RE);
+    middleName = findValueFor(MIDDLE_NAME_RE);
   }
 
-  // 3. Fallback to general parsing if still empty
   if (!firstName && !lastName) {
     for (const line of lines) {
-      if (/last\s*name|first\s*name|surname|given/i.test(line)) continue;
+      if (isLabel(line)) continue;
       const commaMatch = line.match(/^([A-Za-z\s.'-]{2,40}),\s*([A-Za-z\s.'-]{2,40})$/);
       if (commaMatch) {
         lastName = commaMatch[1].trim();
@@ -160,9 +132,9 @@ export function parseIdFields(rawText: string, words: OcrWord[]): IdOcrResult {
         break;
       }
     }
-    
+
     if (!firstName && !lastName) {
-      const givenMatch = rawText.match(/(?:GIVEN\s*NAME|FIRST\s*NAME|GIVEN|FIRST|PANGALAN)\s*[:\-]?\s*([A-Za-z\s.,'-]{2,40})/i);
+      const givenMatch = rawText.match(/(?:GIVEN\s*NAME|GIVEN\s*NAMES|FIRST\s*NAME|PANGALAN)\s*[:\-]?\s*([A-Za-z\s.,'-]{2,40})/i);
       if (givenMatch?.[1]) {
         const givenParts = givenMatch[1].trim().split(/\s+/);
         if (givenParts.length > 1) {
@@ -173,14 +145,13 @@ export function parseIdFields(rawText: string, words: OcrWord[]): IdOcrResult {
         }
       }
 
-      const surnameMatch = rawText.match(/(?:SURNAME|LAST\s*NAME|FAMILY\s*NAME|SUR|LAST|APELYIDO)\s*[:\-]?\s*([A-Za-z\s.,'-]{2,40})/i);
+      const surnameMatch = rawText.match(/(?:SURNAME|LAST\s*NAME|FAMILY\s*NAME|APELYIDO)\s*[:\-]?\s*([A-Za-z\s.,'-]{2,40})/i);
       if (surnameMatch?.[1]) {
         lastName = surnameMatch[1].trim();
       }
     }
   }
 
-  // Clean and normalize final outputs
   firstName = cleanField(firstName);
   middleName = cleanField(middleName);
   lastName = cleanField(lastName);

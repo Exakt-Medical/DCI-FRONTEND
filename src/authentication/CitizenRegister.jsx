@@ -27,11 +27,62 @@ export const CitizenRegister = () => {
   const [ocrHint, setOcrHint] = useState("");
   const [usernameEdited, setUsernameEdited] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
+  const [usernameSuggestions, setUsernameSuggestions] = useState([]);
   
   const navigate = useNavigate();
   const { success } = useAlert();
   
   const { runOcr } = usePaddleOcr();
+
+  const generateUsernameSuggestions = (first, last) => {
+    if (!first && !last) return [];
+    const cleanFirst = first.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+    const cleanLast = last.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!cleanFirst && !cleanLast) return [];
+
+    const initial = cleanFirst.charAt(0) || "";
+    const suggestions = [];
+
+    // Pattern 1: initial + lastName + random
+    for (let i = 0; i < 2; i++) {
+      const num = Math.floor(100 + Math.random() * 900);
+      suggestions.push(`${initial}${cleanLast}${num}`);
+    }
+
+    // Pattern 2: firstName + lastName
+    if (cleanFirst && cleanLast) {
+      suggestions.push(`${cleanFirst}.${cleanLast}`);
+      suggestions.push(`${cleanFirst}${cleanLast}`);
+    }
+
+    // Pattern 3: firstName + random
+    if (cleanFirst) {
+      const num = Math.floor(1000 + Math.random() * 9000);
+      suggestions.push(`${cleanFirst}${num}`);
+    }
+
+    // Pattern 4: initials + random
+    if (cleanFirst && cleanLast) {
+      const num = Math.floor(100 + Math.random() * 900);
+      suggestions.push(`${initial}${cleanLast.charAt(0)}${num}`);
+    }
+
+    // Deduplicate and return first 4
+    return [...new Set(suggestions)].slice(0, 4);
+  };
+
+  const handleNameChange = (field, value) => {
+    const updatedForm = { ...form, [field]: value };
+    if (!usernameEdited) {
+      updatedForm.username = suggestUsername(updatedForm.firstName, updatedForm.lastName);
+    }
+    setForm(updatedForm);
+
+    // Update username suggestions when name changes
+    const first = field === "firstName" ? value : form.firstName;
+    const last = field === "lastName" ? value : form.lastName;
+    setUsernameSuggestions(generateUsernameSuggestions(first, last));
+  };
 
   const suggestUsername = (first, last) => {
     if (!first && !last) return "";
@@ -42,19 +93,12 @@ export const CitizenRegister = () => {
     return `${initial}${cleanLast}${randomSuffix}`;
   };
 
-  const handleNameChange = (field, value) => {
-    const updatedForm = { ...form, [field]: value };
-    if (!usernameEdited) {
-      updatedForm.username = suggestUsername(updatedForm.firstName, updatedForm.lastName);
-    }
-    setForm(updatedForm);
-  };
-
   const handleIdUpload = async (file, preview) => {
     setIdFile(file);
     setIdPreview(preview);
     if (!file) {
       setOcrHint("");
+      setUsernameSuggestions([]);
       return;
     }
     setOcrLoading(true);
@@ -71,6 +115,7 @@ export const CitizenRegister = () => {
           if (!usernameEdited) {
             updatedForm.username = suggestUsername(updatedForm.firstName, updatedForm.lastName);
           }
+          setUsernameSuggestions(generateUsernameSuggestions(updatedForm.firstName, updatedForm.lastName));
           setOcrHint("Details extracted! Please double check the extracted data below.");
         } else {
           setOcrHint("Could not extract name details. Please fill manually.");
@@ -302,6 +347,24 @@ export const CitizenRegister = () => {
                   />
                 </div>
                 {errors.username && <p className="text-xs text-red-500 mt-1">{errors.username}</p>}
+                {usernameSuggestions.length > 0 && !usernameEdited && (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <span className="text-[10px] text-gray-400 self-center">Suggestions:</span>
+                    {usernameSuggestions.map((s, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => {
+                          setForm({ ...form, username: s });
+                          setUsernameEdited(true);
+                        }}
+                        className="text-[11px] px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100 transition-colors border border-blue-200"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -340,6 +403,13 @@ export const CitizenRegister = () => {
                   </div>
                 )}
                 {errors.password && <p className="text-xs text-red-500 mt-1">{errors.password}</p>}
+                <div className="mt-2 text-[11px] text-gray-400 space-y-0.5">
+                  <p className="font-medium text-gray-500">Password must contain:</p>
+                  <p className={form.password.length >= 8 ? "text-green-600" : ""}>• At least 8 characters</p>
+                  <p className={/[A-Z]/.test(form.password) ? "text-green-600" : ""}>• At least one uppercase letter</p>
+                  <p className={/[a-z]/.test(form.password) ? "text-green-600" : ""}>• At least one lowercase letter</p>
+                  <p className={/\d/.test(form.password) ? "text-green-600" : ""}>• At least one number</p>
+                </div>
               </div>
 
               <div>

@@ -20,6 +20,8 @@ export const AccessLogsPage = () => {
   const mapLog = (record) => ({
     id: record.id,
     user: record.username || record.userstamp,
+    role: record.role || "Unknown",
+    action: record.action || "LOGIN",
     timestamp: record.timestamp,
   });
 

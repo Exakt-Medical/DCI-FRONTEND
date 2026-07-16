@@ -22,7 +22,13 @@ export const AccessLogsTable = ({ logs }) => {
               Username
             </th>
             <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-              Login Time
+              Role
+            </th>
+            <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Action
+            </th>
+            <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Timestamp
             </th>
           </tr>
         </thead>
@@ -33,6 +39,22 @@ export const AccessLogsTable = ({ logs }) => {
                 <div>
                   <p className="text-sm font-medium text-gray-900">{log.user}</p>
                 </div>
+              </td>
+              <td className="px-6 py-4">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
+                  {log.role}
+                </span>
+              </td>
+              <td className="px-6 py-4">
+                <span
+                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    log.action === "LOGIN"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-yellow-100 text-yellow-800"
+                  }`}
+                >
+                  {log.action}
+                </span>
               </td>
               <td className="px-6 py-4">
                 <span className="text-sm text-gray-600">{formatTimestamp(log.timestamp)}</span>

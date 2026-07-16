@@ -77,7 +77,9 @@ export const exportService = {
     // Format logs for export (matching the columns shown in AccessLogsTable)
     const exportData = logs.map((log) => ({
       Username: log.user || "Unknown",
-      "Login Time": formatTimestamp(log.timestamp),
+      Role: log.role || "Unknown",
+      Action: log.action || "LOGIN",
+      Timestamp: formatTimestamp(log.timestamp),
     }));
 
     this.toCSV(exportData, filename);

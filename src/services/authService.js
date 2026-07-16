@@ -6,6 +6,6 @@ export const authService = {
 
   register: (data) => api.post("/auth/register", data),
 
-  verifyOtp: (username, otpCode) =>
-    api.post("/auth/verify-otp", { username, otpCode }),
+  verifyOtp: (userId, otpCode) =>
+    api.post("/auth/verify-otp", { userId, otpCode }),
 };

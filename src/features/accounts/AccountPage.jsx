@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAlert } from "../../hooks/useAlert";
 import { Card } from "../../components/Card";
-import { Button } from "../../components/Button";
-import { transferVoucherService } from "../../services/transferVoucherService";
 import {
   Search,
   Users,
@@ -22,7 +20,14 @@ import { DeleteConfirmModal } from "./components/DeleteConfirmModal";
 import { AccountPagination } from "./components/AccountPagination";
 import { UploadBulkModal } from "../../components/UploadBulkModal";
 
-const ROLE_TABS = ["All", "Citizens", "Agents", "Admin"];
+const ROLE_LABELS = {
+  CITIZEN: "Citizens",
+  AGENT_FIXER: "Agents",
+  HPG: "HPG",
+  DCI: "DCI",
+  ADMIN: "Admin",
+  LTO: "LTO",
+};
 
 export const AccountPage = () => {
   const role = localStorage.getItem("role");
@@ -64,13 +69,6 @@ export const AccountPage = () => {
     );
   };
 
-  const roleFilterMap = {
-    All: "all",
-    Citizens: "CITIZEN",
-    Agents: "AGENT_FIXER",
-    Admin: "ADMIN",
-  };
-
 const fetchData = useCallback(async () => {
   try {
     setLoading(true);
@@ -80,29 +78,7 @@ const fetchData = useCallback(async () => {
       branchService.getAll(),
     ]);
 
-    const voucherRes =
-      await transferVoucherService.getAgentsWithVoucherCounts();
-
-    const agentsWithVoucherCounts = voucherRes?.data || voucherRes || [];
-
-    console.log("USERS:", usersRes.data);
-    console.log("VOUCHERS:", agentsWithVoucherCounts);
-
-    const usersWithVoucherCounts = usersRes.data.map((user) => {
-      const matchedAgent = agentsWithVoucherCounts.find(
-        (agent) =>
-          agent.email === user.email ||
-          agent.username === user.username ||
-          agent.name === user.username,
-      );
-
-      return {
-        ...user,
-        assignedVouchers: matchedAgent?.assignedVouchers ?? 0,
-      };
-    });
-
-    setUsers(usersWithVoucherCounts);
+    setUsers(usersRes.data);
     setBranches(branchesRes.data);
     setError(null);
   } catch (err) {
@@ -121,21 +97,17 @@ const fetchData = useCallback(async () => {
   const totalActive = users.filter((u) => u.status === "ACTIVE").length;
   const totalInactive = users.filter((u) => u.status !== "ACTIVE").length;
 
-  const filteredUsers = users.filter((user) => {
-    const combinedDisplay = [
-      user.username,
-      user.branchCompanyName,
-      user.branchName,
-      user.managerBranchCompanyName,
-      user.managerBranchName,
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
+  const uniqueRoles = [...new Set(users.map((u) => u.role).filter(Boolean))];
+  const ROLE_TABS = ["All", ...uniqueRoles.map((r) => ROLE_LABELS[r] || r)];
 
+  const roleFilterMap = {
+    All: "all",
+    ...Object.fromEntries(uniqueRoles.map((r) => [ROLE_LABELS[r] || r, r])),
+  };
+
+  const filteredUsers = users.filter((user) => {
     const matchesSearch =
       searchTerm === "" ||
-      combinedDisplay.includes(searchTerm.toLowerCase()) ||
       user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.firstName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (user.lastName || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -153,21 +125,6 @@ const fetchData = useCallback(async () => {
   });
 
   const getSortValue = (user, field) => {
-    if (field === "voucherCount")
-      return 0; /* ← replace with real count when wired up */
-    if (field === "branchName") {
-      if (user.role === "ADMIN") return "head company, head branch";
-      if (["AGENT_FIXER"].includes(user.role))
-        return (
-          (user.managerBranchCompanyName
-            ? user.managerBranchCompanyName + " / "
-            : "") + (user.managerBranchName || "") || "N/A"
-        ).toLowerCase();
-      return (
-        (user.branchCompanyName ? user.branchCompanyName + " / " : "") +
-          (user.branchName || "") || "N/A"
-      ).toLowerCase();
-    }
     return (user[field] ?? "").toString().toLowerCase();
   };
 
@@ -179,7 +136,7 @@ const fetchData = useCallback(async () => {
   });
   const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedUsers = filteredUsers.slice(
+  const paginatedUsers = sortedUsers.slice(
     startIndex,
     startIndex + itemsPerPage,
   );
@@ -317,12 +274,6 @@ const fetchData = useCallback(async () => {
         {!isViewer && (
           <div className="flex gap-2">
             <button
-              onClick={() => setIsUploadModalOpen(true)}
-              className="bg-white border border-primary-300 text-primary-600 px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-primary-50 transition-colors"
-            >
-              <Upload size={16} />
-            </button>
-            <button
               onClick={handleAddUser}
               className="bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors"
             >
@@ -432,27 +383,9 @@ const fetchData = useCallback(async () => {
                 </th>
                 <th
                   className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
-                  onClick={() => handleSort("managerName")}
-                >
-                  Manager <SortIcon field="managerName" />
-                </th>
-                <th
-                  className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
-                  onClick={() => handleSort("branchName")}
-                >
-                  Branch <SortIcon field="branchName" />
-                </th>
-                <th
-                  className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
                   onClick={() => handleSort("status")}
                 >
                   Status <SortIcon field="status" />
-                </th>
-                <th
-                  className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
-                  onClick={() => handleSort("voucherCount")}
-                >
-                  Vouchers <SortIcon field="voucherCount" />
                 </th>
                 <th
                   className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
@@ -466,7 +399,7 @@ const fetchData = useCallback(async () => {
               {loading ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={5}
                     className="px-4 py-8 text-center text-gray-500"
                   >
                     Loading users...
@@ -475,7 +408,7 @@ const fetchData = useCallback(async () => {
               ) : error ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={5}
                     className="px-4 py-8 text-center text-red-500"
                   >
                     {error}
@@ -484,7 +417,7 @@ const fetchData = useCallback(async () => {
               ) : paginatedUsers.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={5}
                     className="px-4 py-8 text-center text-gray-500"
                   >
                     No users found
@@ -500,7 +433,6 @@ const fetchData = useCallback(async () => {
                     onDelete={handleDeleteUser}
                     onToggleActive={handleToggleActive}
                     isViewer={isViewer}
-                    voucherCount={user.assignedVouchers ?? 0}/* ← replace with real count when service is ready */
                   />
                 ))
               )}

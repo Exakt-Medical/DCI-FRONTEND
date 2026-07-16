@@ -27,7 +27,7 @@ function buildOrtOptions(backend: string) {
     ...(backend === "wasm"
       ? { wasmPaths: "https://cdn.jsdelivr.net/npm/onnxruntime-web/dist/" }
       : {}),
-    numThreads: Math.min(navigator.hardwareConcurrency ?? 2, 4),
+    numThreads: 1,
   };
 }
 
@@ -35,6 +35,7 @@ async function createEngine(): Promise<PaddleOcrInstance> {
   try {
     const ort = await import("onnxruntime-web");
     ort.env.logLevel = "error";
+    ort.env.wasm.numThreads = 1;
   } catch {
     /* optional peer — ignore if not hoisted */
   }

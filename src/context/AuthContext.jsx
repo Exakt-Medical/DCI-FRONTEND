@@ -23,17 +23,33 @@ export function AuthProvider({ children }) {
       const response = await authService.login(username, password);
       const data = response.data;
 
-      // Intercept successful login and require mock OTP (123456)
-      return { 
-        otpRequired: true, 
-        username: data.username, 
-        email: data.email || "user@example.com", 
-        data 
-      };
+      if (data.otpRequired) {
+        return {
+          otpRequired: true,
+          userId: data.userId,
+          email: data.email || "",
+          data,
+        };
+      }
+
+      const normalizedRole = (data.role || "").toLowerCase();
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("role", normalizedRole);
+      localStorage.setItem("username", data.username);
+      localStorage.setItem("email", data.email ?? "");
+      localStorage.setItem("firstname", data.firstname ?? "");
+      localStorage.setItem("lastname", data.lastname ?? "");
+      if (data.companyId != null) localStorage.setItem("companyId", String(data.companyId));
+      if (data.companyCode != null) localStorage.setItem("companyCode", data.companyCode);
+      if (data.userId != null) localStorage.setItem("userId", data.userId);
+      setToken(data.token);
+      setRole(normalizedRole);
+      setUser({ token: data.token, role: normalizedRole });
+      return { role: normalizedRole };
     } catch (error) {
       throw new Error(
-        error.response?.data?.message ||
-          error.response?.data?.error ||
+        error.response?.data?.error ||
+          error.response?.data?.message ||
           "Login failed",
       );
     } finally {
@@ -44,29 +60,29 @@ export function AuthProvider({ children }) {
   const verifyOtp = async (otpCode, pendingData) => {
     setLoading(true);
     try {
-      if (otpCode !== "123456") {
-        throw new Error("Invalid OTP code. Please use the mock code: 123456");
-      }
+      const response = await authService.verifyOtp(pendingData.userId, otpCode);
+      const data = response.data;
 
-      const normalizedRole = (pendingData.role || "").toLowerCase();
-      localStorage.setItem("token", pendingData.token);
+      const normalizedRole = (data.role || "").toLowerCase();
+      localStorage.setItem("token", data.token);
       localStorage.setItem("role", normalizedRole);
-      localStorage.setItem("username", pendingData.username);
-      localStorage.setItem("email", pendingData.email ?? "");
-      localStorage.setItem("firstname", pendingData.firstname ?? "");
-      localStorage.setItem("lastname", pendingData.lastname ?? "");
-      if (pendingData.companyId != null)
-        localStorage.setItem("companyId", String(pendingData.companyId));
-      if (pendingData.companyCode != null)
-        localStorage.setItem("companyCode", pendingData.companyCode);
-      if (pendingData.userId != null)
-        localStorage.setItem("userId", pendingData.userId);
-      setToken(pendingData.token);
+      localStorage.setItem("username", data.username);
+      localStorage.setItem("email", data.email ?? "");
+      localStorage.setItem("firstname", data.firstname ?? "");
+      localStorage.setItem("lastname", data.lastname ?? "");
+      if (data.companyId != null) localStorage.setItem("companyId", String(data.companyId));
+      if (data.companyCode != null) localStorage.setItem("companyCode", data.companyCode);
+      if (data.userId != null) localStorage.setItem("userId", data.userId);
+      setToken(data.token);
       setRole(normalizedRole);
-      setUser({ token: pendingData.token, role: normalizedRole });
+      setUser({ token: data.token, role: normalizedRole });
       return normalizedRole;
     } catch (error) {
-      throw new Error(error.message || "OTP verification failed");
+      throw new Error(
+        error.response?.data?.error ||
+          error.response?.data?.message ||
+          "OTP verification failed",
+      );
     } finally {
       setLoading(false);
     }
@@ -81,6 +97,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("lastname");
     localStorage.removeItem("companyId");
     localStorage.removeItem("companyCode");
+    localStorage.removeItem("userId");
     setToken(null);
     setRole(null);
     setUser(null);
@@ -92,7 +109,6 @@ export function AuthProvider({ children }) {
     if (role === "hpg") return "hpg-verification";
     if (role === "dci") return "dci-verification";
     if (role === "lto") return "lto-lookup";
-    // admin, agent_fixer, agent, and any other roles → dashboard
     return "dashboard";
   };
 

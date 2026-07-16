@@ -1,4 +1,4 @@
-import { Eye, Edit, Power, Ticket } from "lucide-react";
+import { Eye, Edit, Power } from "lucide-react";
 import { formatDateTime } from "../../../utils/formatDate";
 
 export const UserTableRow = ({
@@ -8,34 +8,7 @@ export const UserTableRow = ({
   onDelete,
   onToggleActive,
   isViewer,
-  voucherCount = user.assignedVouchers ?? 0,
 }) => {
-  const getBranchSubtitle = () => {
-    if (user.role === "ADMIN" || user.role === "HPG" || user.role === "DCI") {
-      return "—";
-    }
-    if (user.role === "AGENT_FIXER") {
-      return user.managerBranchCompanyName && user.managerBranchName
-        ? `${user.managerBranchCompanyName} / ${user.managerBranchName}`
-        : "N/A / N/A";
-    }
-    return user.branchCompanyName && user.branchName
-      ? `${user.branchCompanyName} / ${user.branchName}`
-      : "N/A / N/A";
-  };
-
-  const getBranchDisplay = () => {
-    if (user.role === "ADMIN") return "Head Company, Head Branch";
-    if (user.role === "AGENT_FIXER") {
-      return user.managerBranchCompanyName && user.managerBranchName
-        ? `${user.managerBranchCompanyName} / ${user.managerBranchName}`
-        : "N/A";
-    }
-    return user.branchCompanyName && user.branchName
-      ? `${user.branchCompanyName} / ${user.branchName}`
-      : "N/A";
-  };
-
   return (
     <tr className="hover:bg-gray-50 transition-colors">
       {/* Actions */}
@@ -91,10 +64,7 @@ export const UserTableRow = ({
               {user.username.charAt(0).toUpperCase()}
             </span>
           </div>
-          <div>
-            <p className="font-medium text-gray-900">{user.username}</p>
-            <p className="text-xs text-gray-400">{getBranchSubtitle()}</p>
-          </div>
+          <p className="font-medium text-gray-900">{user.username}</p>
         </div>
       </td>
 
@@ -103,20 +73,6 @@ export const UserTableRow = ({
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
           {user.role}
         </span>
-      </td>
-
-      {/* Manager */}
-      <td className="px-4 py-3">
-        <span className="text-sm text-gray-700">
-          {["AGENT_FIXER"].includes(user.role)
-            ? user.managerName || "N/A"
-            : "N/A"}
-        </span>
-      </td>
-
-      {/* Branch */}
-      <td className="px-4 py-3">
-        <span className="text-sm text-gray-700">{getBranchDisplay()}</span>
       </td>
 
       {/* Status */}
@@ -131,20 +87,6 @@ export const UserTableRow = ({
           }`}
         >
           {user.status}
-        </span>
-      </td>
-
-      {/* Vouchers */}
-      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-        <span
-          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-            voucherCount > 0
-              ? "bg-blue-50 text-blue-700"
-              : "bg-gray-100 text-gray-400"
-          }`}
-        >
-          <Ticket size={11} />
-          {voucherCount} voucher{voucherCount !== 1 ? "s" : ""}
         </span>
       </td>
 

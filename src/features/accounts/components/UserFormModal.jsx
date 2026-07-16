@@ -256,7 +256,10 @@ export const UserFormModal = ({
               >
               <option value="CITIZEN">Citizen</option>
                 <option value="AGENT_FIXER">Agent/Fixer</option>
+                <option value="HPG">HPG</option>
+                <option value="DCI">DCI</option>
                 <option value="ADMIN">Admin</option>
+                <option value="LTO">LTO</option>
               </select>
             </div>
           </div>
