@@ -19,9 +19,11 @@ export function cleanFieldValue(field: keyof FormFields, value: string): string 
     field === "engineNo" ||
     field === "chassisNo" ||
     field === "engineNoStencilled" ||
-    field === "chassisNoStencilled"
+    field === "chassisNoStencilled" ||
+    field === "mvFileNo"
   ) {
-    return base.replace(/\s+/g, "").replace(/[|!]/g, "1");
+    // Keep dashes but strip spaces and replace common | / ! OCR errors
+    return base.replace(/[\s\t]+/g, "").replace(/[|!]/g, "1");
   }
   if (field === "plateNo" || field === "yearModel") {
     return base.replace(/\s+/g, "").replace(/[|!]/g, "1");

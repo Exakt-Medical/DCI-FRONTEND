@@ -235,63 +235,46 @@ function extractMmDdYyyyDate(lines: string[]): string {
   return "";
 }
 
-/** Scan lines for any word matching a known color name (CR color field).
+/** Scan lines for any word matching a known color name near the COLOR label field.
+ *  Searches only within ±8 lines of the COLOR label to avoid picking up stray colors.
  *  Prioritizes color combos (e.g. RED/BLACK), then single-word colors. */
 function extractAnyColorLine(lines: string[]): string {
-  // Prefer color combinations with "/" (e.g. "RED/BLACK")
-  for (const line of lines) {
+  // Find the COLOR label line index
+  const colorLabelIndex = lines.findIndex((line) =>
+    FIELD_ALIASES.color.some((alias) => toCanonical(line).includes(toCanonical(alias)))
+  );
+
+  // If no COLOR label found, fallback to checking all lines but with validators
+  if (colorLabelIndex === -1) {
+    return "";
+  }
+
+  // Define search window around the COLOR label (±8 lines)
+  const startIdx = Math.max(0, colorLabelIndex - 3);
+  const endIdx = Math.min(lines.length, colorLabelIndex + 8);
+  const searchWindow = lines.slice(startIdx, endIdx);
+
+  // Prefer color combinations with "/" (e.g. "RED/BLACK") within the window
+  for (const line of searchWindow) {
     const match = line.match(/(?:^|\s)([A-Z]+\/[A-Z]+)(?:\s|$)/);
     if (match && isLikelyColor(match[1])) return match[1];
   }
-  // Then individual words that are known colors
-  const known = [
-    "WHITE",
-    "BLACK",
-    "RED",
-    "BLUE",
-    "SILVER",
-    "GOLD",
-    "GRAY",
-    "GREY",
-    "GREEN",
-    "YELLOW",
-    "ORANGE",
-    "BROWN",
-    "PURPLE",
-    "PINK",
-    "BEIGE",
-    "MAROON",
-    "VIOLET",
-    "INDIGO",
-    "MAGENTA",
-    "CYAN",
-    "TEAL",
-    "TAN",
-    "LAVENDER",
-    "TURQUOISE",
-    "PEARL",
-    "BRONZE",
-    "COPPER",
-    "PLATINUM",
-    "CHAMPAGNE",
-    "CREAM",
-    "IVORY",
-    "CRIMSON",
-    "NAVY",
-    "AQUA",
-  ];
-  const allWords = lines.flatMap((l) => l.split(/\s+/));
-  const uniqueWords = [...new Set(allWords)];
+
+  // Then individual words that are known colors within the window
+  const windowWords = searchWindow.flatMap((l) => l.split(/\s+/));
+  const uniqueWords = [...new Set(windowWords)];
   for (const word of uniqueWords) {
-    if (known.includes(word.toUpperCase())) return word.toUpperCase();
+    if (isLikelyColor(word.toUpperCase())) return word.toUpperCase();
   }
-  // Multi-word colors like "DARK BLUE"
-  for (const line of lines) {
+
+  // Multi-word colors like "DARK BLUE" within the window
+  for (const line of searchWindow) {
     const match = line.match(
       /(?:DARK|LIGHT|METALLIC|MATTE|GLOSS|BRIGHT|DEEP|PALE|SATIN)\s+[A-Z]{3,15}/i,
     );
     if (match && isLikelyColor(match[0])) return match[0].toUpperCase();
   }
+
   return "";
 }
 
@@ -955,7 +938,7 @@ export function parseFields(
       lineScan: lineScan.mvccControlNo,
       coord: coord.mvccControlNo,
       regex: regex.mvccControlNo,
-      specific: (mvccSpecific?.mvccControlNo || mecSpecific?.mvccControlNo) ?? "",
+      specific: (mvccSpecific?.mvccControlNo || mecSpecific?.nhqPid) ?? "",
     }),
     ownerName: pickField("OWNER NAME", isLikelyOwnerName, {
       lineScan: lineScan.ownerName,
@@ -977,10 +960,10 @@ export function parseFields(
       specific: (mvccSpecific?.makeBrand || mecSpecific?.makeBrand) ?? "",
     }, false, isTable),
     color: pickField("COLOR", isLikelyColor, {
-      lineScan: lineScan.color,
-      coord: coord.color,
-      regex: regex.color,
       specific: (mvccSpecific?.color || mecSpecific?.color) ?? "",
+      coord: coord.color,
+      lineScan: lineScan.color,
+      regex: regex.color,
     }, false, isTable),
     plateNo: pickField("PLATE NO.", isLikelyPlate, {
       lineScan: lineScan.plate,
@@ -1008,7 +991,7 @@ export function parseFields(
     date: pickField(
       "DATE",
       isLikelyDate,
-      { lineScan: lineScan.date, coord: coord.date, regex: regex.date, specific: mvccSpecific?.date ?? "" },
+      { lineScan: lineScan.date, coord: coord.date, regex: regex.date, specific: (mvccSpecific?.date || mecSpecific?.date) ?? "" },
       true,
     ),
     yearModel: pickField("YEAR MODEL", isLikelyYearModel, {
@@ -1017,10 +1000,10 @@ export function parseFields(
       regex: regex.yearModel,
     }, false, isTable),
     mvFileNo: pickField("MV FILE NO.", isLikelyMvFileNo, {
+      specific: (mvccSpecific?.mvFileNo || mecSpecific?.mvFileNo) ?? "",
       lineScan: lineScan.mvFileNo,
       coord: coord.mvFileNo,
       regex: regex.mvFileNo,
-      specific: mvccSpecific?.mvFileNo ?? "",
     }, false, isTable),
     hpgOffice: pickField("HPG OFFICE", (v) => v.length >= 3, {
       regex: regex.hpgOffice,
@@ -1425,23 +1408,77 @@ export function parseFields(
 
   // 3. Fix Number Bleeding: Deduplicate SBR, CR, and MVRR
   // When a field is blank, the OCR line scanner keeps moving right and grabs the next field's number.
-  const sbr = fields.sbrNo;
+  let sbr = fields.sbrNo;
   const cr = fields.crNumber;
   const mvrr = fields.mvrrNumber;
 
   if (sbr && cr === sbr) fields.crNumber = "";
   if (cr && mvrr === cr) fields.mvrrNumber = "";
   if (sbr && mvrr === sbr) fields.mvrrNumber = "";
-  if (fields.mvFileNo && (fields.mvFileNo === cr || fields.mvFileNo === sbr))
-    fields.mvFileNo = "";
+  
+  // On MVCC documents, the MV FILE NUMBER is a long identifier ending in a letter suffix (usually 'A'),
+  // while the SBR number is a shorter numeric value (e.g., 20951784).
+  // If the OCR swapped them or duplicated the SBR value into both fields, restore/swap them correctly.
+  if (fields.mvFileNo && fields.sbrNo) {
+    const mvFileLower = fields.mvFileNo.toLowerCase();
+    const sbrLower = fields.sbrNo.toLowerCase();
+    
+    // If mvFileNo is pure numeric and sbrNo has letters/suffixes (like '3a'), swap them
+    const mvFileHasLetters = /[a-z]/i.test(mvFileLower);
+    const sbrHasLetters = /[a-z]/i.test(sbrLower);
+    
+    if (!mvFileHasLetters && sbrHasLetters) {
+      const temp = fields.mvFileNo;
+      fields.mvFileNo = fields.sbrNo;
+      fields.sbrNo = temp;
+    } else if (fields.mvFileNo === fields.sbrNo && !mvFileHasLetters) {
+      // If they are duplicated and both are pure numeric, check if we have a coordinate/candidate for the real MV File No
+      const altMvFile = Object.values(extraction.mvFileNo.candidates).find(
+        (c) => c && /[a-z]/i.test(c.toLowerCase())
+      );
+      if (altMvFile) {
+        fields.mvFileNo = cleanFieldValue("mvFileNo", altMvFile);
+      }
+    }
+  }
+
+  // Recover fields.mvFileNo if it is currently short/empty but crNumber or mvrrNumber successfully
+  // captured the true MV File Number pattern (10+ digits/dashes ending in a letter suffix like 'A').
+  const mvFilePat = /^[\d-]{10,25}[A-Z]$/i;
+  if (!fields.mvFileNo || !mvFilePat.test(fields.mvFileNo)) {
+    if (fields.crNumber && mvFilePat.test(fields.crNumber)) {
+      fields.mvFileNo = fields.crNumber;
+    } else if (fields.mvrrNumber && mvFilePat.test(fields.mvrrNumber)) {
+      fields.mvFileNo = fields.mvrrNumber;
+    }
+  }
+
+  // Ensure that the long MV File Number (which contains a letter suffix like 'A') does not bleed into other fields
+  // such as crNumber, mvrrNumber, or sbrNo.
+  if (fields.mvFileNo && /[A-Z]$/i.test(fields.mvFileNo)) {
+    if (fields.crNumber === fields.mvFileNo) fields.crNumber = "";
+    if (fields.mvrrNumber === fields.mvFileNo) fields.mvrrNumber = "";
+    if (fields.sbrNo === fields.mvFileNo) fields.sbrNo = "";
+  }
+
+  // Backup cleanup: if crNumber or mvrrNumber directly match the MV File Number pattern (10+ digits ending in a letter), clear them.
+  if (fields.crNumber && mvFilePat.test(fields.crNumber)) {
+    fields.crNumber = "";
+  }
+  if (fields.mvrrNumber && mvFilePat.test(fields.mvrrNumber)) {
+    fields.mvrrNumber = "";
+  }
+
+  // Only clear mvFileNo if it matches crNumber (a genuinely different field).
+  if (fields.mvFileNo && fields.mvFileNo === cr) fields.mvFileNo = "";
 
   // 4. Swap Color and Plate if they grabbed each other
-  if (isLikelyPlate(fields.color) && isLikelyColor(fields.plateNo)) {
+  if (isLikelyPlate(fields.color) && fields.color !== "NOT AVAILABLE" && isLikelyColor(fields.plateNo)) {
     const temp = fields.plateNo;
     fields.plateNo = fields.color;
     fields.color = temp;
   } else {
-    if (isLikelyPlate(fields.color)) fields.color = "";
+    if (isLikelyPlate(fields.color) && fields.color !== "NOT AVAILABLE") fields.color = "";
     if (isLikelyColor(fields.plateNo)) fields.plateNo = "";
   }
 

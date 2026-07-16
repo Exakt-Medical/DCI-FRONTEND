@@ -210,6 +210,7 @@ export async function extractClearanceDocumentData(file, documentType) {
           mvFileNo: (fields.mvFileNo || "").toUpperCase(),
           engineNo: (fields.engineNo || "").toUpperCase(),
           chassisNo: (fields.chassisNo || "").toUpperCase(),
+          color: (fields.color || "").toUpperCase(),
 
           ownerName: (fields.ownerName || "").toUpperCase(),
           ownerAddress: (fields.address || "").toUpperCase(),
@@ -296,6 +297,11 @@ export function useOcrForm(type = "mvcc") {
     mecColor: "",
     mecControlNo: "",
     mecDateIssued: "",
+    series: "",
+    mecOwnerName: "",
+    mecMakeModel: "",
+    mecYearModel: "",
+    mecSeries: "",
   });
 
   const [extractedFields, setExtractedFields] = useState({});
@@ -352,11 +358,14 @@ export function useOcrForm(type = "mvcc") {
           mvccControlNo: (fields.mvccControlNo || "").toUpperCase(),
           mvccDateIssued: normalizeDateForInput(fields.date) || "",
           mvFileNo: (fields.mvFileNo || "").toUpperCase(),
-          engineNo: (fields.engineNo || prev.engineNo).toUpperCase(),
-          chassisNo: (fields.chassisNo || prev.chassisNo).toUpperCase(),
-          color: (fields.color || prev.color).toUpperCase(),
+          engineNo: (fields.engineNo || prev.engineNo || "").toUpperCase(),
+          chassisNo: (fields.chassisNo || prev.chassisNo || "").toUpperCase(),
+          color: (fields.color || prev.color || "").toUpperCase(),
           hpgOffice: (fields.hpgOffice || "").toUpperCase(),
           purpose: (fields.purpose || "").toUpperCase(),
+          yearModel: (fields.yearModel || "").toUpperCase(),
+          series: (fields.series || "").toUpperCase(),
+          makeModel: (fields.makeBrand || "").toUpperCase(),
         }));
       } else {
         setFormData((prev) => ({
@@ -385,6 +394,10 @@ export function useOcrForm(type = "mvcc") {
         if (fields.color) extractedKeys.color = true;
         if (fields.hpgOffice) extractedKeys.hpgOffice = true;
         if (fields.purpose) extractedKeys.purpose = true;
+        if (fields.yearModel) extractedKeys.yearModel = true;
+        if (fields.series) extractedKeys.series = true;
+        if (fields.makeBrand) extractedKeys.makeModel = true;
+        if (fields.ownerName) extractedKeys.ownerName = true;
       } else {
         if (fields.plateNo) extractedKeys.orPlateNo = true;
         if (fields.ownerName) extractedKeys.ownerName = true;
@@ -450,9 +463,24 @@ export function useOcrForm(type = "mvcc") {
           mecChassisNo: (fields.chassisNoStencilled || fields.chassisNo || "").toUpperCase(),
           mecPlateNo: (fields.plateNo || "").toUpperCase(),
           mecColor: (fields.color || "").toUpperCase(),
+          mecOwnerName: (fields.ownerName || "").toUpperCase(),
+          mecMakeModel: (fields.makeBrand || "").toUpperCase(),
+          mecYearModel: (fields.yearModel || "").toUpperCase(),
+          mecSeries: (fields.series || "").toUpperCase(),
           hpgTechnician: (
-            fields.hpgTechnician || prev.hpgTechnician
+            fields.hpgTechnician || prev.hpgTechnician || ""
           ).toUpperCase(),
+          // Populate common fields if they are not already filled
+          plateNo: prev.plateNo || (fields.plateNo || "").toUpperCase(),
+          engineNo: prev.engineNo || (fields.engineNoStencilled || fields.engineNo || "").toUpperCase(),
+          chassisNo: prev.chassisNo || (fields.chassisNoStencilled || fields.chassisNo || "").toUpperCase(),
+          color: prev.color || (fields.color || "").toUpperCase(),
+          ownerName: prev.ownerName || (fields.ownerName || "").toUpperCase(),
+          makeModel: prev.makeModel || (fields.makeBrand || "").toUpperCase(),
+          yearModel: prev.yearModel || (fields.yearModel || "").toUpperCase(),
+          series: prev.series || (fields.series || "").toUpperCase(),
+          // MV File No and color: fill from MEC if not already set by MVCC
+          mvFileNo: prev.mvFileNo || (fields.mvFileNo || "").toUpperCase(),
         }));
         setDoc2Extraction(extraction);
         const hasData = !!(fields.engineNo || fields.chassisNo || fields.engineNoStencilled || fields.chassisNoStencilled || fields.nhqPid || fields.date);
@@ -464,6 +492,12 @@ export function useOcrForm(type = "mvcc") {
         if (fields.chassisNoStencilled || fields.chassisNo) extractedKeys.mecChassisNo = true;
         if (fields.plateNo) extractedKeys.mecPlateNo = true;
         if (fields.color) extractedKeys.mecColor = true;
+        if (fields.ownerName) extractedKeys.mecOwnerName = true;
+        if (fields.makeBrand) extractedKeys.mecMakeModel = true;
+        if (fields.yearModel) extractedKeys.mecYearModel = true;
+        if (fields.series) extractedKeys.mecSeries = true;
+        if (fields.mvFileNo) extractedKeys.mvFileNo = true;
+        if (fields.color) { extractedKeys.mecColor = true; extractedKeys.color = true; }
         setExtractedFields((prev) => ({ ...prev, ...extractedKeys }));
 
         setDoc2Uploaded(hasData);
@@ -733,5 +767,6 @@ export function useOcrForm(type = "mvcc") {
     extractedFields,
     setDoc1State,
     setDoc2State,
+    setFormData,
   };
 }

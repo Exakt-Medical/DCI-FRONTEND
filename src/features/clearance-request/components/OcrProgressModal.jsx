@@ -23,10 +23,19 @@ const DOCUMENT_FIELDS = {
   mvcc: [
     { key: "mvccControlNo", label: "MVCC Number" },
     { key: "mvccDateIssued", label: "Issue Date" },
+    { key: "mvFileNo", label: "MV File Number" },
+    { key: "engineNo", label: "Engine Number" },
+    { key: "chassisNo", label: "Chassis Number" },
+    { key: "plateNo", label: "Plate Number" },
+    { key: "color", label: "Color" },
   ],
   mec: [
     { key: "mecControlNo", label: "MEC Number" },
     { key: "mecDateIssued", label: "Issue Date" },
+    { key: "mecEngineNo", label: "Engine Number" },
+    { key: "mecChassisNo", label: "Chassis Number" },
+    { key: "mecPlateNo", label: "Plate Number" },
+    { key: "mecColor", label: "Color" },
   ],
 };
 
@@ -43,6 +52,7 @@ export const OcrProgressModal = ({
   documentType, // "or", "cr", "mvcc", "mec"
   errorMsg = "",
   onClose,
+  extractedFields = {}, // Prop listing successfully auto-extracted fields
 }) => {
   const [progress, setProgress] = useState(0);
   const [completedFields, setCompletedFields] = useState([]);
@@ -99,23 +109,30 @@ export const OcrProgressModal = ({
       setProgress(100);
       setCompletedFields(fields.map((f) => f.key));
 
-      // Auto close success modal after 1.2s
-      const timer = setTimeout(() => {
-        if (onClose) onClose();
-      }, 1200);
-      return () => clearTimeout(timer);
+      // Calculate if any expected fields failed to extract
+      const hasMissingFields = fields.some((f) => !extractedFields[f.key]);
+
+      // If fields are missing, do not auto-close; let the user inspect the report
+      if (!hasMissingFields) {
+        const timer = setTimeout(() => {
+          if (onClose) onClose();
+        }, 1500);
+        return () => clearTimeout(timer);
+      }
     } else if (status === "error") {
       setProgress(100);
     }
-  }, [status, fields, onClose]);
+  }, [status, fields, onClose, extractedFields]);
 
   if (!isOpen) return null;
 
+  const hasMissingFields = status === "success" && fields.some((f) => !extractedFields[f.key]);
+
   return (
-    <Modal isOpen={isOpen} onClose={status === "error" ? onClose : undefined} size="sm" hideHeader>
+    <Modal isOpen={isOpen} onClose={(status === "error" || hasMissingFields) ? onClose : undefined} size="sm" hideHeader>
       <div className="p-6 text-center space-y-6">
         <div className="flex justify-center">
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl animate-pulse">
+          <div className={`p-3 rounded-2xl ${status === "error" || hasMissingFields ? "bg-red-50 text-red-600" : "bg-blue-50 text-blue-600 animate-pulse"}`}>
             <FileText size={32} />
           </div>
         </div>
@@ -123,12 +140,12 @@ export const OcrProgressModal = ({
         <div>
           <h3 className="text-xl font-bold text-gray-900">
             {status === "extracting" && `Extracting ${docName}`}
-            {status === "success" && "Extraction Complete!"}
+            {status === "success" && (hasMissingFields ? "Extraction Partial" : "Extraction Complete!")}
             {status === "error" && "Extraction Failed"}
           </h3>
           <p className="text-sm text-gray-500 mt-1.5">
             {status === "extracting" && "Reading details via OCR scanner. Please wait."}
-            {status === "success" && "Successfully extracted vehicle details."}
+            {status === "success" && (hasMissingFields ? "Some fields could not be read. Please check red items below." : "Successfully extracted vehicle details.")}
             {status === "error" && (errorMsg || "Unable to read fields from document.")}
           </p>
         </div>
@@ -142,7 +159,7 @@ export const OcrProgressModal = ({
           <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-300 ${
-                status === "error" ? "bg-red-500" : status === "success" ? "bg-green-500" : "bg-blue-600"
+                status === "error" || hasMissingFields ? "bg-red-500" : status === "success" ? "bg-green-500" : "bg-blue-600"
               }`}
               style={{ width: `${progress}%` }}
             />
@@ -153,12 +170,20 @@ export const OcrProgressModal = ({
         <div className="bg-gray-50/50 rounded-2xl p-4 border border-gray-100 text-left divide-y divide-gray-100">
           {fields.map((field) => {
             const isCompleted = completedFields.includes(field.key);
+            // Verify if it was successfully extracted on complete
+            const isExtracted = status === "success" ? !!extractedFields[field.key] : isCompleted;
+            
             return (
               <div key={field.key} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
                 <span className="text-sm font-medium text-gray-700">{field.label}</span>
                 {status === "error" && !isCompleted ? (
                   <AlertCircle size={16} className="text-red-500" />
-                ) : isCompleted ? (
+                ) : status === "success" && !isExtracted ? (
+                  <div className="flex items-center gap-1 text-red-500 text-xs font-semibold">
+                    <span className="text-[10px] uppercase">Manual Input</span>
+                    <AlertCircle size={14} />
+                  </div>
+                ) : isExtracted ? (
                   <div className="p-0.5 bg-green-100 text-green-700 rounded-full">
                     <Check size={12} strokeWidth={3} />
                   </div>
@@ -170,12 +195,12 @@ export const OcrProgressModal = ({
           })}
         </div>
 
-        {status === "error" && (
+        {(status === "error" || hasMissingFields) && (
           <button
             onClick={onClose}
-            className="w-full py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold transition-colors mt-2"
+            className="w-full py-2.5 rounded-xl bg-gray-150 hover:bg-gray-200 text-gray-800 font-semibold transition-colors mt-2"
           >
-            Close
+            Review Fields Manually
           </button>
         )}
       </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "../../components/Card";
 import { Button } from "../../components/Button";
 import { Input } from "../../components/Input";
@@ -12,6 +12,7 @@ import { MvcMecUploadCard } from "../clearance-request/components/FlowFormCards"
 import { evaluateMvcMecValidation } from "../clearance-request/utils/clearanceRequestUtils";
 import { useAlert } from "../../hooks/useAlert";
 import { OcrProgressModal } from "../clearance-request/components/OcrProgressModal";
+import { MvcMecMismatchModal } from "../clearance-request/components/MvcMecMismatchModal";
 
 const maskPlateNumber = (str) => {
   if (!str) return "";
@@ -46,6 +47,7 @@ export const DciVerifyPage = () => {
   const [validationErrors, setValidationErrors] = useState({});
   const [markedVerified, setMarkedVerified] = useState(false);
   const [mismatchCount, setMismatchCount] = useState(0);
+  const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
   
   
   const { error: showErrorAlert, success: showSuccessAlert } = useAlert();
@@ -66,7 +68,76 @@ export const DciVerifyPage = () => {
     extractedFields,
     setDoc1State,
     setDoc2State,
+    setFormData,
   } = useOcrForm("mvcc");
+
+  const [mvcMecMismatches, setMvcMecMismatches] = useState([]);
+  const [isMvcMecMismatchModalOpen, setIsMvcMecMismatchModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (doc1Uploaded && doc2Uploaded) {
+      const newMismatches = [];
+      const fieldsToCheck = [
+        { field: "engineNo", mecField: "mecEngineNo", label: "Engine Number" },
+        { field: "chassisNo", mecField: "mecChassisNo", label: "Chassis Number" },
+        { field: "plateNo", mecField: "mecPlateNo", label: "Plate Number" },
+        { field: "color", mecField: "mecColor", label: "Color" },
+      ];
+      
+      fieldsToCheck.forEach(({ field, mecField, label }) => {
+        const mvccVal = formData[field];
+        const mecVal = formData[mecField];
+        if (mvccVal && mecVal && mvccVal.toUpperCase() !== mecVal.toUpperCase()) {
+          newMismatches.push({
+            field,
+            mecField,
+            label,
+            mvccValue: mvccVal.toUpperCase(),
+            mecValue: mecVal.toUpperCase(),
+          });
+        }
+      });
+      
+      if (newMismatches.length > 0) {
+        setMvcMecMismatches((prev) => {
+          const isSame = prev.length === newMismatches.length && prev.every((m, idx) => 
+            m.field === newMismatches[idx].field &&
+            m.mvccValue === newMismatches[idx].mvccValue &&
+            m.mecValue === newMismatches[idx].mecValue
+          );
+          if (isSame) return prev;
+          setIsMvcMecMismatchModalOpen(true);
+          return newMismatches;
+        });
+      } else {
+        setMvcMecMismatches([]);
+      }
+    }
+  }, [
+    doc1Uploaded, 
+    doc2Uploaded, 
+    formData.engineNo, 
+    formData.mecEngineNo, 
+    formData.chassisNo, 
+    formData.mecChassisNo, 
+    formData.plateNo, 
+    formData.mecPlateNo, 
+    formData.color, 
+    formData.mecColor
+  ]);
+
+  const handleMvcMecMismatchSubmit = (resolvedValues) => {
+    setFormData((prev) => {
+      const updated = { ...prev };
+      mvcMecMismatches.forEach((m) => {
+        const value = resolvedValues[m.field];
+        updated[m.field] = value;
+        updated[m.mecField] = value;
+      });
+      return updated;
+    });
+    setIsMvcMecMismatchModalOpen(false);
+  };
 
   const isDocumentsComplete = !!(mvccFile && mecFile);
 
@@ -318,7 +389,7 @@ export const DciVerifyPage = () => {
                 <Upload size={18} className="text-primary-600" /> Document Upload
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <MvcMecUploadCard
+                 <MvcMecUploadCard
                   title="MVCC (Motor Vehicle Clearance Certificate)"
                   uploadLabel="Upload MVCC"
                   onFile={handleMvccUpload}
@@ -337,8 +408,7 @@ export const DciVerifyPage = () => {
               </div>
             </div>
 
-            {(mvccFile || mecFile) && (
-              <div className="border-t border-gray-200 pt-6">
+            <div className="border-t border-gray-200 pt-6">
                 <Card className="p-5 border border-gray-200">
                   <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-200">
                     <FileText size={18} className="text-[#0059b5]" />
@@ -352,8 +422,8 @@ export const DciVerifyPage = () => {
                       onChange={handleInputChange}
                       placeholder="Auto-extracted"
                       required
-                      error={validationErrors["mvccControlNo"]}
-                      success={extractedFields["mvccControlNo"]}
+                      error={validationErrors["mvccControlNo"] || (doc1Uploaded && !formData.mvccControlNo && "Input your MVCC Number manually")}
+                      success={extractedFields["mvccControlNo"] && formData.mvccControlNo}
                     />
                     <Input
                       label="MVCC Issue Date"
@@ -362,8 +432,8 @@ export const DciVerifyPage = () => {
                       onChange={handleInputChange}
                       placeholder="Auto-extracted"
                       required
-                      error={validationErrors["mvccDateIssued"]}
-                      success={extractedFields["mvccDateIssued"]}
+                      error={validationErrors["mvccDateIssued"] || (doc1Uploaded && !formData.mvccDateIssued && "Input your MVCC Issue Date manually")}
+                      success={extractedFields["mvccDateIssued"] && formData.mvccDateIssued}
                     />
                     <Input
                       label="MEC Number"
@@ -372,8 +442,8 @@ export const DciVerifyPage = () => {
                       onChange={handleInputChange}
                       placeholder="Auto-extracted"
                       required
-                      error={validationErrors["mecControlNo"]}
-                      success={extractedFields["mecControlNo"]}
+                      error={validationErrors["mecControlNo"] || (doc2Uploaded && !formData.mecControlNo && "Input your MEC Number manually")}
+                      success={extractedFields["mecControlNo"] && formData.mecControlNo}
                     />
                     <Input
                       label="MEC Issue Date"
@@ -382,13 +452,92 @@ export const DciVerifyPage = () => {
                       onChange={handleInputChange}
                       placeholder="Auto-extracted"
                       required
-                      error={validationErrors["mecDateIssued"]}
-                      success={extractedFields["mecDateIssued"]}
+                      error={validationErrors["mecDateIssued"] || (doc2Uploaded && !formData.mecDateIssued && "Input your MEC Issue Date manually")}
+                      success={extractedFields["mecDateIssued"] && formData.mecDateIssued}
                     />
+
+                    <div className="col-span-2 border-t border-gray-150 pt-4 mt-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsDetailsExpanded(!isDetailsExpanded)}
+                        className="flex items-center gap-2 text-sm font-semibold text-[#0059b5] hover:text-[#004a96] transition-colors"
+                      >
+                        <span>{isDetailsExpanded ? "Hide" : "Show"} Vehicle details from uploaded mvcc, mec</span>
+                        <svg
+                          className={`w-4 h-4 transition-transform duration-200 ${isDetailsExpanded ? "rotate-180" : ""}`}
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      
+                      {isDetailsExpanded && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-3 mt-4 pt-4 border-t border-gray-100">
+                          <Input
+                            label="MV File Number"
+                            name="mvFileNo"
+                            value={formData.mvFileNo}
+                            onChange={handleInputChange}
+                            placeholder="Auto-extracted"
+                            error={validationErrors["mvFileNo"] || (doc1Uploaded && !formData.mvFileNo && "Input your MV File Number manually")}
+                            success={extractedFields["mvFileNo"] && formData.mvFileNo}
+                          />
+                          <Input
+                            label="Engine Number"
+                            name="engineNo"
+                            value={formData.engineNo}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setFormData(prev => ({ ...prev, engineNo: val, mecEngineNo: val }));
+                            }}
+                            placeholder="Auto-extracted"
+                            error={validationErrors["engineNo"] || validationErrors["mecEngineNo"] || (doc1Uploaded && doc2Uploaded && !formData.engineNo && "Input your Engine Number manually")}
+                            success={(extractedFields["engineNo"] || extractedFields["mecEngineNo"]) && formData.engineNo}
+                          />
+                          <Input
+                            label="Chassis Number"
+                            name="chassisNo"
+                            value={formData.chassisNo}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setFormData(prev => ({ ...prev, chassisNo: val, mecChassisNo: val }));
+                            }}
+                            placeholder="Auto-extracted"
+                            error={validationErrors["chassisNo"] || validationErrors["mecChassisNo"] || (doc1Uploaded && doc2Uploaded && !formData.chassisNo && "Input your Chassis Number manually")}
+                            success={(extractedFields["chassisNo"] || extractedFields["mecChassisNo"]) && formData.chassisNo}
+                          />
+                          <Input
+                            label="Plate Number"
+                            name="plateNo"
+                            value={formData.plateNo}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setFormData(prev => ({ ...prev, plateNo: val, mecPlateNo: val }));
+                            }}
+                            placeholder="Auto-extracted"
+                            error={validationErrors["plateNo"] || validationErrors["mecPlateNo"] || (doc1Uploaded && doc2Uploaded && !formData.plateNo && "Input your Plate Number manually")}
+                            success={(extractedFields["plateNo"] || extractedFields["mecPlateNo"]) && formData.plateNo}
+                          />
+                          <Input
+                            label="Color"
+                            name="color"
+                            value={formData.color}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setFormData(prev => ({ ...prev, color: val, mecColor: val }));
+                            }}
+                            placeholder="Auto-extracted"
+                            error={validationErrors["color"] || validationErrors["mecColor"] || (doc1Uploaded && doc2Uploaded && !formData.color && "Input your Color manually")}
+                            success={(extractedFields["color"] || extractedFields["mecColor"]) && formData.color}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </Card>
               </div>
-            )}
           </Card>
 
           {mismatchCount >= 5 && (
@@ -438,6 +587,7 @@ export const DciVerifyPage = () => {
         status={doc1State.status}
         documentType="mvcc"
         errorMsg={doc1State.error}
+        extractedFields={extractedFields}
         onClose={() => {
           setDoc1State({ status: OCR_STATUS.IDLE, confidence: 0, error: "" });
           if (doc1State.status === "error") {
@@ -451,12 +601,20 @@ export const DciVerifyPage = () => {
         status={doc2State.status}
         documentType="mec"
         errorMsg={doc2State.error}
+        extractedFields={extractedFields}
         onClose={() => {
           setDoc2State({ status: OCR_STATUS.IDLE, confidence: 0, error: "" });
           if (doc2State.status === "error") {
             resetForm();
           }
         }}
+      />
+
+      <MvcMecMismatchModal
+        isOpen={isMvcMecMismatchModalOpen}
+        onClose={() => setIsMvcMecMismatchModalOpen(false)}
+        mismatches={mvcMecMismatches}
+        onSubmit={handleMvcMecMismatchSubmit}
       />
     </div>
   );

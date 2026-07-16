@@ -11,20 +11,21 @@ const BOILERPLATE_REGEX =
 
 export function isLikelyPlate(value: string): boolean {
   const v = value.replace(/\s+/g, "");
-  if (!/[A-Z]/.test(v) || !/\d/.test(v)) return false;
   if (/BLACK|WHITE|RED|BLUE|GRAY|GREY|GOLD|SILVER|YELLOW|GREEN/i.test(v))
     return false;
-  return /^[A-Z0-9-]{4,10}$/.test(v);
+  return /^[A-Z0-9-]{3,12}$/.test(v);
 }
 
 export function isLikelyEngine(value: string): boolean {
   const v = value.replace(/\s+/g, "");
-  return /^[A-Z0-9-]{8,25}$/.test(v) && hasLettersAndDigits(v);
+  // Must be alphanumeric (have both letters and digits) — rejects boilerplate like "REPUBLIC OF THE PHILIPPINES"
+  return /^[A-Z0-9-]{6,25}$/.test(v) && hasLettersAndDigits(v);
 }
 
 export function isLikelyChassis(value: string): boolean {
   const v = value.replace(/\s+/g, "");
-  return /^[A-Z0-9-]{10,25}$/.test(v) && hasLettersAndDigits(v);
+  // Must be alphanumeric (have both letters and digits) — rejects boilerplate
+  return /^[A-Z0-9-]{6,25}$/.test(v) && hasLettersAndDigits(v);
 }
 
 const KNOWN_COLORS = new Set([
@@ -101,10 +102,28 @@ export function isLikelyColor(value: string): boolean {
 export function isLikelyMvFileNo(value: string): boolean {
   const compact = value.trim().toUpperCase().replace(/\s+/g, "");
   if (!compact) return false;
-  if (!/^[A-Z0-9-]{8,24}$/.test(compact)) return false;
-  if (!/\d{6,}/.test(compact)) return false;
+  // Must be 4-24 chars of alphanumeric + dash
+  if (!/^[A-Z0-9-]{4,24}$/.test(compact)) return false;
+  // Reject common plate patterns (e.g. ABC1234, 1234AB)
+  if (/^[A-Z]{3}\d{3,4}$/.test(compact) || /^\d{3,4}[A-Z]{2,3}$/.test(compact)) return false;
+  // Must contain at least one digit or dash (reject pure-letter label words)
+  if (!/[\d\-]/.test(compact)) return false;
+
+  // Allow mostly-numeric values (like 132425000000003A — 15 digits + 1 letter suffix)
+  // Reject values where letters make up > 35% of the content (those are engine/chassis numbers)
+  const letterCount = (compact.match(/[A-Z]/g) || []).length;
+  const digitCount = (compact.match(/\d/g) || []).length;
+  if (compact.length >= 8 && letterCount > 0 && digitCount > 0 && !compact.includes("-")) {
+    // If more than 35% letters (and 8+ chars), it's likely an engine/chassis number
+    if (letterCount / compact.length > 0.35) return false;
+  }
   return true;
 }
+
+
+/** Loose color check: same logic as isLikelyColor but exported under a clearer name
+ *  for line/regex scanning contexts (e.g. scanning MEC/MVCC text for any color word). */
+export { isLikelyColor as isLikelyColorLoose };
 
 export function isLikelyYearModel(value: string): boolean {
   if (!/^\d{4}$/.test(value.trim())) return false;
@@ -148,17 +167,28 @@ export function isLikelyMakeBrand(value: string): boolean {
   if (/^[A-Z0-9-]{8,}$/.test(v) && hasLettersAndDigits(v)) return false;
   if (/(MOTORCYCLE|MOPED|TRICYCLE|SIDECAR|VEHICLE|CATEGORY|WITHOUT)/.test(v))
     return false;
+  // Reject standard plate number formats (e.g. ABC1234, 1234567, ABC 1234)
+  const compact = v.replace(/\s+/g, "");
+  if (/^[A-Z]{3}\d{3,4}$/.test(compact) || /^\d{3,4}[A-Z]{2,3}$/.test(compact) || /^[A-Z]\d{2,3}[A-Z]{2,3}$/.test(compact)) {
+    return false;
+  }
   if (BOILERPLATE_REGEX.test(v)) return false;
   if (KNOWN_VEHICLE_BRANDS.some((b) => v.includes(b))) return true;
   return /^[A-Z][A-Z0-9 .&\-/()]{1,40}$/.test(v);
 }
 
 export function isLikelyMvrrNumber(v: string): boolean {
-  return /^[A-Z0-9\-]{4,20}$/i.test(v.trim());
+  const clean = v.trim().toUpperCase();
+  // Reject long MV File Number patterns (e.g. 13242500000003A)
+  if (/^\d{10,20}[A-Z]$/.test(clean)) return false;
+  return /^[A-Z0-9\-]{4,20}$/i.test(clean);
 }
 
 export function isLikelyCrNumber(v: string): boolean {
-  return /^[A-Z0-9\-]{4,20}$/i.test(v.trim());
+  const clean = v.trim().toUpperCase();
+  // Reject long MV File Number patterns (e.g. 13242500000003A)
+  if (/^\d{10,20}[A-Z]$/.test(clean)) return false;
+  return /^[A-Z0-9\-]{4,20}$/i.test(clean);
 }
 
 export function isLikelySbrNo(v: string): boolean {

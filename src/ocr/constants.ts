@@ -185,6 +185,8 @@ export const FIELD_ALIASES = {
     "FILE NO",
     "FILE NUMBER",
     "MV FILE",
+    "MVFILE",
+    "FILE",
   ],
   hpgOffice: ["HPG OFFICE", "OFFICE", "ISSUING OFFICE"],
   purpose: ["PURPOSE", "PURPOSE OF INSPECTION"],
