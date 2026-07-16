@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { Button } from "../../../components/Button";
-import { Eye, Download, Mail } from "lucide-react";
+import { Eye, Download, Mail, Loader2 } from "lucide-react";
 import { generateClearanceCertificatePDF } from "../utils/generateClearanceCertificatePDF";
+import api from "../../../services/api";
+import Swal from "sweetalert2";
 
 const openPdfInNewTab = (blob) => {
   const url = URL.createObjectURL(blob);
@@ -17,6 +20,8 @@ const openPdfInNewTab = (blob) => {
 export const CertificateActionButtons = ({ row, disabled = false }) => {
   const hasCertificate = Boolean(row?.certificateNo);
   const isDisabled = disabled || !hasCertificate;
+  
+  const [isSending, setIsSending] = useState(false);
 
   const buildPdf = () => generateClearanceCertificatePDF(row);
 
@@ -32,36 +37,41 @@ export const CertificateActionButtons = ({ row, disabled = false }) => {
     doc.save(filename);
   };
 
-  const handleShare = async () => {
-    if (isDisabled) return;
+  const handleSendEmail = async () => {
+    if (isDisabled || isSending) return;
 
-    const { doc, filename } = await buildPdf();
-    const blob = doc.output("blob");
-    const file = new File([blob], filename, { type: "application/pdf" });
-    const subject = `Clearance Certificate ${row.certificateNo}`;
-    const body = [
-      `Certificate No: ${row.certificateNo}`,
-      `Request ID: ${row.id || "-"}`,
-      `Plate Number: ${row.plateNumber || "-"}`,
-      "",
-      "Please see the clearance certificate attached or download it from the DCI portal.",
-    ].join("\n");
+    setIsSending(true);
 
     try {
-      if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          title: subject,
-          text: body,
-          files: [file],
-        });
-        return;
-      }
-    } catch (error) {
-      if (error?.name === "AbortError") return;
-    }
+      const res = await api.post("/email/send-certificate", {
+        certificateNo: row.certificateNo,
+        plateNo: row.plateNumber || row.plateNo || "",
+        voucherCode: row.voucherCode || row.voucherReferenceNo || null,
+      });
 
-    const mailto = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailto;
+      const recipientEmail = res.data?.email || "your registered email";
+
+      // Trigger SweetAlert popup
+      Swal.fire({
+        icon: "success",
+        title: "Certificate Emailed!",
+        text: `The certificate has been successfully sent to ${recipientEmail}.`,
+        confirmButtonColor: "#0059b5",
+        confirmButtonText: "OK",
+      });
+
+    } catch (err) {
+      console.error("Failed to email certificate:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Failed to Send Email",
+        text: err.response?.data?.error || "Failed to email certificate. Please try again.",
+        confirmButtonColor: "#0059b5",
+        confirmButtonText: "OK",
+      });
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -95,12 +105,16 @@ export const CertificateActionButtons = ({ row, disabled = false }) => {
         variant="ghost"
         size="sm"
         className="!px-2 !py-1.5"
-        onClick={handleShare}
-        disabled={isDisabled}
-        title="Share via email"
-        aria-label="Share via email"
+        onClick={handleSendEmail}
+        disabled={isDisabled || isSending}
+        title="Email Certificate"
+        aria-label="Email Certificate"
       >
-        <Mail size={14} />
+        {isSending ? (
+          <Loader2 size={14} className="animate-spin text-blue-500" />
+        ) : (
+          <Mail size={14} />
+        )}
       </Button>
     </div>
   );
