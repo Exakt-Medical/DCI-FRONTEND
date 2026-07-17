@@ -43,10 +43,15 @@ export const CertificateActionButtons = ({ row, disabled = false }) => {
     setIsSending(true);
 
     try {
+      const { doc } = await buildPdf();
+      const dataUri = doc.output("datauristring");
+      const base64Pdf = dataUri.split(",")[1];
+
       const res = await api.post("/email/send-certificate", {
         certificateNo: row.certificateNo,
         plateNo: row.plateNumber || row.plateNo || "",
         voucherCode: row.voucherCode || row.voucherReferenceNo || null,
+        pdfBase64: base64Pdf,
       });
 
       const recipientEmail = res.data?.email || "your registered email";
